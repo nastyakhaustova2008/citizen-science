@@ -1,0 +1,246 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    /* Very faint paper grain — barely perceptible. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+  }
+
+  html.dark body {
+    @apply bg-char text-paper;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-serif;
+    text-wrap: balance;
+  }
+
+  /* Monospace for all numeric data. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    @apply font-mono;
+  }
+
+  /* Visible, consistent keyboard focus everywhere. */
+  :focus-visible {
+    outline: 2px solid theme('colors.bark.DEFAULT');
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  html.dark :focus-visible {
+    outline-color: theme('colors.bark.light');
+  }
+
+  ::selection {
+    background: theme('colors.moss.light');
+    color: theme('colors.ink.DEFAULT');
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Components
+ * ------------------------------------------------------------------ */
+@layer components {
+  .surface {
+    @apply bg-paper-raised border border-edge rounded-lg;
+  }
+
+  html.dark .surface {
+    @apply bg-char-raised border-white/10;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5
+           text-sm font-semibold transition
+           focus-visible:outline-2 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .btn-primary {
+    @apply btn bg-bark text-paper-raised hover:bg-bark-dark;
+  }
+
+  .btn-secondary {
+    @apply btn border border-edge bg-transparent text-ink hover:bg-paper-sunk;
+  }
+
+  html.dark .btn-secondary {
+    @apply border-white/15 text-paper hover:bg-white/5;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-ink-soft hover:bg-paper-sunk;
+  }
+
+  html.dark .btn-ghost {
+    @apply text-paper/80 hover:bg-white/5;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-edge bg-paper-raised px-3 py-2.5 text-sm
+           text-ink placeholder:text-ink-faint
+           focus:border-moss focus:outline-none focus-visible:outline-2;
+  }
+
+  html.dark .input {
+    @apply border-white/15 bg-char-sunk text-paper placeholder:text-paper/40;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-edge
+           px-2.5 py-1 text-xs font-medium text-ink-soft;
+  }
+
+  html.dark .chip {
+    @apply border-white/15 text-paper/75;
+  }
+
+  .chip-active {
+    @apply border-moss bg-moss/10 text-ink;
+  }
+
+  html.dark .chip-active {
+    @apply border-moss-light bg-moss/20 text-paper;
+  }
+
+  .label {
+    @apply block text-sm font-semibold text-ink-soft mb-1.5;
+  }
+
+  html.dark .label {
+    @apply text-paper/80;
+  }
+
+  .card-hover {
+    @apply transition hover:border-moss/60 hover:bg-paper-raised;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Leaflet overrides — match the muted palette
+ * ------------------------------------------------------------------ */
+.leaflet-container {
+  @apply font-sans bg-paper-sunk;
+  outline: none;
+}
+
+html.dark .leaflet-container {
+  @apply bg-char-sunk;
+}
+
+.leaflet-bar,
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  @apply border border-edge shadow-none;
+}
+
+.leaflet-bar a {
+  @apply bg-paper-raised text-ink border-edge;
+}
+
+html.dark .leaflet-bar a {
+  @apply bg-char-raised text-paper border-white/10;
+}
+
+/* Dark tiles: a light desaturation so OSM sits under the charcoal theme. */
+html.dark .leaflet-tile-pane {
+  filter: brightness(0.7) contrast(1.05) saturate(0.75) hue-rotate(5deg);
+}
+
+.leaflet-control-attribution {
+  @apply bg-paper-raised/80 text-ink-faint text-[10px];
+}
+
+html.dark .leaflet-control-attribution {
+  @apply bg-char-raised/80 text-paper/50;
+}
+
+/* Cluster bubbles */
+.marker-cluster-sm,
+.marker-cluster-md,
+.marker-cluster-lg {
+  @apply bg-transparent;
+}
+
+.marker-cluster div {
+  @apply bg-ink/90 text-paper font-mono font-medium;
+  border: 2px solid theme('colors.paper.raised');
+}
+
+html.dark .marker-cluster div {
+  @apply bg-moss text-char;
+  border-color: theme('colors.char.raised');
+}
+
+.marker-cluster span {
+  line-height: 30px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  @apply relative overflow-hidden bg-paper-sunk rounded;
+}
+
+html.dark .skeleton {
+  @apply bg-white/5;
+}
+
+.skeleton::after {
+  content: '';
+  @apply absolute inset-0 -translate-x-full;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 253, 248, 0.6),
+    transparent
+  );
+  animation: shimmer 1.6s infinite;
+}
+
+html.dark .skeleton::after {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06),
+    transparent
+  );
+}
+
+html[dir='rtl'] .skeleton::after {
+  @apply translate-x-full;
+  animation-direction: reverse;
+}
