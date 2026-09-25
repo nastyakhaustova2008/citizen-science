@@ -1,0 +1,717 @@
+<!doctype html>
+<!--
+  Privacy policy — static on purpose: works without JavaScript (Google OAuth review, crawlers)
+  and loads nothing from other sites. Vite copies public/ to dist/ as-is.
+  URL: https://citizen-science-liart.vercel.app/privacy.html  (#he | #en | #ru)
+  The app links here from the footer, the sign-up screens and the route /#/privacy.
+  Update all three languages and the date together whenever data collection changes
+  (see CLAUDE.md → «Политика конфиденциальности»).
+-->
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F7F4ED" />
+    <title>מדיניות פרטיות · Privacy Policy · Политика конфиденциальности — מצפה</title>
+    <style>
+      /* Colors from tailwind.config.js ("forest" palette). System fonts: no external requests. */
+      :root {
+        --bg: #f7f4ed;
+        --card: #fffdf8;
+        --sunk: #efebe0;
+        --ink: #1f3a2e;
+        --ink-soft: #33493d;
+        --ink-faint: #5c6b60;
+        --moss: #5a7a5f;
+        --accent: #6e5638;
+        --edge: #d7d0bf;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1a1c19;
+          --card: #232622;
+          --sunk: #141613;
+          --ink: #f7f4ed;
+          --ink-soft: #efebe0;
+          --ink-faint: #a9b3aa;
+          --moss: #7c9880;
+          --accent: #a98a5e;
+          --edge: #3a3f38;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        background: var(--bg);
+        color: var(--ink-soft);
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+        line-height: 1.65;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+      }
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+      }
+      header.top {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        margin-bottom: 16px;
+        font-size: 0.95rem;
+      }
+      nav.langs a {
+        display: inline-block;
+        padding: 4px 10px;
+        margin-inline-end: 4px;
+        border: 1px solid var(--edge);
+        border-radius: 999px;
+        text-decoration: none;
+      }
+      a {
+        color: var(--accent);
+        overflow-wrap: anywhere;
+      }
+      a:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+      article {
+        background: var(--card);
+        border: 1px solid var(--edge);
+        border-radius: 16px;
+        padding: 20px;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: Georgia, 'Times New Roman', serif;
+        color: var(--ink);
+        line-height: 1.3;
+      }
+      h1 {
+        font-size: 1.7rem;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-size: 1.25rem;
+        margin: 28px 0 8px;
+        padding-top: 16px;
+        border-top: 1px solid var(--edge);
+      }
+      h3 {
+        font-size: 1.05rem;
+        margin: 18px 0 6px;
+      }
+      .date {
+        color: var(--ink-faint);
+        margin: 0;
+      }
+      .short {
+        background: var(--sunk);
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-top: 16px;
+      }
+      .short h2 {
+        border: 0;
+        padding: 0;
+        margin: 0 0 4px;
+      }
+      ul {
+        padding-inline-start: 1.3em;
+        margin: 6px 0;
+      }
+      li {
+        margin: 4px 0;
+      }
+      p {
+        margin: 8px 0;
+      }
+      strong {
+        color: var(--ink);
+      }
+      .ltr {
+        direction: ltr;
+        unicode-bidi: isolate;
+      }
+      footer {
+        margin: 16px 0 8px;
+        text-align: center;
+        font-size: 0.9rem;
+        color: var(--ink-faint);
+      }
+      /* One language at a time: #en / #ru show that language, anything else shows Hebrew.
+         Hebrew is last in the page so "a :target before it" can hide it without :has(). */
+      .lang {
+        display: none;
+      }
+      .lang:target,
+      .lang-default {
+        display: block;
+      }
+      .lang:target ~ .lang-default {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <nav class="langs" aria-label="Language / שפה / Язык">
+          <a href="#he" lang="he">עברית</a>
+          <a href="#en" lang="en">English</a>
+          <a href="#ru" lang="ru">Русский</a>
+        </nav>
+        <a href="./#/">מצפה · Mitzpe · Мицпе</a>
+      </header>
+
+      <main>
+        <!-- ============================== English ============================== -->
+        <article id="en" class="lang" lang="en" dir="ltr">
+          <h1>Privacy Policy — Mitzpe</h1>
+          <p class="date">Last updated: 25 September 2026</p>
+
+          <section class="short">
+            <h2>The short version</h2>
+            <ul>
+              <li>Your <strong>username</strong> and your <strong>measurements</strong> are public. Everything else about you is not.</li>
+              <li>We don't sell your data, show ads, or track you (no analytics, no cookies).</li>
+              <li>An email address is optional.</li>
+              <li>You can ask us to see, fix or delete your data at any time.</li>
+            </ul>
+          </section>
+
+          <h2>Who we are</h2>
+          <p>
+            Mitzpe is a citizen-science network for schools. Students measure things like temperature, humidity,
+            sky brightness and air quality, and put the results on a shared map. The project is run by
+            <strong>Mechina Ofakim LeMada</strong>. Questions about privacy: <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
+          </p>
+
+          <h2>What we collect and why</h2>
+          <h3>Your account</h3>
+          <ul>
+            <li><strong>Username</strong> — shown next to your measurements. Everyone can see it.</li>
+            <li><strong>Password</strong> — stored only in scrambled form (a “hash”). Nobody, including us, can read it.</li>
+            <li>
+              <strong>Email (optional)</strong> — used only to reset your password and to confirm the address itself.
+              We never show it to anyone and never send newsletters.
+            </li>
+            <li><strong>When you joined and your role</strong> (student or admin) — shown on your profile page.</li>
+            <li><strong>When you last logged in</strong> — stored by our login system.</li>
+          </ul>
+
+          <h3>Signing in with Google</h3>
+          <p>
+            If you choose “Continue with Google”, Google sends us your Google email address, your name, a link to your
+            profile picture and your Google account ID. We store them but don't show them anywhere: on Mitzpe you
+            appear only under the username you choose. Your Google email is used for password reset, like a normal email.
+          </p>
+
+          <h3>Your measurements</h3>
+          <ul>
+            <li>The values you enter, including any text you type.</li>
+            <li><strong>The exact place</strong> (precise to about 1 metre) and the place name you give it.</li>
+            <li>The date and time.</li>
+          </ul>
+          <p>
+            We need all of this for the science: a measurement without a place and a time is not useful. The
+            “Use my current location” button asks your phone for its GPS location <strong>only when you press it</strong>.
+            We don't track where you are.
+          </p>
+
+          <h3>Technical information</h3>
+          <ul>
+            <li>
+              <strong>IP address and device/browser type</strong> — our login system records them when you log in,
+              to keep accounts safe.
+            </li>
+            <li>
+              A <strong>scrambled (hashed) form of your IP address</strong> — used to block anyone who tries to sign up
+              or log in too many times.
+            </li>
+            <li>
+              <strong>Your browser's local storage</strong> keeps your language, light/dark theme and your login, so you
+              stay logged in. This stays on your device.
+            </li>
+          </ul>
+
+          <h2>What is public</h2>
+          <p>Anyone, even without an account, can see:</p>
+          <ul>
+            <li>your username;</li>
+            <li>your profile page: role, when you joined, your measurements;</li>
+            <li>all your measurements on the map and in the data table, including the exact place, time and values.</li>
+          </ul>
+          <p>
+            Anyone can also download the measurements as a file. The file doesn't include usernames, but the website
+            shows who made each measurement.
+          </p>
+
+          <h2>What we do NOT store (for now)</h2>
+          <p>
+            Photos you add to a measurement, comments on map points, “problem” flags and forum posts currently stay
+            <strong>only in your browser</strong> and disappear when you reload the page. They are not sent to our server.
+            This may change — if it does, we will update this page before it happens.
+          </p>
+
+          <h2>Who else receives data</h2>
+          <p>We use a few services to run Mitzpe:</p>
+          <ul>
+            <li>
+              <strong>Supabase</strong> — our database and login system. It stores everything described above, on servers
+              in <strong>Frankfurt, Germany (EU)</strong>. Sign-up and login requests pass through the Supabase server
+              nearest to you. For now, Supabase also sends our emails (password reset, email confirmation).
+            </li>
+            <li>
+              <strong>Vercel</strong> — hosts the website. Like every website host, it sees your IP address and which pages
+              you open.
+            </li>
+            <li>
+              <strong>Google</strong> — only if you choose “Continue with Google”. We also load fonts from Google Fonts, so
+              Google sees your IP address when the site loads.
+            </li>
+            <li><strong>OpenStreetMap</strong> — provides the map images and sees your IP address when the map loads.</li>
+          </ul>
+          <p>
+            We plan to send emails through a separate email service in the future. We will update this page before that
+            happens.
+          </p>
+          <p>
+            Some of these companies are outside Israel (in Europe or the USA). Each service gets only what it needs to do
+            its job. We never sell data.
+          </p>
+
+          <h2>How long we keep it</h2>
+          <ul>
+            <li>
+              <strong>Account, email and measurements</strong> — until you ask us to delete them. (Measurements are part of
+              a shared scientific dataset — see “Deleting your account”.)
+            </li>
+            <li>
+              <strong>Login records (IP address and device)</strong> — while you are logged in, and in our security log for
+              <strong>up to 30 days</strong>.
+            </li>
+            <li><strong>Hashed IP addresses</strong> used to block too many attempts — deleted after one day.</li>
+            <li>
+              <strong>Hosting logs</strong> at Vercel and Supabase — a short time (a few days), under their own rules.
+            </li>
+          </ul>
+
+          <h2>Your rights</h2>
+          <p>You can ask us to:</p>
+          <ul>
+            <li><strong>see</strong> the data we have about you;</li>
+            <li><strong>correct</strong> something that's wrong (for example your username or a measurement);</li>
+            <li><strong>delete</strong> your account.</li>
+          </ul>
+          <p>
+            Write to <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong> from the email linked to your account, or tell us your
+            username. We may need to check that the account is really yours. We aim to answer within 30 days.
+          </p>
+
+          <h3>Deleting your account</h3>
+          <p>
+            There is no “delete account” button yet, so accounts are deleted on request by email. When we delete your
+            account, your username, email and login information are removed. Your measurements stay on the map
+            <strong>without your name</strong> (“Unknown participant”), because other students' science work may depend on
+            them. If you want your measurements deleted too, just tell us and we will delete them.
+          </p>
+
+          <h2>Tips for students</h2>
+          <ul>
+            <li><strong>Don't use your real full name as your username.</strong> A nickname, or a first name plus a letter, is enough.</li>
+            <li>
+              <strong>Don't measure at your home.</strong> The map shows the exact place. Measure at school, in a park or in
+              another public place.
+            </li>
+            <li><strong>Don't write personal details</strong> (phone number, address, full name) in text fields.</li>
+            <li>Don't share your password with anyone, not even friends.</li>
+            <li>If something worries you, talk to your teacher or a parent, or write to us.</li>
+          </ul>
+
+          <h2>For parents</h2>
+          <p>
+            Mitzpe is used by school students, many of them under 18. We collect as little as possible: a username, a
+            password and, optionally, an email. We don't ask for a student's real name, school, age, phone number or
+            photo (if a student signs in with Google, Google sends us their name and email — see above). There are no
+            ads, no tracking and no selling of data. To see, correct or delete your child's data, write to
+            <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
+          </p>
+
+          <h2>Changes to this policy</h2>
+          <p>
+            If we change what we collect or who receives it, we will update this page and the date at the top. For
+            important changes, we will try to let users know in advance.
+          </p>
+        </article>
+
+        <!-- ============================== Русский ============================== -->
+        <article id="ru" class="lang" lang="ru" dir="ltr">
+          <h1>Политика конфиденциальности — Мицпе</h1>
+          <p class="date">Последнее обновление: 25 сентября 2026 г.</p>
+
+          <section class="short">
+            <h2>Коротко</h2>
+            <ul>
+              <li>Ваше <strong>имя пользователя</strong> и ваши <strong>измерения</strong> видны всем. Всё остальное о вас — нет.</li>
+              <li>Мы не продаём данные, не показываем рекламу и не следим за вами (никакой аналитики, никаких cookies).</li>
+              <li>Email указывать не обязательно.</li>
+              <li>Вы в любой момент можете попросить нас показать, исправить или удалить ваши данные.</li>
+            </ul>
+          </section>
+
+          <h2>Кто мы</h2>
+          <p>
+            Мицпе — сеть гражданской науки для школ. Ученики измеряют температуру, влажность, яркость неба, качество
+            воздуха и отмечают результаты на общей карте. Проектом управляет мехина <strong>«Офаким ле-Мада»</strong>.
+            Вопросы о конфиденциальности: <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
+          </p>
+
+          <h2>Что мы собираем и зачем</h2>
+          <h3>Ваш аккаунт</h3>
+          <ul>
+            <li><strong>Имя пользователя</strong> — показывается рядом с вашими измерениями. Его видят все.</li>
+            <li>
+              <strong>Пароль</strong> — хранится только в зашифрованном виде («хеш»). Никто, даже мы, не может его прочитать.
+            </li>
+            <li>
+              <strong>Email (необязательно)</strong> — нужен только для сброса пароля и для подтверждения самого адреса.
+              Мы никому его не показываем и не присылаем рассылок.
+            </li>
+            <li><strong>Когда вы зарегистрировались и ваша роль</strong> (ученик или админ) — видны на странице профиля.</li>
+            <li><strong>Когда вы последний раз входили</strong> — хранится в системе входа.</li>
+          </ul>
+
+          <h3>Вход через Google</h3>
+          <p>
+            Если вы выбираете «Продолжить с Google», Google передаёт нам ваш email в Google, ваше имя, ссылку на фото
+            профиля и номер вашего аккаунта Google. Мы храним их, но нигде не показываем: в Мицпе вы видны только под
+            выбранным именем пользователя. Email из Google используется для сброса пароля, как обычный email.
+          </p>
+
+          <h3>Ваши измерения</h3>
+          <ul>
+            <li>Значения, которые вы вводите, включая любой текст.</li>
+            <li><strong>Точное место</strong> (с точностью около 1 метра) и название места, которое вы указали.</li>
+            <li>Дата и время.</li>
+          </ul>
+          <p>
+            Всё это нужно для науки: измерение без места и времени бесполезно. Кнопка «Использовать текущее
+            местоположение» запрашивает GPS у телефона <strong>только когда вы её нажимаете</strong>. Мы не следим, где
+            вы находитесь.
+          </p>
+
+          <h3>Техническая информация</h3>
+          <ul>
+            <li>
+              <strong>IP-адрес и тип устройства/браузера</strong> — система входа записывает их, когда вы входите в аккаунт,
+              чтобы защищать аккаунты.
+            </li>
+            <li>
+              <strong>Зашифрованный (хешированный) IP-адрес</strong> — чтобы блокировать тех, кто слишком много раз пытается
+              зарегистрироваться или войти.
+            </li>
+            <li>
+              <strong>Локальное хранилище браузера</strong> хранит язык, светлую/тёмную тему и ваш вход, чтобы не входить
+              каждый раз. Это остаётся на вашем устройстве.
+            </li>
+          </ul>
+
+          <h2>Что видно всем</h2>
+          <p>Любой человек, даже без аккаунта, может увидеть:</p>
+          <ul>
+            <li>ваше имя пользователя;</li>
+            <li>вашу страницу профиля: роль, когда вы зарегистрировались, ваши измерения;</li>
+            <li>все ваши измерения на карте и в таблице данных — с точным местом, временем и значениями.</li>
+          </ul>
+          <p>
+            Любой может также скачать измерения файлом. В файле нет имён пользователей, но на сайте видно, кто сделал
+            каждое измерение.
+          </p>
+
+          <h2>Что мы НЕ храним (пока)</h2>
+          <p>
+            Фото, которые вы добавляете к измерению, комментарии к точкам на карте, пометки «проблема» и сообщения на
+            форуме сейчас остаются <strong>только в вашем браузере</strong> и исчезают при перезагрузке страницы. На наш
+            сервер они не отправляются. Это может измениться — тогда мы заранее обновим эту страницу.
+          </p>
+
+          <h2>Кто ещё получает данные</h2>
+          <p>Для работы Мицпе мы пользуемся несколькими сервисами:</p>
+          <ul>
+            <li>
+              <strong>Supabase</strong> — база данных и система входа. Хранит всё, что описано выше, на серверах во
+              <strong>Франкфурте, Германия (ЕС)</strong>. Запросы регистрации и входа проходят через ближайший к вам сервер
+              Supabase. Пока Supabase также отправляет наши письма (сброс пароля, подтверждение email).
+            </li>
+            <li>
+              <strong>Vercel</strong> — хостинг сайта. Как любой хостинг, видит ваш IP-адрес и какие страницы вы открываете.
+            </li>
+            <li>
+              <strong>Google</strong> — только если вы выбрали «Продолжить с Google». Кроме того, мы загружаем шрифты из
+              Google Fonts, поэтому Google видит ваш IP-адрес при загрузке сайта.
+            </li>
+            <li><strong>OpenStreetMap</strong> — даёт изображения карты и видит ваш IP-адрес при загрузке карты.</li>
+          </ul>
+          <p>
+            В будущем мы планируем отправлять письма через отдельный почтовый сервис. Перед этим мы обновим эту страницу.
+          </p>
+          <p>
+            Некоторые из этих компаний находятся за пределами Израиля (в Европе или США). Каждый сервис получает только
+            то, что нужно для его работы. Мы никогда не продаём данные.
+          </p>
+
+          <h2>Сколько мы храним</h2>
+          <ul>
+            <li>
+              <strong>Аккаунт, email и измерения</strong> — пока вы не попросите их удалить. (Измерения — часть общего
+              научного набора данных, см. «Удаление аккаунта».)
+            </li>
+            <li>
+              <strong>Записи о входе (IP-адрес и устройство)</strong> — пока вы в аккаунте, а в журнале безопасности —
+              <strong>до 30 дней</strong>.
+            </li>
+            <li><strong>Хешированные IP-адреса</strong> для блокировки лишних попыток — удаляются через сутки.</li>
+            <li><strong>Журналы хостинга</strong> Vercel и Supabase — недолго (несколько дней), по их правилам.</li>
+          </ul>
+
+          <h2>Ваши права</h2>
+          <p>Вы можете попросить нас:</p>
+          <ul>
+            <li><strong>показать</strong> данные, которые у нас есть о вас;</li>
+            <li><strong>исправить</strong> что-то неверное (например, имя пользователя или измерение);</li>
+            <li><strong>удалить</strong> ваш аккаунт.</li>
+          </ul>
+          <p>
+            Напишите на <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong> с email, привязанного к аккаунту, или укажите ваше имя
+            пользователя. Возможно, нам нужно будет убедиться, что аккаунт действительно ваш. Мы стараемся ответить в
+            течение 30 дней.
+          </p>
+
+          <h3>Удаление аккаунта</h3>
+          <p>
+            Кнопки «Удалить аккаунт» пока нет, поэтому аккаунты удаляются по просьбе на email. При удалении аккаунта
+            удаляются имя пользователя, email и данные для входа. Ваши измерения остаются на карте
+            <strong>без вашего имени</strong> («Неизвестный участник»), потому что от них может зависеть научная работа
+            других учеников. Если хотите удалить и измерения — просто напишите нам, и мы их удалим.
+          </p>
+
+          <h2>Советы ученикам</h2>
+          <ul>
+            <li>
+              <strong>Не используйте своё настоящее полное имя как имя пользователя.</strong> Хватит ника или имени с одной
+              буквой фамилии.
+            </li>
+            <li>
+              <strong>Не делайте измерения у себя дома.</strong> Карта показывает точное место. Измеряйте в школе, в парке
+              или в другом общественном месте.
+            </li>
+            <li><strong>Не пишите личные данные</strong> (телефон, адрес, полное имя) в текстовых полях.</li>
+            <li>Никому не говорите свой пароль, даже друзьям.</li>
+            <li>Если что-то беспокоит — поговорите с учителем или родителями или напишите нам.</li>
+          </ul>
+
+          <h2>Для родителей</h2>
+          <p>
+            Мицпе пользуются школьники, многие из них младше 18 лет. Мы собираем как можно меньше: имя пользователя,
+            пароль и, по желанию, email. Мы не спрашиваем настоящее имя ученика, школу, возраст, телефон или фото (если
+            ученик входит через Google, Google передаёт нам его имя и email — см. выше). Нет рекламы, слежки и продажи
+            данных. Чтобы посмотреть, исправить или удалить данные вашего ребёнка, напишите на
+            <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
+          </p>
+
+          <h2>Изменения политики</h2>
+          <p>
+            Если мы изменим, что собираем или кому передаём данные, мы обновим эту страницу и дату вверху. О важных
+            изменениях постараемся сообщить заранее.
+          </p>
+        </article>
+
+        <!-- ============================== עברית (default, last on purpose) ============================== -->
+        <article id="he" class="lang lang-default" lang="he" dir="rtl">
+          <h1>מדיניות פרטיות — מצפה</h1>
+          <p class="date">עדכון אחרון: 25 בספטמבר 2026</p>
+
+          <section class="short">
+            <h2>בקצרה</h2>
+            <ul>
+              <li><strong>שם המשתמש</strong> שלכם ו<strong>המדידות</strong> שלכם גלויים לכולם. שאר הפרטים עליכם — לא.</li>
+              <li>אנחנו לא מוכרים מידע, לא מציגים פרסומות ולא עוקבים אחריכם (אין כלי ניתוח ואין עוגיות).</li>
+              <li>אימייל הוא לא חובה.</li>
+              <li>אפשר לבקש מאיתנו בכל זמן לראות, לתקן או למחוק את המידע שלכם.</li>
+            </ul>
+          </section>
+
+          <h2>מי אנחנו</h2>
+          <p>
+            מצפה היא רשת מדע אזרחי לבתי ספר. תלמידים מודדים דברים כמו טמפרטורה, לחות, בהירות השמיים ואיכות האוויר,
+            ומסמנים את התוצאות על מפה משותפת. הפרויקט מופעל על ידי <strong>מכינת אופקים למדע</strong>. לשאלות על
+            פרטיות: <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
+          </p>
+
+          <h2>מה אנחנו אוספים ולמה</h2>
+          <h3>החשבון שלכם</h3>
+          <ul>
+            <li><strong>שם משתמש</strong> — מוצג ליד המדידות שלכם. כולם יכולים לראות אותו.</li>
+            <li><strong>סיסמה</strong> — נשמרת רק בצורה מוצפנת (hash). אף אחד, גם לא אנחנו, לא יכול לקרוא אותה.</li>
+            <li>
+              <strong>אימייל (לא חובה)</strong> — משמש רק לאיפוס סיסמה ולאישור הכתובת עצמה. אנחנו לא מציגים אותו לאף אחד
+              ולא שולחים ניוזלטרים.
+            </li>
+            <li><strong>מתי הצטרפתם והתפקיד שלכם</strong> (תלמיד או מנהל) — מוצגים בדף הפרופיל שלכם.</li>
+            <li><strong>מתי נכנסתם לאחרונה</strong> — נשמר במערכת הכניסה.</li>
+          </ul>
+
+          <h3>כניסה עם Google</h3>
+          <p>
+            אם בחרתם „המשך עם Google”, חברת Google שולחת לנו את כתובת האימייל שלכם ב־Google, את השם שלכם, קישור
+            לתמונת הפרופיל ומספר מזהה של חשבון Google. אנחנו שומרים אותם, אבל לא מציגים אותם בשום מקום: במצפה אתם
+            מופיעים רק בשם המשתמש שבחרתם. האימייל מ־Google משמש לאיפוס סיסמה, כמו אימייל רגיל.
+          </p>
+
+          <h3>המדידות שלכם</h3>
+          <ul>
+            <li>הערכים שהזנתם, כולל כל טקסט שכתבתם.</li>
+            <li><strong>המקום המדויק</strong> (בדיוק של כמטר אחד) ושם המקום שכתבתם.</li>
+            <li>התאריך והשעה.</li>
+          </ul>
+          <p>
+            אנחנו צריכים את כל אלה בשביל המדע: מדידה בלי מקום וזמן היא לא שימושית. הכפתור „שימוש במיקום הנוכחי” מבקש
+            מהטלפון את מיקום ה־GPS <strong>רק כשלוחצים עליו</strong>. אנחנו לא עוקבים אחרי המקום שלכם.
+          </p>
+
+          <h3>מידע טכני</h3>
+          <ul>
+            <li>
+              <strong>כתובת IP וסוג המכשיר והדפדפן</strong> — מערכת הכניסה שומרת אותם כשאתם נכנסים לחשבון, כדי לשמור על
+              החשבונות.
+            </li>
+            <li>
+              <strong>כתובת ה־IP בצורה מוצפנת (hash)</strong> — כדי לחסום מי שמנסה להירשם או להיכנס יותר מדי פעמים.
+            </li>
+            <li>
+              <strong>האחסון המקומי בדפדפן</strong> שומר את השפה, את המצב הבהיר/הכהה ואת הכניסה שלכם, כדי שלא תצטרכו
+              להיכנס בכל פעם. המידע הזה נשאר במכשיר שלכם.
+            </li>
+          </ul>
+
+          <h2>מה גלוי לכולם</h2>
+          <p>כל אחד, גם בלי חשבון, יכול לראות:</p>
+          <ul>
+            <li>את שם המשתמש שלכם;</li>
+            <li>את דף הפרופיל שלכם: תפקיד, מתי הצטרפתם, המדידות שלכם;</li>
+            <li>את כל המדידות שלכם על המפה ובטבלת הנתונים — כולל המקום המדויק, הזמן והערכים.</li>
+          </ul>
+          <p>
+            כל אחד יכול גם להוריד את המדידות כקובץ. בקובץ אין שמות משתמשים, אבל באתר רואים מי עשה כל מדידה.
+          </p>
+
+          <h2>מה אנחנו לא שומרים (כרגע)</h2>
+          <p>
+            תמונות שאתם מוסיפים למדידה, תגובות על נקודות במפה, סימוני „בעיה” והודעות בפורום נשארים כרגע
+            <strong>רק בדפדפן שלכם</strong> ונעלמים כשמרעננים את הדף. הם לא נשלחים לשרת שלנו. זה עשוי להשתנות — ואם
+            כן, נעדכן את הדף הזה לפני כן.
+          </p>
+
+          <h2>מי עוד מקבל מידע</h2>
+          <p>כדי להפעיל את מצפה אנחנו משתמשים בכמה שירותים:</p>
+          <ul>
+            <li>
+              <strong>Supabase</strong> — מסד הנתונים ומערכת הכניסה. שומרת את כל מה שמתואר למעלה, בשרתים
+              <strong>בפרנקפורט, גרמניה (האיחוד האירופי)</strong>. בקשות הרשמה וכניסה עוברות דרך השרת של Supabase הקרוב
+              אליכם. בינתיים Supabase גם שולחת את המיילים שלנו (איפוס סיסמה, אישור אימייל).
+            </li>
+            <li>
+              <strong>Vercel</strong> — מארחת את האתר. כמו כל שירות אחסון אתרים, היא רואה את כתובת ה־IP שלכם ואילו דפים
+              אתם פותחים.
+            </li>
+            <li>
+              <strong>Google</strong> — רק אם בחרתם „המשך עם Google”. בנוסף, אנחנו טוענים גופנים מ־Google Fonts, ולכן
+              Google רואה את כתובת ה־IP שלכם כשהאתר נטען.
+            </li>
+            <li><strong>OpenStreetMap</strong> — מספקת את תמונות המפה ורואה את כתובת ה־IP שלכם כשהמפה נטענת.</li>
+          </ul>
+          <p>בעתיד אנחנו מתכננים לשלוח מיילים דרך שירות דיוור נפרד. לפני שזה יקרה, נעדכן את הדף הזה.</p>
+          <p>
+            חלק מהחברות האלה נמצאות מחוץ לישראל (באירופה או בארה״ב). כל שירות מקבל רק את מה שהוא צריך כדי לעשות את
+            העבודה שלו. אנחנו אף פעם לא מוכרים מידע.
+          </p>
+
+          <h2>כמה זמן אנחנו שומרים</h2>
+          <ul>
+            <li>
+              <strong>חשבון, אימייל ומדידות</strong> — עד שתבקשו למחוק אותם. (המדידות הן חלק ממאגר מדעי משותף — ראו
+              „מחיקת החשבון”.)
+            </li>
+            <li>
+              <strong>רישומי כניסה (כתובת IP ומכשיר)</strong> — כל עוד אתם מחוברים, וביומן האבטחה שלנו —
+              <strong>עד 30 יום</strong>.
+            </li>
+            <li><strong>כתובות IP מוצפנות</strong> לחסימת ניסיונות רבים מדי — נמחקות אחרי יום.</li>
+            <li><strong>יומני האחסון</strong> של Vercel ו־Supabase — זמן קצר (כמה ימים), לפי הכללים שלהן.</li>
+          </ul>
+
+          <h2>הזכויות שלכם</h2>
+          <p>אתם יכולים לבקש מאיתנו:</p>
+          <ul>
+            <li><strong>לראות</strong> את המידע שיש לנו עליכם;</li>
+            <li><strong>לתקן</strong> משהו לא נכון (למשל את שם המשתמש או מדידה);</li>
+            <li><strong>למחוק</strong> את החשבון.</li>
+          </ul>
+          <p>
+            כתבו ל־<strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong> מהאימייל שמחובר לחשבון, או ציינו את שם המשתמש שלכם.
+            ייתכן שנצטרך לוודא שהחשבון באמת שלכם. נשתדל לענות תוך 30 יום.
+          </p>
+
+          <h3>מחיקת החשבון</h3>
+          <p>
+            עדיין אין באתר כפתור „מחיקת חשבון”, ולכן מוחקים חשבון לפי בקשה במייל. כשאנחנו מוחקים חשבון, נמחקים שם
+            המשתמש, האימייל ופרטי הכניסה. המדידות נשארות על המפה <strong>בלי השם שלכם</strong> („משתתף/ת לא ידוע/ה”),
+            כי עבודת המדע של תלמידים אחרים עשויה להסתמך עליהן. אם תרצו שנמחק גם את המדידות — פשוט כתבו לנו, ונמחק אותן.
+          </p>
+
+          <h2>טיפים לתלמידים</h2>
+          <ul>
+            <li>
+              <strong>אל תשתמשו בשם המלא האמיתי שלכם כשם משתמש.</strong> מספיק כינוי, או שם פרטי ועוד אות.
+            </li>
+            <li>
+              <strong>אל תמדדו בבית שלכם.</strong> המפה מציגה את המקום המדויק. מדדו בבית הספר, בפארק או במקום ציבורי אחר.
+            </li>
+            <li><strong>אל תכתבו פרטים אישיים</strong> (טלפון, כתובת, שם מלא) בשדות הטקסט.</li>
+            <li>אל תגלו את הסיסמה שלכם לאף אחד, גם לא לחברים.</li>
+            <li>אם משהו מדאיג אתכם — דברו עם המורה או עם ההורים, או כתבו לנו.</li>
+          </ul>
+
+          <h2>להורים</h2>
+          <p>
+            במצפה משתמשים תלמידי בית ספר, רבים מהם מתחת לגיל 18. אנחנו אוספים כמה שפחות: שם משתמש, סיסמה, ואם רוצים —
+            אימייל. אנחנו לא מבקשים את השם האמיתי של התלמיד, את בית הספר, הגיל, מספר הטלפון או תמונה (אם התלמיד נכנס
+            עם Google, חברת Google שולחת לנו את השם והאימייל שלו — ראו למעלה). אין פרסומות, אין מעקב ואין מכירת מידע.
+            כדי לראות, לתקן או למחוק את המידע של ילדכם, כתבו ל־<strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
+          </p>
+
+          <h2>שינויים במדיניות</h2>
+          <p>
+            אם נשנה מה אנחנו אוספים או מי מקבל את המידע, נעדכן את הדף הזה ואת התאריך למעלה. על שינויים חשובים ננסה
+            להודיע מראש.
+          </p>
+        </article>
+      </main>
+
+      <footer>
+        <a href="./#/">מצפה · Mitzpe · Мицпе</a>
+      </footer>
+    </div>
+  </body>
+</html>

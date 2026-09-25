@@ -5,6 +5,7 @@ import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { normalizeUsername, usernameError } from '../../lib/username';
 import { LoadingBlock } from '../primitives';
+import { privacyUrl } from '../../lib/privacy';
 
 /** Wrap an LTR value (email) for interpolation into RTL/LTR text: Unicode first-strong isolate. */
 export const isolate = (value) => `\u2068${value}\u2069`;
@@ -196,11 +197,31 @@ export function RequireAuth({ why, children }) {
   return children;
 }
 
+/** "By signing up you agree to the privacy policy" — opens in a new tab so the form keeps its input. */
+export function PrivacyConsent() {
+  const { t, locale } = useI18n();
+  const [before, after = ''] = t('auth.privacyConsent').split('{link}');
+  return (
+    <p className="text-center text-xs text-ink-faint">
+      {before}
+      <a
+        href={privacyUrl(locale)}
+        target="_blank"
+        rel="noopener"
+        className="underline underline-offset-2 hover:text-ink dark:hover:text-paper"
+      >
+        {t('auth.privacyLink')}
+      </a>
+      {after}
+    </p>
+  );
+}
+
 /** Logged in without a username (first Google sign-in) → choose one before anything else. */
 export function UsernameGate() {
   const { needsUsername } = useAuth();
   const location = useLocation();
-  if (!needsUsername || location.pathname.startsWith('/auth/')) return null;
+  if (!needsUsername || location.pathname.startsWith('/auth/') || location.pathname === '/privacy') return null;
   const next = encodeURIComponent(location.pathname + location.search);
   return <Navigate to={`/auth/choose-username?next=${next}`} replace />;
 }

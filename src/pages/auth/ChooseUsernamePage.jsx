@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingBlock } from '../../components/primitives';
-import { AuthCard, FormError, UsernameField, loginPath, safeNext } from '../../components/auth/AuthUI';
+import { AuthCard, FormError, PrivacyConsent, UsernameField, loginPath, safeNext } from '../../components/auth/AuthUI';
 
 /** First Google sign-in: the profile has no username yet. Chosen once. */
 export default function ChooseUsernamePage() {
@@ -41,12 +41,13 @@ export default function ChooseUsernamePage() {
     <AuthCard title={t('auth.chooseTitle')} intro={t('auth.chooseBody')}>
       <form className="space-y-4" onSubmit={onSubmit} noValidate>
         <UsernameField id="choose-username" value={username} onChange={setUsername} status={status} onStatus={setStatus} />
-        <p className="text-xs text-ink-faint">{t('auth.privacyNote')}</p>
+        <p className="text-xs text-ink-faint">{t('auth.privacyNoteGoogle')}</p>
         <FormError code={error} />
         <button type="submit" className="btn-primary w-full" disabled={busy || status !== 'available'}>
           {busy ? t('auth.working') : t('auth.chooseSubmit')}
         </button>
       </form>
+      <PrivacyConsent />
     </AuthCard>
   );
 }
