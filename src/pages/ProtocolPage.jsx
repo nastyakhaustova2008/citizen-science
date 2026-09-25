@@ -4,6 +4,8 @@ import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
 import { observationTitle } from '../data/mockData';
 import { fieldLabel } from '../lib/fields';
+import { labEquipment, labProtocol } from '../lib/labs';
+import Markdown from '../components/Markdown';
 import ObsIcon from '../components/ObsIcon';
 import { EmptyState, ErrorBlock, LoadingBlock } from '../components/primitives';
 
@@ -40,6 +42,7 @@ export default function ProtocolPage() {
     observation.scale?.plausible ||
     (primary && primary.min != null && primary.max != null ? [primary.min, primary.max] : null);
   const Back = locale === 'he' ? ArrowRight : ArrowLeft;
+  const protocol = labProtocol(observation, locale);
 
   return (
     <article className="mx-auto max-w-2xl space-y-5">
@@ -77,7 +80,7 @@ export default function ProtocolPage() {
         <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-moss" aria-hidden="true" strokeWidth={1.75} />
         <span>
           <span className="font-semibold">{t('card.equipment')}:</span>{' '}
-          {observation.equipment.join(' · ')}
+          {labEquipment(observation, locale).join(' · ')}
         </span>
       </div>
 
@@ -91,10 +94,19 @@ export default function ProtocolPage() {
         </p>
       )}
 
-      <StepList title={t('protocol.sections.prepare')} items={t('protocol.prepare')} />
-      <StepList title={t('protocol.sections.measure')} items={t('protocol.measure')} />
-      <StepList title={t('protocol.sections.record')} items={t('protocol.record')} />
-      <StepList title={t('protocol.sections.safety')} items={t('protocol.safety')} />
+      {protocol ? (
+        // The lab's own protocol (lab editor, Markdown).
+        <section className="surface p-4 text-sm leading-relaxed">
+          <Markdown source={protocol} />
+        </section>
+      ) : (
+        <>
+          <StepList title={t('protocol.sections.prepare')} items={t('protocol.prepare')} />
+          <StepList title={t('protocol.sections.measure')} items={t('protocol.measure')} />
+          <StepList title={t('protocol.sections.record')} items={t('protocol.record')} />
+          <StepList title={t('protocol.sections.safety')} items={t('protocol.safety')} />
+        </>
+      )}
 
       <div className="pt-2">
         <Link to={`/observations/${observation.slug}/add`} className="btn-primary">

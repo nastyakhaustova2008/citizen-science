@@ -11,6 +11,8 @@ import ProfilePage from './pages/ProfilePage';
 import ProtocolPage from './pages/ProtocolPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PrivacyPage from './pages/PrivacyPage';
+import LabEditorPage from './pages/LabEditorPage';
+import AdminProfilePrompt from './components/labs/AdminProfilePrompt';
 import LoginPage from './pages/auth/LoginPage';
 import SignUpPage from './pages/auth/SignUpPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
@@ -40,6 +42,7 @@ export default function App() {
       <Header />
       <ScrollToTop />
       <UsernameGate />
+      <AdminProfilePrompt />
       <main id="main" className="mx-auto w-full max-w-content flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <OAuthErrorBanner />
         <Routes>
@@ -56,6 +59,22 @@ export default function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:userId" element={<ProfilePage />} />
           <Route path="/protocol/:slug" element={<ProtocolPage />} />
+          <Route
+            path="/labs/new"
+            element={
+              <RequireAuth>
+                <LabEditorPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/labs/:id/edit"
+            element={
+              <RequireAuth>
+                <LabEditorPage />
+              </RequireAuth>
+            }
+          />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

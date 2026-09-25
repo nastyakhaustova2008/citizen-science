@@ -1,11 +1,14 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { Plus, FileText, Map as MapIcon, Table2, BarChart3, MessagesSquare, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Plus, FileText, Map as MapIcon, Table2, BarChart3, MessagesSquare, ArrowLeft, ArrowRight, PencilLine, EyeOff } from 'lucide-react';
 
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
 import { observationTitle, observationDesc } from '../data/mockData';
 import { fieldLabel } from '../lib/fields';
+import { useAuth } from '../context/AuthContext';
+import { isAdminRole } from '../lib/roles';
+import { canEditLab } from '../lib/labsApi';
 
 import Tabs, { TabPanel } from '../components/Tabs';
 import ObservationMap from '../components/map/ObservationMap';
@@ -43,6 +46,23 @@ export default function ObservationPage() {
 
   const observation = getObservation(slug);
 
+  // "Edit" for the lab's author, main admins and the owner (asked from the database).
+  const { profile } = useAuth();
+  const isAdmin = isAdminRole(profile?.role);
+  const [canEdit, setCanEdit] = useState(false);
+  const obsId = observation?.id;
+  useEffect(() => {
+    setCanEdit(false);
+    if (!isAdmin || !obsId) return undefined;
+    let alive = true;
+    canEditLab(obsId)
+      .then((ok) => alive && setCanEdit(Boolean(ok)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [isAdmin, obsId]);
+
   const measurements = useMemo(
     () => (observation ? measurementsFor(observation.id) : []),
     [observation, measurementsFor],
@@ -72,6 +92,7 @@ export default function ObservationPage() {
   }
 
   const joined = isJoined(observation.id);
+  const published = observation.publication === 'published';
   const Back = locale === 'he' ? ArrowRight : ArrowLeft;
 
   const tabs = [
@@ -87,6 +108,13 @@ export default function ObservationPage() {
         <Back className="h-4 w-4" aria-hidden="true" />
         {t('observation.backToList')}
       </Link>
+
+      {!published && (
+        <p className="flex items-start gap-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-ink dark:text-paper">
+          <EyeOff className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
+          {t('labs.page.notPublished', { status: t(`labs.publication.${observation.publication}`) })}
+        </p>
+      )}
 
       {/* Header */}
       <header className="space-y-3">
@@ -112,10 +140,12 @@ export default function ObservationPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 pt-1">
-          <Link to={`/observations/${observation.slug}/add`} className="btn-primary">
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            {t('observation.addMeasurement')}
-          </Link>
+          {published && (
+            <Link to={`/observations/${observation.slug}/add`} className="btn-primary">
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              {t('observation.addMeasurement')}
+            </Link>
+          )}
           <button
             type="button"
             className={joined ? 'btn-secondary' : 'btn-secondary'}
@@ -128,6 +158,12 @@ export default function ObservationPage() {
             <FileText className="h-4 w-4" aria-hidden="true" />
             {t('observation.viewProtocol')}
           </Link>
+          {canEdit && (
+            <Link to={`/labs/${observation.id}/edit`} className="btn-ghost">
+              <PencilLine className="h-4 w-4" aria-hidden="true" />
+              {t('labs.page.edit')}
+            </Link>
+          )}
         </div>
 
         <p className="rounded-lg border border-edge bg-paper-sunk/50 p-3 text-xs text-ink-faint dark:border-white/10 dark:bg-white/5">

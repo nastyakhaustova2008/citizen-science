@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
+import { useParams, Link, Navigate, useLocation } from 'react-router-dom';
 import {
   Award,
   Sunrise,
@@ -20,6 +20,7 @@ import MiniMap from '../components/MiniMap';
 import ContributionGraph from '../components/ContributionGraph';
 import AccountSettings from '../components/auth/AccountSettings';
 import AdminPanel from '../components/admin/AdminPanel';
+import AdminProfileForm from '../components/labs/AdminProfileForm';
 import { loginPath } from '../components/auth/AuthUI';
 import { formatDate } from '../lib/format';
 import { monthlyCounts } from '../lib/stats';
@@ -93,6 +94,15 @@ function ProfileView({ id, isOwn }) {
     const ids = [...new Set(myPoints.map((m) => m.observationId))];
     return ids.map(getObservation).filter(Boolean);
   }, [myPoints, getObservation]);
+
+  // /profile#admin-profile, #admin: scroll to that section once it is on screen.
+  const { hash } = useLocation();
+  const ready = isAuthorResolved(id) && Boolean(user) && !loading && !error;
+  useEffect(() => {
+    if (!ready || !hash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }, [ready, hash]);
 
   if (!isAuthorResolved(id)) return <LoadingBlock />;
   if (!user) {
@@ -207,7 +217,17 @@ function ProfileView({ id, isOwn }) {
         </section>
       )}
 
-      {isOwn && user.kind === 'real' && isAdminRole(user.role) && <AdminPanel />}
+      {isOwn && user.kind === 'real' && isAdminRole(user.role) && (
+        <>
+          <section id="admin-profile" className="scroll-mt-4">
+            <SectionHeading as="h2" title={t('labs.adminProfile.title')} subtitle={t('labs.adminProfile.subtitle')} />
+            <div className="surface max-w-xl p-4">
+              <AdminProfileForm />
+            </div>
+          </section>
+          <AdminPanel />
+        </>
+      )}
 
       {isOwn && <AccountSettings />}
     </div>

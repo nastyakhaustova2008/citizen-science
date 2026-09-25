@@ -109,6 +109,7 @@ function LogRow({ event: e }) {
       <p className="mt-0.5 text-xs text-ink-faint">
         {detail && <span className="me-2">{detail}</span>}
         {cascade && <span className="me-2">{t('admin.log.cascade')}</span>}
+        {e.confirmedStaff && <span className="me-2">{t('admin.log.confirmedStaff')}</span>}
         <span>{formatDate(e.at, locale)}</span> <span dir="ltr">{formatTime(e.at, locale)}</span>
       </p>
     </li>

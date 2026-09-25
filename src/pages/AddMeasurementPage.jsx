@@ -15,6 +15,20 @@ export default function AddMeasurementPage() {
   if (campaignsError) return <ErrorBlock onRetry={reloadCampaigns} />;
   if (campaignsLoading) return <LoadingBlock />;
 
+  // Drafts (visible to admins only) do not take measurements — the database refuses them too.
+  if (observation && observation.publication !== 'published') {
+    return (
+      <EmptyState
+        title={t('labs.page.notPublished', { status: t(`labs.publication.${observation.publication}`) })}
+        action={
+          <Link to={`/observations/${observation.slug}`} className="btn-secondary mt-1">
+            {t('observation.backToList')}
+          </Link>
+        }
+      />
+    );
+  }
+
   if (!observation) {
     return (
       <EmptyState

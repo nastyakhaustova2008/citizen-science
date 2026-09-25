@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase, supabaseUrl, supabaseKey, authRedirectBase } from '../lib/supabase';
 import { isPlaceholderEmail, normalizeUsername } from '../lib/username';
+import { myAdminProfile, saveAdminProfile as saveAdminProfileRpc } from '../lib/labsApi';
 
 /**
  * Accounts (roadmap step 4a).
@@ -9,6 +10,8 @@ import { isPlaceholderEmail, normalizeUsername } from '../lib/username';
  * - Google: supabase.auth.signInWithOAuth (PKCE). First sign-in → profile without username →
  *   the app sends the user to /auth/choose-username.
  * - profiles (id, username, role, created_at) are public; role fields are read-only for users.
+ * - Admins also have an admin profile (step 5a: full name, workplace, position) — loaded here;
+ *   until it is filled the database refuses every lab action (admin_profile_required).
  * Error codes → strings.js auth.errors.<code>.
  */
 
@@ -134,6 +137,33 @@ export function AuthProvider({ children }) {
 
   const reloadProfile = useCallback(() => setProfileNonce((n) => n + 1), []);
 
+  // Admin profile: undefined = not loaded / not an admin, null = not filled yet, object = filled.
+  const isAdmin = ['admin', 'main_admin', 'owner'].includes(profile?.id === userId ? profile?.role : null);
+  const [adminProfile, setAdminProfile] = useState(undefined);
+  const [adminProfileNonce, setAdminProfileNonce] = useState(0);
+  useEffect(() => {
+    if (!isAdmin || !userId) {
+      setAdminProfile(undefined);
+      return undefined;
+    }
+    let alive = true;
+    myAdminProfile(userId)
+      .then((p) => alive && setAdminProfile(p))
+      .catch(() => alive && setAdminProfile(undefined));
+    return () => {
+      alive = false;
+    };
+  }, [isAdmin, userId, adminProfileNonce]);
+
+  const reloadAdminProfile = useCallback(() => setAdminProfileNonce((n) => n + 1), []);
+
+  /** Save my admin profile; throws LabError (invalid_admin_profile with details {field: code}). */
+  const saveAdminProfile = useCallback(async (values) => {
+    const saved = await saveAdminProfileRpc(values);
+    setAdminProfile(saved);
+    return saved;
+  }, []);
+
   const signUp = useCallback(async ({ username, password, email }) => {
     const data = await callAccount({ action: 'signup', username: normalizeUsername(username), password });
     await startSession(data.session);
@@ -252,6 +282,10 @@ export function AuthProvider({ children }) {
       changePassword,
       verifyEmailLink,
       reloadProfile,
+      adminProfile,
+      adminProfileComplete: Boolean(adminProfile),
+      reloadAdminProfile,
+      saveAdminProfile,
     }),
     [
       session,
@@ -275,6 +309,9 @@ export function AuthProvider({ children }) {
       changePassword,
       verifyEmailLink,
       reloadProfile,
+      adminProfile,
+      reloadAdminProfile,
+      saveAdminProfile,
     ],
   );
 

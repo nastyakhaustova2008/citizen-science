@@ -11,9 +11,24 @@ import {
   Wind,
   CloudFog,
   Snowflake,
+  CloudRain,
+  Waves,
+  Leaf,
+  TreePine,
+  Flower2,
+  Sprout,
+  Bird,
+  Bug,
+  Fish,
+  Mountain,
+  Volume2,
+  FlaskConical,
+  Microscope,
+  Gauge,
   Activity,
 } from 'lucide-react';
 
+/** Lab icons by name (campaigns.icon). The editor offers these (src/lib/labs.js → LAB_ICONS). */
 const MAP = {
   Thermometer,
   Building2,
@@ -27,6 +42,21 @@ const MAP = {
   Wind,
   CloudFog,
   Snowflake,
+  CloudRain,
+  Waves,
+  Leaf,
+  TreePine,
+  Flower2,
+  Sprout,
+  Bird,
+  Bug,
+  Fish,
+  Mountain,
+  Volume2,
+  FlaskConical,
+  Microscope,
+  Gauge,
+  Activity,
 };
 
 export default function ObsIcon({ name, className = 'h-5 w-5', strokeWidth = 1.75 }) {

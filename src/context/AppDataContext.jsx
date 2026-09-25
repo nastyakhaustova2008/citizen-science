@@ -8,7 +8,9 @@ import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
 /**
  * Application state.
  * Campaigns + their field definitions are read from Supabase
- * (`campaigns`, `campaign_fields`, `campaign_field_options`; read-only for now).
+ * (`campaigns`, `campaign_fields`, `campaign_field_options`). Admins also receive drafts (RLS);
+ * `campaigns` is the published list for the public pages, getObservation() finds drafts too.
+ * Labs are written only through the editor RPCs (src/lib/labsApi.js).
  * Measurements are read from / inserted into Supabase (`measurements` table);
  * their values live in `field_values` (jsonb keyed by field key), validated by the database.
  * The current user comes from AuthContext (Supabase Auth + profiles); adding measurements
@@ -19,7 +21,7 @@ import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
  * still lives in memory over the mock dataset for the session only.
  */
 const CAMPAIGN_COLUMNS =
-  'id, slug, metric, icon, title_he, title_en, title_ru, desc_he, desc_en, desc_ru, status, region, difficulty, equipment, protocol_url, center_lat, center_lng, zoom, sort_order, form_version, campaign_fields(*, campaign_field_options(*))';
+  'id, slug, metric, icon, title_he, title_en, title_ru, desc_he, desc_en, desc_ru, status, region, difficulty, equipment, protocol_url, center_lat, center_lng, zoom, sort_order, form_version, publication, edit_no, equipment_he, equipment_en, equipment_ru, protocol_he, protocol_en, protocol_ru, campaign_fields(*, campaign_field_options(*))';
 
 /** DB row (snake_case) → the Observation (campaign) shape the UI uses (see mockData.js). */
 function campaignFromRow(row) {
@@ -41,8 +43,19 @@ function campaignFromRow(row) {
     region: row.region,
     difficulty: row.difficulty,
     equipment: row.equipment || [],
+    equipmentHe: row.equipment_he || [],
+    equipmentEn: row.equipment_en || [],
+    equipmentRu: row.equipment_ru || [],
+    protocolHe: row.protocol_he || '',
+    protocolEn: row.protocol_en || '',
+    protocolRu: row.protocol_ru || '',
     protocolUrl: row.protocol_url,
-    center: [row.center_lat, row.center_lng],
+    // draft | in_review | published (step 5). Only admins receive non-published rows (RLS).
+    publication: row.publication || 'published',
+    editNo: row.edit_no ?? 0,
+    // Drafts may have no map center yet: the maps get a default view (centerSet = false).
+    centerSet: row.center_lat != null && row.center_lng != null,
+    center: row.center_lat != null && row.center_lng != null ? [row.center_lat, row.center_lng] : [31.4, 34.9],
     zoom: row.zoom,
     formVersion: row.form_version,
     fields,
@@ -126,6 +139,8 @@ export function AppDataProvider({ children }) {
 
   const { currentUser } = useAuth();
   const currentUserId = currentUser?.id ?? null;
+  // Admins see drafts: re-read campaigns when that changes (login / logout / role granted).
+  const seesDrafts = ['admin', 'main_admin', 'owner'].includes(currentUser?.role);
 
   // Public profiles of real users whose ids are on screen: id → author, or null (no such profile).
   const [authors, setAuthors] = useState({});
@@ -199,7 +214,7 @@ export function AppDataProvider({ children }) {
     return () => {
       alive = false;
     };
-  }, [campaignsNonce]);
+  }, [campaignsNonce, seesDrafts]);
 
   const reloadCampaigns = useCallback(() => setCampaignsNonce((n) => n + 1), []);
 
@@ -466,7 +481,13 @@ export function AppDataProvider({ children }) {
     [campaigns, measurementsView],
   );
 
-  /** Look up a loaded campaign by id or slug (null while loading / if missing). */
+  /** Published labs only: home page, counters, filters. */
+  const publishedView = useMemo(
+    () => campaignsView.filter((c) => c.publication === 'published'),
+    [campaignsView],
+  );
+
+  /** Look up a loaded campaign by id or slug (null while loading / if missing). Drafts too (admins). */
   const getObservation = useCallback(
     (idOrSlug) => campaignsView.find((o) => o.id === idOrSlug || o.slug === idOrSlug) || null,
     [campaignsView],
@@ -480,7 +501,8 @@ export function AppDataProvider({ children }) {
       isAuthorResolved,
       loadAuthors,
       refreshAuthors,
-      campaigns: campaignsView,
+      campaigns: publishedView,
+      allCampaigns: campaignsView,
       campaignsLoading,
       campaignsError,
       reloadCampaigns,
@@ -512,6 +534,7 @@ export function AppDataProvider({ children }) {
       loadAuthors,
       refreshAuthors,
       campaignsView,
+      publishedView,
       campaignsLoading,
       campaignsError,
       reloadCampaigns,

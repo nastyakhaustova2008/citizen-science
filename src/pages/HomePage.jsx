@@ -9,6 +9,7 @@ import {
   observationDesc,
 } from '../data/mockData';
 import { METRICS } from '../data/metrics';
+import { labEquipment } from '../lib/labs';
 
 import Counter from '../components/Counter';
 import FilterBar from '../components/FilterBar';
@@ -67,7 +68,7 @@ export default function HomePage() {
       return (
         observationTitle(o, locale).toLowerCase().includes(q) ||
         observationDesc(o, locale).toLowerCase().includes(q) ||
-        o.equipment.join(' ').toLowerCase().includes(q)
+        labEquipment(o, locale).join(' ').toLowerCase().includes(q)
       );
     });
   }, [campaigns, query, topic, status, region, locale]);

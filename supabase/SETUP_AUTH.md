@@ -239,3 +239,42 @@ merge. Independent of 007 / 008.
 
 Changing roles by hand in the SQL Editor still works (it is logged as "changed directly in the
 database"). The owner is changed only there.
+
+## 14. Lab editor (roadmap step 5a) — migration 010
+
+Needs 009. After it, **granting admin from the old frontend fails** (the grant now requires the
+"teacher or staff member" confirmation), so keep the gap short: migration → preview → merge.
+Everything else keeps working for the old frontend.
+
+1. SQL Editor → run `supabase/migrations/010_lab_editor.sql`. Safe to re-run. A notice
+   `campaigns_publishable: …` means an existing lab misses a title / description / map center in
+   some language — fix it later in the editor (it cannot be saved until then).
+2. SQL Editor → run `supabase/seed/004_equipment_translations.sql` (English / Russian equipment
+   lists for the demo labs). Safe to re-run.
+3. Check (SQL Editor):
+
+   ```sql
+   -- every old lab is published; equipment copied to equipment_he
+   select slug, publication, edit_no, equipment_he, equipment_en from public.campaigns order by sort_order;
+   -- no direct write rules left on labs (only the read rules)
+   select tablename, policyname, cmd from pg_policies
+   where tablename in ('campaigns', 'campaign_fields', 'campaign_field_options', 'admin_profiles');
+   ```
+
+4. Vercel **preview** of the branch:
+   * as the owner: the "You are now an admin" window appears → fill in full name + workplace.
+     **Profile → Administration → Users**: making someone admin now asks for the checkbox; the
+     **Change log → Roles** shows "confirmed as teacher / staff".
+   * as the new admin: close the window, open **Labs → New lab** → the "fill in your admin profile"
+     message; fill it in; create a draft (title, a number field, a choice field, map center), save,
+     reopen, check the preview in all three languages.
+   * as a student / logged out: the draft is not on the home page and its link says "not found".
+   * as another admin (not the author): the draft is visible with a "not published" banner, no
+     "Edit" button.
+   * as the owner: open a published lab → **Edit** → change a label (saves, visible at once);
+     "Required", min/max, "Add field" and the protocol are disabled ("next update").
+   * **Change log → Labs** lists the changes.
+5. Merge → production deploy.
+
+A draft cannot be published yet (that is step 5b: review by 3 admins). For a test only, from the
+SQL Editor: `update public.campaigns set publication = 'published' where slug = '…';`
