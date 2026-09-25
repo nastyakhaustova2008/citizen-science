@@ -62,6 +62,8 @@ export default function AddMeasurementWizard({ observation }) {
 
   const [photo, setPhoto] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const numeric = value === '' ? null : Number(value);
   const outOfRange =
@@ -107,20 +109,29 @@ export default function AddMeasurementWizard({ observation }) {
     reader.readAsDataURL(file);
   }
 
-  function submit() {
-    addMeasurement({
-      observationId: observation.id,
-      lat: coords[0],
-      lng: coords[1],
-      value: numeric,
-      timestamp: new Date(datetime).toISOString(),
-      instrument: instrument.trim(),
-      conditions: conditions.trim(),
-      notes: notes.trim(),
-      photoDataUri: photo,
-      placeLabel: conditions.trim() || t('wizard.steps.location'),
-    });
-    setDone(true);
+  async function submit() {
+    setSaving(true);
+    setSaveError(false);
+    try {
+      await addMeasurement({
+        observationId: observation.id,
+        lat: coords[0],
+        lng: coords[1],
+        value: numeric,
+        timestamp: new Date(datetime).toISOString(),
+        instrument: instrument.trim(),
+        conditions: conditions.trim(),
+        notes: notes.trim(),
+        photoDataUri: photo,
+        placeLabel: conditions.trim() || t('wizard.steps.location'),
+      });
+      setDone(true);
+    } catch (err) {
+      console.error('[wizard] save failed', err);
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (done) {
@@ -385,6 +396,13 @@ export default function AddMeasurementWizard({ observation }) {
             />
             <span>{t('wizard.step3.confirmText')}</span>
           </label>
+
+          {saveError && (
+            <p className="flex items-center gap-1.5 text-sm text-danger" role="alert">
+              <AlertTriangle className="h-4 w-4" aria-hidden="true" />
+              {t('wizard.saveError')}
+            </p>
+          )}
         </div>
       )}
 
@@ -413,9 +431,9 @@ export default function AddMeasurementWizard({ observation }) {
             <Next className="h-4 w-4" aria-hidden="true" />
           </button>
         ) : (
-          <button type="button" className="btn-primary" disabled={!canNext} onClick={submit}>
+          <button type="button" className="btn-primary" disabled={!canNext || saving} onClick={submit}>
             <Check className="h-4 w-4" aria-hidden="true" />
-            {t('wizard.step3.submit')}
+            {saving ? t('wizard.saving') : t('wizard.step3.submit')}
           </button>
         )}
       </div>
