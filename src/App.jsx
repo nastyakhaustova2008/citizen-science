@@ -10,6 +10,7 @@ import AddMeasurementPage from './pages/AddMeasurementPage';
 import ProfilePage from './pages/ProfilePage';
 import ProtocolPage from './pages/ProtocolPage';
 import NotFoundPage from './pages/NotFoundPage';
+import PrivacyPage from './pages/PrivacyPage';
 import LoginPage from './pages/auth/LoginPage';
 import SignUpPage from './pages/auth/SignUpPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/auth/confirm" element={<ConfirmPage />} />
           <Route path="/auth/choose-username" element={<ChooseUsernamePage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>

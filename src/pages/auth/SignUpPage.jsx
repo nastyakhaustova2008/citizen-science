@@ -8,6 +8,7 @@ import {
   Field,
   FormError,
   GoogleButton,
+  PrivacyConsent,
   Notice,
   OrDivider,
   isolate,
@@ -162,6 +163,7 @@ export default function SignUpPage() {
       </form>
       <OrDivider />
       <GoogleButton next={next} />
+      <PrivacyConsent />
     </AuthCard>
   );
 }

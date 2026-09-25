@@ -170,7 +170,9 @@ limit do not depend on it.
 1. console.cloud.google.com → project picker → **New project** (e.g. `mitzpe`).
 2. **Google Auth Platform** (APIs & Services → OAuth consent screen) → **Get started**:
    app name `Mitzpe`, support email, Audience **External**, contact email → Create.
-3. **Branding:** app home page `https://<prod>/`; **Authorized domains:** add
+3. **Branding:** app home page `https://<prod>/`; **Application privacy policy link:**
+   `https://citizen-science-liart.vercel.app/privacy.html` (static page, works without
+   JavaScript — see `public/privacy.html`); **Authorized domains:** add
    `<ref>.supabase.co`. (A logo is optional and triggers a brand review — skip it.)
 4. **Data access:** scopes `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile`
    (the default, non-sensitive ones — no Google verification needed).

@@ -13,6 +13,7 @@
   * Форма измерения строится из полей кампании («движок форм», шаг 3) — см. раздел «Поля кампаний (движок форм)».
   * Страницы, где есть кампании (главная, кампания, добавление, протокол, профиль), показывают loading/error, пока кампании не загрузились.
 * Аккаунты (шаг 4a) — Supabase Auth + таблица `profiles`, см. раздел «Аккаунты». `AuthContext` (`useAuth()`): сессия, профиль, `currentUser`, вход/регистрация/Google/сброс пароля. `useAppData().currentUser` — тот же пользователь.
+* Политика конфиденциальности — статическая страница `public/privacy.html` (he/en/ru), см. раздел «Политика конфиденциальности».
 * Всё остальное пока захардкожено в `src/data/mockData.js`: демо-пользователи (авторы демо-измерений), форум (темы/посты/реакции), бейджи, «присоединиться к кампании».
 * `OBSERVATIONS` в mockData остался **только** для генерации оставшихся моков; UI его не импортирует. Кампании менять в базе, не там.
 * Ещё на моках (читают `MEASUREMENTS` из mockData, а не из базы): лента активности и счётчик школ на главной, `participantsCount`, график вклада в профиле. Счётчик активных кампаний на главной считается из базы.
@@ -67,9 +68,10 @@ src/
 │                       и измерения из Supabase, авторы `getAuthor()` + остальное в памяти), ThemeContext.jsx (тема)
 ├── hooks/            — useMockLoad.js (имитация loading/error/retry, сейчас не используется)
 ├── lib/              — supabase.js (клиент), username.js (правила имён и паролей), fields.js (движок форм: поля, валидация, формат, шкала),
-│                       format.js, stats.js, export.js (CSV/JSON/GeoJSON), media.js (SVG-заглушки)
+│                       format.js, stats.js, export.js (CSV/JSON/GeoJSON), media.js (SVG-заглушки), privacy.js (ссылка на политику)
 ├── pages/            — Home, Observation (вкладки Карта·Данные·Графики·Обсуждение),
 │                       AddMeasurement (только после входа), Profile (+ «Аккаунт» у своего), Protocol, NotFound,
+│                       Privacy (только перенаправляет на public/privacy.html),
 │                       auth/ — Login, SignUp, ForgotPassword, Confirm (ссылки из писем), ChooseUsername
 └── components/
     ├── Header, Footer, primitives (skeleton, empty/error, Avatar, AuthorName, LoginPrompt), Tabs, FilterBar,
@@ -83,6 +85,11 @@ src/
 ```
 
 ```
+public/
+└── privacy.html      — политика конфиденциальности (he/en/ru), без JS и внешних запросов; Vite копирует в dist/ как есть
+```
+
+```
 supabase/
 ├── migrations/       — SQL-схема: 001_measurements.sql (таблица, индекс, временные RLS-политики),
 │                       002_campaigns.sql (таблица кампаний, временная RLS — только чтение),
@@ -90,7 +97,8 @@ supabase/
 │                       004_form_engine.sql (поля кампаний, field_values, триггеры правил и проверки),
 │                       005_drop_legacy_measurement_columns.sql (удаляет value/instrument/conditions/notes),
 │                       006_profiles_auth.sql (profiles, правила имён, триггеры, RPC, лимиты, правило «добавляет только вошедший»),
-│                       007_measurements_auth_only.sql (убирает TEMPORARY «все добавляют»; только после деплоя production)
+│                       007_measurements_auth_only.sql (убирает TEMPORARY «все добавляют»; только после деплоя production),
+│                       008_privacy_cleanup.sql (pg_cron: ежедневно чистит журнал входа >30 дней, лимиты >1 дня)
 ├── functions/account/ — Edge Function: регистрация, вход по имени, сброс пароля (деплой через Dashboard → Via Editor)
 ├── SETUP_AUTH.md     — ручные настройки Brevo / Supabase / Google Cloud для аккаунтов, по порядку
 └── seed/             — демо-данные: 001_measurements_seed.sql (38 мок-измерений),
@@ -98,7 +106,7 @@ supabase/
                         003_water_quality_example.sql (пример лабораторной на движке форм); повторный запуск безопасен
 ```
 
-SQL запускается вручную в Supabase SQL Editor, по номерам: 001 migration → 001 seed → 002 migration → 002 seed → 003 migration → 004 migration → (003 seed) → 005 migration → 006 migration → (после деплоя production) 007 migration. Seed 001 пишет в колонку `value` и работает только до 005. Seed-файлы только вставляют данные, схему не меняют. Supabase CLI не используется. Новые изменения схемы — новым файлом `00N_*.sql`, старые миграции не редактировать.
+SQL запускается вручную в Supabase SQL Editor, по номерам: 001 migration → 001 seed → 002 migration → 002 seed → 003 migration → 004 migration → (003 seed) → 005 migration → 006 migration → (после деплоя production) 007 migration. 008 — в любой момент после 006 (с 007 не связана). Seed 001 пишет в колонку `value` и работает только до 005. Seed-файлы только вставляют данные, схему не меняют. Supabase CLI не используется. Новые изменения схемы — новым файлом `00N_*.sql`, старые миграции не редактировать.
 
 Порядок выкладки миграций, несовместимых со старым кодом (как 004/005, 006/007): миграция → проверка на preview (Vercel) → merge → дождаться деплоя production → миграция, ломающая старый код (005, 007). Между 004 и деплоем нового кода production **не может добавлять измерения**. 006 совместима со старым кодом; 007 — нет (старый код добавляет как anon).
 
@@ -112,6 +120,7 @@ SQL запускается вручную в Supabase SQL Editor, по номе�
 * Поля формы кампании → строки в `campaign_fields` / `campaign_field_options` (SQL Editor; позже — админка). Код менять не нужно.
 * Новый тип поля → CHECK в новой миграции + ветка в `measurements_validate_values()` (SQL) + `inputToValue`/`validateValue`/`formatFieldValue`/`exportFieldValue` в `src/lib/fields.js` + `FieldInput.jsx`. Проверки в SQL и в `fields.js` должны совпадать (те же коды ошибок).
 * Правила имён пользователей / паролей → три копии, держать одинаковыми (те же коды ошибок): `public.username_error()` в SQL (новая миграция), `src/lib/username.js`, `supabase/functions/account/index.ts`. Тексты ошибок — `auth.errors.<код>` в `strings.js`.
+* Что собираем / куда передаём / сколько храним → обновить `public/privacy.html` (все три языка и дату), см. «Политика конфиденциальности»
 * Новый пресет цветов → `src/data/metrics.js` (кампании ссылаются на него по ключу в `campaigns.metric`, необязательно)
 * Логика чтения/добавления/изменения данных → `src/context/AppDataContext.jsx`
 * Новая страница → `src/pages/` + маршрут в `App.jsx`
@@ -147,6 +156,16 @@ SQL запускается вручную в Supabase SQL Editor, по номе�
 * Лимиты в функции (`private.rate_limit_hits`, IP хранятся только как HMAC): регистрации на IP и общий лимит в час, неудачные входы на имя, сбросы на IP и на имя. IP клиента берётся из заголовка платформы (не из левой части `X-Forwarded-For`) и передаётся в Supabase Auth как `Sb-Forwarded-For`; проверка на подделку — `SETUP_AUTH.md` → 8a.
 * Авторы: `getAuthor(userId)` из `useAppData()` → реальный профиль (UUID, подгружается `loadAuthors`), демо-пользователь из mockData для старых измерений (`u-noa` …, `kind: 'demo'`, показывается с меткой «демо») или `null` («неизвестный участник»). Школу у реальных пользователей не собираем (фильтр/график «моя школа» у них скрыт).
 * Шаг 4b: логика ролей (кто кого назначает, каскадный отзыв по `role_granted_by`) и админка — функциями `security definer`; поля для этого уже есть.
+
+## Политика конфиденциальности
+
+* Текст — только в `public/privacy.html`: статический HTML без JS (его проверяет Google OAuth), без внешних запросов (без Google Fonts). Три языка — `<article id="he|en|ru">`; показывается один: `#en`/`#ru` по якорю, иначе иврит (иврит последний в файле — так работает CSS `:target ~`). Цвета — hex из палитры «forest» (Tailwind туда не попадает).
+* URL: `https://citizen-science-liart.vercel.app/privacy.html` — он же «Application privacy policy link» в Google Cloud (`SETUP_AUTH.md`, шаг 9). Для рецензента Google удобнее `…/privacy.html#en`.
+* Ссылки из приложения — через `privacyUrl(locale)` из `src/lib/privacy.js`: футер, `PrivacyConsent` (из `components/auth/AuthUI.jsx`) на экранах регистрации и выбора имени (через него проходят все новые пользователи Google). Маршрут `/#/privacy` перенаправляет на статическую страницу; `UsernameGate` его не перехватывает.
+* Плейсхолдеры `[RESPONSIBLE BODY]` и `[PRIVACY EMAIL]` заполняет владелец проекта.
+* **Политика должна совпадать с кодом.** Любое изменение того, что собираем, что публично, куда передаём и сколько храним, — сначала поправить `privacy.html` (все три языка + дата «последнее обновление»). Например: фото/комментарии/форум начнут сохраняться на сервере, новый сторонний сервис (Brevo для писем — пока только «планируем»), новые поля профиля, аналитика, округление координат, кнопка удаления аккаунта.
+* Обещания в тексте, которые держит код: журнал входа Supabase (`auth.audit_log_entries`, там IP) — до 30 дней, хешированные IP в `private.rate_limit_hits` — сутки (обе чистки — задача pg_cron из 008); писем, кроме сброса пароля и подтверждения email, нет; в экспорте нет имён пользователей; координаты — 5 знаков (~1 м).
+* Удаление аккаунта (пока вручную, по письму): Dashboard → Authentication → Users → удалить пользователя → профиль удаляется каскадом, измерения остаются с «неизвестным участником». Если человек просит удалить и измерения — `delete from public.measurements where user_id = '<uuid>'` в SQL Editor (до удаления пользователя). Если пользователь назначал роли (`role_granted_by`), удаление блокируется FK — сначала снять назначения. Кнопка удаления — отдельная задача.
 
 ## Правила i18n
 
