@@ -176,7 +176,7 @@ export default function DataTable({ observation, measurements }) {
               key={fmt}
               type="button"
               className="btn-secondary"
-              onClick={() => exportMeasurements(exportSet, fmt, observation.slug)}
+              onClick={() => exportMeasurements(exportSet, fmt, observation)}
             >
               <Download className="h-4 w-4" aria-hidden="true" />
               {t(`data.export${fmt[0].toUpperCase()}${fmt.slice(1)}`)}

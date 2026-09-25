@@ -1,10 +1,12 @@
-import { getObservation, getUser } from '../data/mockData';
+import { getUser } from '../data/mockData';
 import { METRICS } from '../data/metrics';
 import { toISODate, formatTime } from './format';
 
-/** Flatten a measurement into a plain export row. */
-function toRow(m) {
-  const obs = getObservation(m.observationId);
+/**
+ * Flatten a measurement into a plain export row.
+ * `obs` is the campaign the measurement belongs to (campaigns come from AppDataContext).
+ */
+function toRow(m, obs) {
   const user = getUser(m.userId);
   const metric = METRICS[obs?.metric];
   return {
@@ -32,8 +34,8 @@ function csvCell(v) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export function toCSV(measurements) {
-  const rows = measurements.map(toRow);
+export function toCSV(measurements, observation = null) {
+  const rows = measurements.map((m) => toRow(m, observation));
   if (!rows.length) return '';
   const headers = Object.keys(rows[0]);
   const lines = [
@@ -43,16 +45,16 @@ export function toCSV(measurements) {
   return lines.join('\n');
 }
 
-export function toJSON(measurements) {
-  return JSON.stringify(measurements.map(toRow), null, 2);
+export function toJSON(measurements, observation = null) {
+  return JSON.stringify(measurements.map((m) => toRow(m, observation)), null, 2);
 }
 
-export function toGeoJSON(measurements) {
+export function toGeoJSON(measurements, observation = null) {
   return JSON.stringify(
     {
       type: 'FeatureCollection',
       features: measurements.map((m) => {
-        const row = toRow(m);
+        const row = toRow(m, observation);
         return {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [m.lng, m.lat] },
@@ -87,10 +89,13 @@ export function downloadFile(filename, content, kind = 'csv') {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function exportMeasurements(measurements, format, baseName = 'measurements') {
+/** `observation` — the campaign all `measurements` belong to (for title/metric/unit columns). */
+export function exportMeasurements(measurements, format, observation = null) {
+  const baseName = observation?.slug || 'measurements';
   const stamp = new Date().toISOString().slice(0, 10);
-  if (format === 'csv') downloadFile(`${baseName}-${stamp}.csv`, toCSV(measurements), 'csv');
-  if (format === 'json') downloadFile(`${baseName}-${stamp}.json`, toJSON(measurements), 'json');
+  if (format === 'csv') downloadFile(`${baseName}-${stamp}.csv`, toCSV(measurements, observation), 'csv');
+  if (format === 'json')
+    downloadFile(`${baseName}-${stamp}.json`, toJSON(measurements, observation), 'json');
   if (format === 'geojson')
-    downloadFile(`${baseName}-${stamp}.geojson`, toGeoJSON(measurements), 'geojson');
+    downloadFile(`${baseName}-${stamp}.geojson`, toGeoJSON(measurements, observation), 'geojson');
 }

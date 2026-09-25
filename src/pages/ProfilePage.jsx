@@ -17,7 +17,6 @@ import {
   CURRENT_USER_ID,
   USER_BADGES,
   monthlyContributions,
-  getObservation,
   observationTitle,
 } from '../data/mockData';
 
@@ -40,11 +39,22 @@ export default function ProfilePage() {
   const id = userId || CURRENT_USER_ID;
   const { t, locale } = useI18n();
   const {
+    getObservation,
+    campaignsLoading,
+    campaignsError,
+    reloadCampaigns,
     measurements,
-    measurementsLoading: loading,
-    measurementsError: error,
-    reloadMeasurements: retry,
+    measurementsLoading,
+    measurementsError,
+    reloadMeasurements,
   } = useAppData();
+
+  const loading = campaignsLoading || measurementsLoading;
+  const error = campaignsError || measurementsError;
+  const retry = () => {
+    if (campaignsError) reloadCampaigns();
+    if (measurementsError) reloadMeasurements();
+  };
 
   const user = getUser(id);
   const myPoints = useMemo(
@@ -57,7 +67,7 @@ export default function ProfilePage() {
   const campaigns = useMemo(() => {
     const ids = [...new Set(myPoints.map((m) => m.observationId))];
     return ids.map(getObservation).filter(Boolean);
-  }, [myPoints]);
+  }, [myPoints, getObservation]);
 
   if (!user) {
     return <EmptyState title={t('observation.notFound')} />;
