@@ -113,7 +113,6 @@ export const USERS = [
   },
 ];
 
-export const CURRENT_USER_ID = 'u-noa';
 export const getUser = (id) => USERS.find((u) => u.id === id) || null;
 export const EXPERT_IDS = USERS.filter((u) => u.role === 'mentor').map((u) => u.id);
 

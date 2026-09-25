@@ -10,6 +10,7 @@ import './index.css';
 
 import { I18nProvider } from './i18n';
 import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
 import { AppDataProvider } from './context/AppDataContext';
 import App from './App';
 
@@ -18,9 +19,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <HashRouter>
       <I18nProvider>
         <ThemeProvider>
-          <AppDataProvider>
-            <App />
-          </AppDataProvider>
+          <AuthProvider>
+            <AppDataProvider>
+              <App />
+            </AppDataProvider>
+          </AuthProvider>
         </ThemeProvider>
       </I18nProvider>
     </HashRouter>

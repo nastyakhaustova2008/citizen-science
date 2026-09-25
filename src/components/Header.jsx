@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { NavLink, Link } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Languages, Telescope } from 'lucide-react';
+import { NavLink, Link, useLocation } from 'react-router-dom';
+import { Menu, X, Moon, Sun, Languages, Telescope, LogIn } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useTheme } from '../context/ThemeContext';
-import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { Avatar } from './primitives';
 
 function LanguageMenu() {
@@ -78,12 +78,17 @@ const navItemClass = ({ isActive }) =>
 
 export default function Header() {
   const { t } = useI18n();
-  const { currentUser } = useAppData();
+  const { currentUser, session, authLoading, logOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+  const loggedIn = Boolean(session);
+  const onAuthPage = ['/login', '/signup'].includes(location.pathname);
+  // Come back to the current page after logging in (not to the login page itself).
+  const next = onAuthPage ? '' : `?next=${encodeURIComponent(location.pathname + location.search)}`;
 
   const links = [
     { to: '/', label: t('nav.home'), end: true },
-    { to: '/profile', label: t('nav.profile') },
+    ...(loggedIn ? [{ to: '/profile', label: t('nav.profile') }] : []),
   ];
 
   return (
@@ -110,13 +115,29 @@ export default function Header() {
         <div className="ms-auto flex items-center gap-1 md:ms-0">
           <LanguageMenu />
           <ThemeToggle />
-          <Link
-            to="/profile"
-            className="ms-1 hidden sm:block"
-            aria-label={t('nav.profile')}
-          >
-            <Avatar user={currentUser} size={32} />
-          </Link>
+          {!authLoading && loggedIn && currentUser && (
+            <Link
+              to="/profile"
+              className="ms-1 hidden items-center gap-2 rounded-lg px-1.5 py-1 text-sm font-semibold text-ink hover:bg-paper-sunk sm:flex dark:text-paper dark:hover:bg-white/5"
+              aria-label={t('nav.profile')}
+            >
+              <Avatar user={currentUser} size={32} />
+              <span className="max-w-[12rem] truncate" dir="auto">
+                {currentUser.displayName}
+              </span>
+            </Link>
+          )}
+          {!authLoading && !loggedIn && (
+            <div className="ms-1 hidden items-center gap-1 sm:flex">
+              <Link to={`/login${next}`} className="btn-ghost">
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+                {t('auth.login')}
+              </Link>
+              <Link to={`/signup${next}`} className="btn-primary">
+                {t('auth.signup')}
+              </Link>
+            </div>
+          )}
           <button
             type="button"
             className="btn-ghost px-2 md:hidden"
@@ -149,6 +170,45 @@ export default function Header() {
               {l.label}
             </NavLink>
           ))}
+          <div className="mt-1 border-t border-edge pt-2 dark:border-white/10">
+            {loggedIn ? (
+              <>
+                {currentUser && (
+                  <p className="flex items-center gap-2 px-3 py-2 text-sm font-semibold" dir="auto">
+                    <Avatar user={currentUser} size={24} />
+                    {currentUser.displayName}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  className="block w-full rounded-lg px-3 py-2.5 text-start text-sm font-semibold text-ink-faint"
+                  onClick={() => {
+                    setMobileOpen(false);
+                    logOut();
+                  }}
+                >
+                  {t('auth.logout')}
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to={`/login${next}`}
+                  onClick={() => setMobileOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-ink-faint"
+                >
+                  {t('auth.login')}
+                </Link>
+                <Link
+                  to={`/signup${next}`}
+                  onClick={() => setMobileOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-ink-faint"
+                >
+                  {t('auth.signup')}
+                </Link>
+              </>
+            )}
+          </div>
         </nav>
       )}
     </header>

@@ -10,6 +10,12 @@ import AddMeasurementPage from './pages/AddMeasurementPage';
 import ProfilePage from './pages/ProfilePage';
 import ProtocolPage from './pages/ProtocolPage';
 import NotFoundPage from './pages/NotFoundPage';
+import LoginPage from './pages/auth/LoginPage';
+import SignUpPage from './pages/auth/SignUpPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ConfirmPage from './pages/auth/ConfirmPage';
+import ChooseUsernamePage from './pages/auth/ChooseUsernamePage';
+import { RequireAuth, UsernameGate, OAuthErrorBanner } from './components/auth/AuthUI';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -32,14 +38,28 @@ export default function App() {
       </a>
       <Header />
       <ScrollToTop />
+      <UsernameGate />
       <main id="main" className="mx-auto w-full max-w-content flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <OAuthErrorBanner />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/observations/:slug" element={<ObservationPage />} />
-          <Route path="/observations/:slug/add" element={<AddMeasurementPage />} />
+          <Route
+            path="/observations/:slug/add"
+            element={
+              <RequireAuth why="add">
+                <AddMeasurementPage />
+              </RequireAuth>
+            }
+          />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:userId" element={<ProfilePage />} />
           <Route path="/protocol/:slug" element={<ProtocolPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/auth/confirm" element={<ConfirmPage />} />
+          <Route path="/auth/choose-username" element={<ChooseUsernamePage />} />
           <Route path="/404" element={<NotFoundPage />} />
           <Route path="*" element={<Navigate to="/404" replace />} />
         </Routes>

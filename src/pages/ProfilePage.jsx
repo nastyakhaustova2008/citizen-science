@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
+import { useParams, Link, Navigate } from 'react-router-dom';
 import {
   Award,
   Sunrise,
@@ -12,18 +12,16 @@ import {
 
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
-import {
-  getUser,
-  CURRENT_USER_ID,
-  USER_BADGES,
-  monthlyContributions,
-  observationTitle,
-} from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { USER_BADGES, monthlyContributions, observationTitle } from '../data/mockData';
 
 import { Avatar, EmptyState, SectionHeading, Skeleton, LoadingBlock, ErrorBlock } from '../components/primitives';
 import MiniMap from '../components/MiniMap';
 import ContributionGraph from '../components/ContributionGraph';
+import AccountSettings from '../components/auth/AccountSettings';
+import { loginPath } from '../components/auth/AuthUI';
 import { formatDate } from '../lib/format';
+import { monthlyCounts } from '../lib/stats';
 
 const BADGE_ICON = {
   firstMeasurement: MapPin,
@@ -34,11 +32,27 @@ const BADGE_ICON = {
   peerReview: Flag,
 };
 
+/**
+ * /profile → the logged-in user (logged out → login). /profile/:userId → anyone:
+ * a real user (profiles) or a demo author of the seeded measurements (mockData, marked "demo").
+ */
 export default function ProfilePage() {
   const { userId } = useParams();
-  const id = userId || CURRENT_USER_ID;
+  const { session, authLoading } = useAuth();
+  const ownId = session?.user?.id ?? null;
+  if (!userId) {
+    if (authLoading) return <LoadingBlock />;
+    if (!ownId) return <Navigate to={loginPath('/profile')} replace />;
+  }
+  return <ProfileView id={userId || ownId} isOwn={!userId || userId === ownId} />;
+}
+
+function ProfileView({ id, isOwn }) {
   const { t, locale } = useI18n();
   const {
+    getAuthor,
+    isAuthorResolved,
+    loadAuthors,
     getObservation,
     campaignsLoading,
     campaignsError,
@@ -56,19 +70,29 @@ export default function ProfilePage() {
     if (measurementsError) reloadMeasurements();
   };
 
-  const user = getUser(id);
+  useEffect(() => {
+    loadAuthors([id]);
+  }, [id, loadAuthors]);
+
+  const user = getAuthor(id);
+  const isDemo = user?.kind === 'demo';
   const myPoints = useMemo(
     () => measurements.filter((m) => m.userId === id),
     [measurements, id],
   );
-  const contributions = useMemo(() => monthlyContributions(id), [id]);
-  const badges = USER_BADGES[id] || [];
+  // Demo authors keep their mock history; real users get it from their real measurements.
+  const contributions = useMemo(
+    () => (isDemo ? monthlyContributions(id) : monthlyCounts(myPoints)),
+    [isDemo, id, myPoints],
+  );
+  const badges = isDemo ? USER_BADGES[id] || [] : [];
 
   const campaigns = useMemo(() => {
     const ids = [...new Set(myPoints.map((m) => m.observationId))];
     return ids.map(getObservation).filter(Boolean);
   }, [myPoints, getObservation]);
 
+  if (!isAuthorResolved(id)) return <LoadingBlock />;
   if (!user) {
     return <EmptyState title={t('observation.notFound')} />;
   }
@@ -84,18 +108,25 @@ export default function ProfilePage() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <Avatar user={user} size={72} className="!rounded-xl" />
         <div className="flex-1">
-          <h1 className="font-serif text-2xl font-bold text-ink dark:text-paper">
+          <h1 className="font-serif text-2xl font-bold text-ink dark:text-paper" dir="auto">
             {user.displayName}
           </h1>
-          <p className="text-sm text-ink-faint">
-            {user.school} · {user.class}
-          </p>
+          {isDemo && (
+            <p className="text-sm text-ink-faint">
+              {user.school} · {user.class}
+            </p>
+          )}
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
             <span className="chip">
-              {user.role === 'mentor' && <ShieldCheck className="h-3 w-3" aria-hidden="true" />}
+              {user.role !== 'student' && <ShieldCheck className="h-3 w-3" aria-hidden="true" />}
               {t(`profile.role.${user.role}`)}
             </span>
-            <span className="chip">{t(`regions.${user.region}`)}</span>
+            {isDemo && <span className="chip">{t(`regions.${user.region}`)}</span>}
+            {isDemo && (
+              <span className="chip" title={t('auth.demoHint')}>
+                {t('auth.demoAuthor')}
+              </span>
+            )}
             <span className="text-ink-faint">
               {t('profile.activeSince', { date: formatDate(user.joinedAt, locale) })}
             </span>
@@ -145,32 +176,36 @@ export default function ProfilePage() {
         {loading ? <Skeleton className="h-24" /> : <ContributionGraph data={contributions} />}
       </section>
 
-      {/* Badges */}
-      <section>
-        <SectionHeading as="h2" title={t('profile.badges')} />
-        {badges.length === 0 ? (
-          <EmptyState icon={Award} title={t('profile.badgesEmpty')} />
-        ) : (
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {badges.map((key) => {
-              const Icon = BADGE_ICON[key] || Award;
-              return (
-                <li key={key} className="surface flex items-start gap-3 p-3.5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-edge text-bark dark:border-white/10">
-                    <Icon className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold text-ink dark:text-paper">
-                      {t(`badges.${key}.name`)}
-                    </p>
-                    <p className="text-xs text-ink-faint">{t(`badges.${key}.desc`)}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
+      {/* Badges (demo authors only for now) */}
+      {isDemo && (
+        <section>
+          <SectionHeading as="h2" title={t('profile.badges')} />
+          {badges.length === 0 ? (
+            <EmptyState icon={Award} title={t('profile.badgesEmpty')} />
+          ) : (
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {badges.map((key) => {
+                const Icon = BADGE_ICON[key] || Award;
+                return (
+                  <li key={key} className="surface flex items-start gap-3 p-3.5">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-edge text-bark dark:border-white/10">
+                      <Icon className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-ink dark:text-paper">
+                        {t(`badges.${key}.name`)}
+                      </p>
+                      <p className="text-xs text-ink-faint">{t(`badges.${key}.desc`)}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {isOwn && <AccountSettings />}
     </div>
   );
 }
