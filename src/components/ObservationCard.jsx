@@ -4,6 +4,7 @@ import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
 import { observationTitle, observationDesc } from '../data/mockData';
 import ObsIcon from './ObsIcon';
+import { labEquipment } from '../lib/labs';
 import MiniMap from './MiniMap';
 import { StatusBadge, DifficultyBadge } from './primitives';
 
@@ -64,7 +65,7 @@ export default function ObservationCard({ observation }) {
         <Wrench className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" strokeWidth={1.75} />
         <span>
           <span className="font-medium">{t('card.equipment')}:</span>{' '}
-          {observation.equipment.join(' · ')}
+          {labEquipment(observation, locale).join(' · ')}
         </span>
       </div>
 

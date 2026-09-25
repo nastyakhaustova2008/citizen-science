@@ -184,6 +184,7 @@
             <h2>The short version</h2>
             <ul>
               <li>Your <strong>username</strong> and your <strong>measurements</strong> are public. Everything else about you is not.</li>
+              <li>Admins (teachers and staff) also fill in an admin profile — full name, workplace and position — which is shown on the labs they create or approve.</li>
               <li>We don't sell your data, show ads, or track you (no analytics, no cookies).</li>
               <li>An email address is optional.</li>
               <li>You can ask us to see, fix or delete your data at any time.</li>
@@ -213,8 +214,20 @@
               see this log. Your own username can be changed only by an admin.
             </li>
             <li>
-              <strong>If you are an admin</strong> — other admins can see who appointed you and when, and for each campaign
-              we store which admin created it. This is not shown publicly.
+              <strong>If you are an admin</strong> — admins are teachers or staff members (adults). When someone is made an
+              admin, the admin appointing them confirms this, and the confirmation is stored in the admin log. Other admins
+              can see who appointed you and when. This is not shown publicly.
+            </li>
+            <li>
+              <strong>Admin profile</strong> (admins only) — your <strong>full name</strong>, <strong>workplace</strong>
+              (school or organization) and, if you want, your <strong>position</strong> (for example “physics teacher”).
+              Other admins can see it, and it is <strong>shown publicly on the labs you create or approve</strong>, so
+              everyone knows who prepared and checked each lab. Until you fill in your full name and workplace you cannot
+              work on labs.
+            </li>
+            <li>
+              <strong>Lab changes</strong> — for every lab we store which admin created it, and a log of who changed it,
+              what and when. Only admins can see the log.
             </li>
             <li><strong>When you last logged in</strong> — stored by our login system.</li>
           </ul>
@@ -259,7 +272,8 @@
           <ul>
             <li>your username;</li>
             <li>your profile page: role, when you joined, your measurements;</li>
-            <li>all your measurements on the map and in the data table, including the exact place, time and values.</li>
+            <li>all your measurements on the map and in the data table, including the exact place, time and values;</li>
+            <li>if you are an admin: your full name, workplace and position on the labs you created or approved.</li>
           </ul>
           <p>
             Anyone can also download the measurements as a file. The file doesn't include usernames, but the website
@@ -316,6 +330,16 @@
               deleted, your usernames are erased from the log.
             </li>
             <li>
+              <strong>Admin profile</strong> — while your account exists. If you stop being an admin, your name, workplace
+              and position <strong>stay on the labs you created or approved</strong> (they are a record of who prepared
+              and checked the lab), but are not shown anywhere else. You can ask us to correct them. They are deleted with
+              your account.
+            </li>
+            <li>
+              <strong>The lab change log</strong> — as long as the labs exist. When your account is deleted, your name is
+              removed from it.
+            </li>
+            <li>
               <strong>Hosting logs</strong> at Vercel and Supabase — a short time (a few days), under their own rules.
             </li>
           </ul>
@@ -335,7 +359,7 @@
           <h3>Deleting your account</h3>
           <p>
             There is no “delete account” button yet, so accounts are deleted on request by email. When we delete your
-            account, your username (also any previous usernames in the admin log), email and login information are removed. Your measurements stay on the map
+            account, your username (also any previous usernames in the admin log), email, login information and admin profile are removed. Your measurements stay on the map
             <strong>without your name</strong> (“Unknown participant”), because other students' science work may depend on
             them. If you want your measurements deleted too, just tell us and we will delete them.
           </p>
@@ -377,6 +401,7 @@
             <h2>Коротко</h2>
             <ul>
               <li>Ваше <strong>имя пользователя</strong> и ваши <strong>измерения</strong> видны всем. Всё остальное о вас — нет.</li>
+              <li>Администраторы (учителя и сотрудники) также заполняют профиль администратора — полное имя, место работы и должность; он показывается на лабораторных, которые они создали или одобрили.</li>
               <li>Мы не продаём данные, не показываем рекламу и не следим за вами (никакой аналитики, никаких cookies).</li>
               <li>Email указывать не обязательно.</li>
               <li>Вы в любой момент можете попросить нас показать, исправить или удалить ваши данные.</li>
@@ -409,8 +434,20 @@
               только администратор.
             </li>
             <li>
-              <strong>Если вы администратор</strong> — другие администраторы видят, кто и когда вас назначил, а у каждой
-              кампании хранится, какой администратор её создал. Публично это не показывается.
+              <strong>Если вы администратор</strong> — администраторы — это учителя или сотрудники (взрослые). Когда
+              кого-то назначают администратором, назначающий подтверждает это, и подтверждение сохраняется в журнале
+              администраторов. Другие администраторы видят, кто и когда вас назначил. Публично это не показывается.
+            </li>
+            <li>
+              <strong>Профиль администратора</strong> (только у администраторов) — ваше <strong>полное имя</strong>,
+              <strong>место работы</strong> (школа или организация) и, по желанию, <strong>должность</strong> (например,
+              «учитель физики»). Его видят другие администраторы, и он <strong>публично показывается на лабораторных,
+              которые вы создали или одобрили</strong>, — чтобы все знали, кто подготовил и проверил каждую лабораторную.
+              Пока не заполнены полное имя и место работы, работать с лабораторными нельзя.
+            </li>
+            <li>
+              <strong>Изменения лабораторных</strong> — у каждой лабораторной хранится, какой администратор её создал, и
+              журнал: кто, что и когда изменил. Журнал видят только администраторы.
             </li>
             <li><strong>Когда вы последний раз входили</strong> — хранится в системе входа.</li>
           </ul>
@@ -455,7 +492,8 @@
           <ul>
             <li>ваше имя пользователя;</li>
             <li>вашу страницу профиля: роль, когда вы зарегистрировались, ваши измерения;</li>
-            <li>все ваши измерения на карте и в таблице данных — с точным местом, временем и значениями.</li>
+            <li>все ваши измерения на карте и в таблице данных — с точным местом, временем и значениями;</li>
+            <li>если вы администратор: ваше полное имя, место работы и должность на лабораторных, которые вы создали или одобрили.</li>
           </ul>
           <p>
             Любой может также скачать измерения файлом. В файле нет имён пользователей, но на сайте видно, кто сделал
@@ -509,6 +547,16 @@
               <strong>Журнал изменений ролей и имён</strong> — пока существует ваш аккаунт. При удалении аккаунта ваши имена
               стираются из журнала.
             </li>
+            <li>
+              <strong>Профиль администратора</strong> — пока существует ваш аккаунт. Если вы перестанете быть
+              администратором, имя, место работы и должность <strong>останутся на лабораторных, которые вы создали или
+              одобрили</strong> (это запись о том, кто подготовил и проверил лабораторную), но больше нигде показываться не
+              будут. Вы можете попросить нас их исправить. Они удаляются вместе с аккаунтом.
+            </li>
+            <li>
+              <strong>Журнал изменений лабораторных</strong> — пока существуют лабораторные. При удалении аккаунта ваше имя
+              из него убирается.
+            </li>
             <li><strong>Журналы хостинга</strong> Vercel и Supabase — недолго (несколько дней), по их правилам.</li>
           </ul>
 
@@ -528,7 +576,7 @@
           <h3>Удаление аккаунта</h3>
           <p>
             Кнопки «Удалить аккаунт» пока нет, поэтому аккаунты удаляются по просьбе на email. При удалении аккаунта
-            удаляются имя пользователя (и прежние имена в журнале администраторов), email и данные для входа. Ваши измерения остаются на карте
+            удаляются имя пользователя (и прежние имена в журнале администраторов), email, данные для входа и профиль администратора. Ваши измерения остаются на карте
             <strong>без вашего имени</strong> («Неизвестный участник»), потому что от них может зависеть научная работа
             других учеников. Если хотите удалить и измерения — просто напишите нам, и мы их удалим.
           </p>
@@ -573,6 +621,7 @@
             <h2>בקצרה</h2>
             <ul>
               <li><strong>שם המשתמש</strong> שלכם ו<strong>המדידות</strong> שלכם גלויים לכולם. שאר הפרטים עליכם — לא.</li>
+              <li>מנהלים (מורים ואנשי צוות) ממלאים גם פרופיל מנהל — שם מלא, מקום עבודה ותפקיד — שמוצג במעבדות שהם יצרו או אישרו.</li>
               <li>אנחנו לא מוכרים מידע, לא מציגים פרסומות ולא עוקבים אחריכם (אין כלי ניתוח ואין עוגיות).</li>
               <li>אימייל הוא לא חובה.</li>
               <li>אפשר לבקש מאיתנו בכל זמן לראות, לתקן או למחוק את המידע שלכם.</li>
@@ -602,8 +651,18 @@
               היומן הזה. את שם המשתמש שלכם יכול לשנות רק מנהל.
             </li>
             <li>
-              <strong>אם אתם מנהלים</strong> — מנהלים אחרים רואים מי מינה אתכם ומתי, ולכל קמפיין נשמר איזה מנהל יצר
-              אותו. זה לא מוצג לציבור.
+              <strong>אם אתם מנהלים</strong> — מנהלים הם מורים או אנשי צוות (מבוגרים). כשממנים מישהו למנהל, המנהל הממנה
+              מאשר זאת, והאישור נשמר ביומן המנהלים. מנהלים אחרים רואים מי מינה אתכם ומתי. זה לא מוצג לציבור.
+            </li>
+            <li>
+              <strong>פרופיל מנהל</strong> (רק למנהלים) — <strong>השם המלא</strong>, <strong>מקום העבודה</strong> (בית
+              ספר או ארגון) ואם תרצו גם <strong>התפקיד</strong> (למשל „מורה לפיזיקה”). מנהלים אחרים רואים אותו, והוא
+              <strong>מוצג לכולם במעבדות שיצרתם או אישרתם</strong>, כדי שכולם יידעו מי הכין ובדק כל מעבדה. עד שממלאים שם
+              מלא ומקום עבודה אי אפשר לעבוד על מעבדות.
+            </li>
+            <li>
+              <strong>שינויים במעבדות</strong> — לכל מעבדה נשמר איזה מנהל יצר אותה, ויומן של מי שינה מה ומתי. רק מנהלים
+              רואים את היומן.
             </li>
             <li><strong>מתי נכנסתם לאחרונה</strong> — נשמר במערכת הכניסה.</li>
           </ul>
@@ -646,7 +705,8 @@
           <ul>
             <li>את שם המשתמש שלכם;</li>
             <li>את דף הפרופיל שלכם: תפקיד, מתי הצטרפתם, המדידות שלכם;</li>
-            <li>את כל המדידות שלכם על המפה ובטבלת הנתונים — כולל המקום המדויק, הזמן והערכים.</li>
+            <li>את כל המדידות שלכם על המפה ובטבלת הנתונים — כולל המקום המדויק, הזמן והערכים;</li>
+            <li>אם אתם מנהלים: את השם המלא, מקום העבודה והתפקיד שלכם במעבדות שיצרתם או אישרתם.</li>
           </ul>
           <p>
             כל אחד יכול גם להוריד את המדידות כקובץ. בקובץ אין שמות משתמשים, אבל באתר רואים מי עשה כל מדידה.
@@ -698,6 +758,14 @@
               <strong>יומן השינויים בתפקידים ובשמות</strong> — כל עוד החשבון קיים. כשהחשבון נמחק, השמות שלכם נמחקים
               מהיומן.
             </li>
+            <li>
+              <strong>פרופיל מנהל</strong> — כל עוד החשבון קיים. אם תפסיקו להיות מנהלים, השם, מקום העבודה והתפקיד
+              <strong>יישארו במעבדות שיצרתם או אישרתם</strong> (זה תיעוד של מי הכין ובדק את המעבדה), אבל לא יוצגו בשום
+              מקום אחר. אפשר לבקש מאיתנו לתקן אותם. הם נמחקים יחד עם החשבון.
+            </li>
+            <li>
+              <strong>יומן השינויים במעבדות</strong> — כל עוד המעבדות קיימות. כשהחשבון נמחק, השם שלכם מוסר ממנו.
+            </li>
             <li><strong>יומני האחסון</strong> של Vercel ו־Supabase — זמן קצר (כמה ימים), לפי הכללים שלהן.</li>
           </ul>
 
@@ -716,7 +784,7 @@
           <h3>מחיקת החשבון</h3>
           <p>
             עדיין אין באתר כפתור „מחיקת חשבון”, ולכן מוחקים חשבון לפי בקשה במייל. כשאנחנו מוחקים חשבון, נמחקים שם
-            המשתמש (וגם שמות קודמים ביומן המנהלים), האימייל ופרטי הכניסה. המדידות נשארות על המפה <strong>בלי השם שלכם</strong> („משתתף/ת לא ידוע/ה”),
+            המשתמש (וגם שמות קודמים ביומן המנהלים), האימייל, פרטי הכניסה ופרופיל המנהל. המדידות נשארות על המפה <strong>בלי השם שלכם</strong> („משתתף/ת לא ידוע/ה”),
             כי עבודת המדע של תלמידים אחרים עשויה להסתמך עליהן. אם תרצו שנמחק גם את המדידות — פשוט כתבו לנו, ונמחק אותן.
           </p>
 

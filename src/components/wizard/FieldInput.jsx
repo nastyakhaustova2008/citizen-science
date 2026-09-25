@@ -6,10 +6,13 @@ import { fieldLabel, fieldHelp, optionLabel, errorParams } from '../../lib/field
  * One form field rendered from its definition (see src/lib/fields.js).
  * `value` is the raw form state (emptyInput / what the inputs produce),
  * `error` an error code (fields.errors.<code>) or null, `warning` an optional soft note.
+ * `contentLocale` (optional): language of the field's own texts (the lab editor's preview);
+ * defaults to the UI language.
  */
-export default function FieldInput({ field, value, onChange, onBlur, error, warning }) {
-  const { t, locale } = useI18n();
-  const id = `field-${field.key}`;
+export default function FieldInput({ field, value, onChange, onBlur, error, warning, contentLocale, idPrefix = 'field' }) {
+  const { t, locale: uiLocale } = useI18n();
+  const locale = contentLocale || uiLocale;
+  const id = `${idPrefix}-${field.key}`;
   const helpId = `${id}-help`;
   const msgId = `${id}-msg`;
   const label = fieldLabel(field, locale);

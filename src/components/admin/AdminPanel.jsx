@@ -1,25 +1,51 @@
 import { useState } from 'react';
-import { History, Users } from 'lucide-react';
+import { History, Users, FlaskConical } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { SectionHeading } from '../primitives';
 import Tabs from '../Tabs';
 import UserList from './UserList';
 import RoleLog from './RoleLog';
+import LabList from '../labs/LabList';
+import LabLog from '../labs/LabLog';
 
-/** Own profile of an admin → "Administration": users (roles, renames) and the change log. */
+/**
+ * Own profile of an admin → "Administration": users (roles, renames), labs (editor, step 5a)
+ * and the change logs (roles | labs).
+ */
 export default function AdminPanel() {
   const { t } = useI18n();
-  const [tab, setTab] = useState('users');
+  const [tab, setTab] = useState('labs');
+  const [logKind, setLogKind] = useState('labs');
   const tabs = [
+    { id: 'labs', label: t('admin.tabs.labs'), icon: FlaskConical },
     { id: 'users', label: t('admin.tabs.users'), icon: Users },
     { id: 'log', label: t('admin.tabs.log'), icon: History },
   ];
   return (
-    <section>
+    <section id="admin" className="scroll-mt-4">
       <SectionHeading as="h2" title={t('admin.title')} subtitle={t('admin.subtitle')} />
       <Tabs tabs={tabs} active={tab} onChange={setTab} idBase="admin" />
       <div role="tabpanel" id={`admin-panel-${tab}`} aria-labelledby={`admin-${tab}`} className="pt-4">
-        {tab === 'users' ? <UserList /> : <RoleLog />}
+        {tab === 'labs' && <LabList />}
+        {tab === 'users' && <UserList />}
+        {tab === 'log' && (
+          <div className="space-y-3">
+            <div className="flex gap-2" role="group" aria-label={t('admin.tabs.log')}>
+              {['labs', 'roles'].map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`chip !py-1.5 !text-sm ${logKind === k ? 'chip-active' : ''}`}
+                  aria-pressed={logKind === k}
+                  onClick={() => setLogKind(k)}
+                >
+                  {t(`admin.logKinds.${k}`)}
+                </button>
+              ))}
+            </div>
+            {logKind === 'labs' ? <LabLog /> : <RoleLog />}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 
 /**
  * Admin API (roadmap step 4b): thin wrappers over the security-definer RPCs in
- * supabase/migrations/009_admin_roles.sql. Every rule is checked there; errors come back as
+ * supabase/migrations/009_admin_roles.sql (+ the staff confirmation from 010). Every rule is checked there; errors come back as
  * AdminError with a code → strings.js admin.errors.<code> (username rule codes → auth.errors).
  * Nothing here returns emails or whether a user has one.
  */
@@ -16,6 +16,7 @@ const CODES = [
   'unchanged',
   'username_taken',
   'invalid_username',
+  'staff_not_confirmed',
 ];
 
 export class AdminError extends Error {
@@ -60,13 +61,17 @@ export async function revokePreview(userId) {
   return (rows || []).map((r) => ({ id: r.id, username: r.username, role: r.role, depth: r.depth }));
 }
 
-export const grantAdmin = (userId) => rpc('admin_grant_admin', { p_target: userId });
+/** confirmStaff: the granting admin confirmed this person is a teacher or staff member (010). */
+export const grantAdmin = (userId, confirmStaff) =>
+  rpc('admin_grant_admin', { p_target: userId, p_confirm_staff: confirmStaff === true });
 
 /** confirmedIds = the ids the confirmation showed; if the chain changed since → 'chain_changed'. */
 export const revokeAdmin = (userId, confirmedIds) =>
   rpc('admin_revoke_admin', { p_target: userId, p_confirmed: confirmedIds });
 
-export const makeMainAdmin = (userId) => rpc('owner_make_main_admin', { p_target: userId });
+/** A student needs confirmStaff (an admin was confirmed when granted). */
+export const makeMainAdmin = (userId, confirmStaff = false) =>
+  rpc('owner_make_main_admin', { p_target: userId, p_confirm_staff: confirmStaff === true });
 
 /** mode 'admin' (keeps admin and their chain) | 'student' (full cascade, needs confirmedIds). */
 export const demoteMainAdmin = (userId, mode, confirmedIds = null) =>
@@ -92,5 +97,6 @@ export async function roleLog({ limit = 30, before = null } = {}) {
     oldUsername: r.old_username,
     newUsername: r.new_username,
     causeId: r.cause_id,
+    confirmedStaff: r.confirmed_staff,
   }));
 }

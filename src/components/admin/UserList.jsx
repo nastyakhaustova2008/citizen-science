@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, ShieldCheck, ShieldPlus, ShieldMinus, Crown, PencilLine } from 'lucide-react';
 import { useI18n } from '../../i18n';
@@ -134,7 +134,7 @@ function UserRow({ user, me, onChanged }) {
   const { t, locale } = useI18n();
   const { reloadProfile } = useAuth();
   const { refreshAuthors } = useAppData();
-  const [open, setOpen] = useState(null); // 'revoke' | 'demote' | 'rename'
+  const [open, setOpen] = useState(null); // 'grant' | 'main' | 'revoke' | 'demote' | 'rename'
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -175,7 +175,8 @@ function UserRow({ user, me, onChanged }) {
         type="button"
         className={smallBtn}
         disabled={busy}
-        onClick={() => run(grantAdmin, t('admin.done.granted', { name: isolate(name) }))}
+        aria-expanded={open === 'grant'}
+        onClick={() => toggle('grant')}
       >
         <ShieldPlus className="h-3.5 w-3.5" aria-hidden="true" />
         {t('admin.actions.grantAdmin')}
@@ -189,7 +190,12 @@ function UserRow({ user, me, onChanged }) {
         type="button"
         className={smallBtn}
         disabled={busy}
-        onClick={() => run(makeMainAdmin, t('admin.done.madeMain', { name: isolate(name) }))}
+        aria-expanded={open === 'main'}
+        onClick={() =>
+          user.role === 'student'
+            ? toggle('main')
+            : run((id) => makeMainAdmin(id), t('admin.done.madeMain', { name: isolate(name) }))
+        }
       >
         <Crown className="h-3.5 w-3.5" aria-hidden="true" />
         {t('admin.actions.makeMainAdmin')}
@@ -253,6 +259,19 @@ function UserRow({ user, me, onChanged }) {
         </div>
       )}
 
+      {(open === 'grant' || open === 'main') && (
+        <GrantConfirm
+          name={name}
+          main={open === 'main'}
+          busy={busy}
+          onCancel={() => setOpen(null)}
+          onConfirm={() =>
+            open === 'grant'
+              ? run((id) => grantAdmin(id, true), t('admin.done.granted', { name: isolate(name) }))
+              : run((id) => makeMainAdmin(id, true), t('admin.done.madeMain', { name: isolate(name) }))
+          }
+        />
+      )}
       {(open === 'revoke' || open === 'demote') && (
         <RevokeConfirm
           user={{ ...user, displayName: name }}
@@ -271,5 +290,32 @@ function UserRow({ user, me, onChanged }) {
         />
       )}
     </li>
+  );
+}
+
+/**
+ * Admins are teachers or staff (adults): granting admin to a student needs this confirmation.
+ * The database refuses without it (staff_not_confirmed) and records it in the role log.
+ */
+function GrantConfirm({ name, main, busy, onCancel, onConfirm }) {
+  const { t } = useI18n();
+  const [checked, setChecked] = useState(false);
+  const id = useId();
+  return (
+    <div className="mt-3 space-y-3 border-t border-edge pt-3 dark:border-white/10">
+      <label htmlFor={id} className="flex cursor-pointer items-start gap-2 text-sm">
+        <input id={id} type="checkbox" className="mt-0.5 accent-bark" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+        <span>{t('admin.grant.confirmStaff', { name: isolate(name) })}</span>
+      </label>
+      <p className="text-xs text-ink-faint">{t('admin.grant.why')}</p>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="btn-primary !py-2 text-sm" disabled={!checked || busy} onClick={onConfirm}>
+          {main ? t('admin.actions.makeMainAdmin') : t('admin.actions.grantAdmin')}
+        </button>
+        <button type="button" className="btn-ghost !py-2 text-sm" onClick={onCancel}>
+          {t('common.cancel')}
+        </button>
+      </div>
+    </div>
   );
 }
