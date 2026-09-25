@@ -13,7 +13,9 @@ function ClickCapture({ onPick }) {
 function Recenter({ position }) {
   const map = useMap();
   useEffect(() => {
-    if (position) map.setView(position, Math.max(map.getZoom(), 15));
+    // No animation: the wizard may unmount the map mid-zoom ("Next" right after a pick),
+    // and Leaflet's pending zoom-end timer then throws on the removed panes.
+    if (position) map.setView(position, Math.max(map.getZoom(), 15), { animate: false });
   }, [map, position]);
   useEffect(() => {
     const id = setTimeout(() => map.invalidateSize(), 60);
