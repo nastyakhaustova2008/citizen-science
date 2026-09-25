@@ -7,6 +7,7 @@ import UserList from './UserList';
 import RoleLog from './RoleLog';
 import LabList from '../labs/LabList';
 import LabLog from '../labs/LabLog';
+import { useAppData } from '../../context/AppDataContext';
 
 /**
  * Own profile of an admin → "Administration": users (roles, renames), labs (editor, step 5a)
@@ -16,8 +17,9 @@ export default function AdminPanel() {
   const { t } = useI18n();
   const [tab, setTab] = useState('labs');
   const [logKind, setLogKind] = useState('labs');
+  const { reviewCount } = useAppData(); // labs I can review now → badge on the Labs tab
   const tabs = [
-    { id: 'labs', label: t('admin.tabs.labs'), icon: FlaskConical },
+    { id: 'labs', label: t('admin.tabs.labs'), icon: FlaskConical, count: reviewCount || null },
     { id: 'users', label: t('admin.tabs.users'), icon: Users },
     { id: 'log', label: t('admin.tabs.log'), icon: History },
   ];

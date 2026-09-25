@@ -156,6 +156,7 @@ export function labFromCampaign(c) {
     id: c.id,
     editNo: c.editNo,
     publication: c.publication,
+    reviewRound: c.reviewRound ?? 0,
     slug: c.slug,
     slugEdited: true,
     icon: c.icon || 'Activity',
@@ -435,4 +436,61 @@ export function labProtocol(c, locale) {
   if (locale === 'en' && c.protocolEn) return c.protocolEn;
   if (locale === 'ru' && c.protocolRu) return c.protocolRu;
   return c.protocolHe || '';
+}
+
+/* ------------------------------------------------------------------ */
+/* Before review (mirrors public.lab_missing in 011)                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * What is still missing before the lab can go to review: {path: code}, same paths and codes as
+ * the database (not_ready). Titles and descriptions in all three languages, map center, at least
+ * one active field, exactly one active primary number field, every field / option label in all
+ * three languages, at least one active option on choice fields.
+ */
+export function submitChecklist(lab) {
+  const out = {};
+  for (const l of LANGS) {
+    if (!line(lab.title[l])) out[`info.title_${l}`] = 'required';
+    if (!block(lab.desc[l])) out[`info.desc_${l}`] = 'required';
+  }
+  if (!lab.center) out['info.center'] = 'required';
+  if (!lab.fields.some((f) => !f.archived)) out.fields = 'none';
+  if (lab.fields.filter((f) => f.isPrimary && !f.archived && f.type === 'number').length !== 1) out.primary = 'none';
+  lab.fields.forEach((f, i) => {
+    for (const l of LANGS) if (!line(f.label[l])) out[`fields.${i}.label_${l}`] = 'required';
+    if (f.type === 'choice' || f.type === 'multi_choice') {
+      if (!f.archived && !f.options.some((o) => !o.archived)) out[`fields.${i}.options`] = 'none';
+      f.options.forEach((o, j) => {
+        for (const l of LANGS) if (!line(o.label[l])) out[`fields.${i}.options.${j}.label_${l}`] = 'required';
+      });
+    }
+  });
+  return out;
+}
+
+/**
+ * Checklist items for the UI: one line per kind of problem, with the tab / language to jump to.
+ * kinds: title, desc, center, fields, primary, fieldLabels, optionLabels, options.
+ */
+export function checklistItems(missing, lab) {
+  const items = [];
+  const langsOf = (re) => LANGS.filter((l) => Object.keys(missing).some((k) => re.test(k) && k.endsWith(`_${l}`)));
+  const title = langsOf(/^info\.title_/);
+  if (title.length) items.push({ kind: 'title', langs: title, tab: 'info' });
+  const desc = langsOf(/^info\.desc_/);
+  if (desc.length) items.push({ kind: 'desc', langs: desc, tab: 'info' });
+  if (missing['info.center']) items.push({ kind: 'center', tab: 'info' });
+  if (missing.fields) items.push({ kind: 'fields', tab: 'fields' });
+  if (missing.primary) items.push({ kind: 'primary', tab: 'fields' });
+  const fl = langsOf(/^fields\.\d+\.label_/);
+  if (fl.length) items.push({ kind: 'fieldLabels', langs: fl, tab: 'fields' });
+  const ol = langsOf(/^fields\.\d+\.options\.\d+\.label_/);
+  if (ol.length) items.push({ kind: 'optionLabels', langs: ol, tab: 'fields' });
+  const noOpts = Object.keys(missing)
+    .filter((k) => /^fields\.\d+\.options$/.test(k))
+    .map((k) => lab?.fields[Number(k.split('.')[1])]?.key)
+    .filter(Boolean);
+  if (noOpts.length) items.push({ kind: 'options', keys: noOpts, tab: 'fields' });
+  return items;
 }

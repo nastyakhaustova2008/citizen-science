@@ -278,3 +278,33 @@ Everything else keeps working for the old frontend.
 
 A draft cannot be published yet (that is step 5b: review by 3 admins). For a test only, from the
 SQL Editor: `update public.campaigns set publication = 'published' where slug = '…';`
+
+## 15. Lab review and publishing (roadmap step 5b) — migration 011
+
+Needs 010. Works with the 5a frontend already on production, so it can run before the merge.
+Publishing needs **3 admins who are not the lab's author** (and did not edit it in that round),
+each with a filled admin profile.
+
+1. SQL Editor → run `supabase/migrations/011_lab_review.sql`. Safe to re-run.
+2. Check (SQL Editor):
+
+   ```sql
+   -- old labs: published, published_at empty (= "published before peer review")
+   select slug, publication, review_round, published_at from public.campaigns order by sort_order;
+   -- the public credit functions answer for everyone
+   select public.lab_credits('obs-schoolyard-heat');   -- {"legacy": true}
+   ```
+
+3. Vercel **preview** of the branch, with 4 admin accounts (author + 3 reviewers):
+   * author: create a draft → the **Submit for review** panel lists what is missing (click an item
+     to jump there); fill everything, save, **Submit for review** → "In review, 0 of 3".
+   * another admin: a number badge on **My profile** (a dot on the menu button on phones) and on
+     **Administration → Labs** → **Waiting for review** → **Review** → **Approve**.
+   * a second admin: **Request changes** with a comment → the lab is a draft again; the author sees
+     the comment in the editor, fixes, submits again (a new round: earlier approvals no longer count).
+   * three admins approve → "the lab is published". Logged out: the lab page shows **Created by**
+     and **Approved by** with the date; the home card shows "name · workplace"; an old lab shows
+     "Published before peer review".
+   * a student can now add a measurement to it.
+   * the author on the review page sees "you created this lab" instead of the buttons.
+4. Merge → production deploy.

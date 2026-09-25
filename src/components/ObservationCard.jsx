@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Users, Wrench } from 'lucide-react';
+import { MapPin, Users, Wrench, BadgeCheck } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
 import { observationTitle, observationDesc } from '../data/mockData';
@@ -10,7 +10,8 @@ import { StatusBadge, DifficultyBadge } from './primitives';
 
 export default function ObservationCard({ observation }) {
   const { t, locale } = useI18n();
-  const { measurementsFor, isJoined, toggleJoin } = useAppData();
+  const { measurementsFor, isJoined, toggleJoin, credits } = useAppData();
+  const credit = credits[observation.id]; // reviewed labs only (step 5b)
   const points = measurementsFor(observation.id);
   const participants = new Set(points.map((p) => p.userId)).size;
   const joined = isJoined(observation.id);
@@ -34,6 +35,16 @@ export default function ObservationCard({ observation }) {
           <p className="mt-0.5 line-clamp-1 text-sm text-ink-faint">
             {observationDesc(observation, locale)}
           </p>
+          {credit && (
+            <p className="mt-1 flex items-center gap-1 text-xs text-ink-faint">
+              <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-ok" aria-hidden="true" />
+              <span className="truncate" dir="auto">
+                {credit.fullName
+                  ? t('labs.credits.cardLine', { name: credit.fullName, workplace: credit.workplace })
+                  : t('labs.credits.cardFormer')}
+              </span>
+            </p>
+          )}
         </div>
       </div>
 

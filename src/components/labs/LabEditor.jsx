@@ -12,6 +12,7 @@ import InfoForm from './InfoForm';
 import FieldsEditor from './FieldsEditor';
 import ProtocolForm from './ProtocolForm';
 import FormPreview from './FormPreview';
+import SubmitPanel from './SubmitPanel';
 import { LabErrorText } from './LabErrorText';
 
 const tabOfPath = (path) => {
@@ -57,7 +58,8 @@ const markSaved = (lab, res) => ({
 
 /**
  * The lab editor (step 5a): Info · Fields · Protocol · Preview, one save for everything
- * (lab_save). Drafts: anything goes. Published labs: texts, labels, help, order, icon, region,
+ * (lab_save), plus the review panel (5b: checklist, submit, withdraw). Drafts: anything goes;
+ * in review: like a draft, but must stay complete, and every save resets the approvals. Published labs: texts, labels, help, order, icon, region,
  * difficulty, map, colours and status only — structure and protocol wait for 5c (review).
  */
 export default function LabEditor({ initial, onReload }) {
@@ -179,9 +181,26 @@ export default function LabEditor({ initial, onReload }) {
             {t('labs.editor.publishedRules')}
           </p>
         ) : (
-          <p className="text-sm text-ink-faint">{t('labs.editor.draftRules')}</p>
+          <p className="text-sm text-ink-faint">
+            {lab.publication === 'in_review' ? t('labs.editor.inReviewRules') : t('labs.editor.draftRules')}
+          </p>
         )}
       </header>
+
+      <SubmitPanel
+        lab={lab}
+        dirty={dirty}
+        onGoto={(item) => {
+          setTab(item.tab);
+          if (item.langs?.length) setLang(item.langs[0]);
+        }}
+        onChanged={({ publication, editNo }) => {
+          setLab((d) => ({ ...d, publication, editNo }));
+          setSaved((d) => ({ ...d, publication, editNo }));
+          setNotice(null);
+          setServerError(null);
+        }}
+      />
 
       {tab !== 'preview' && (
         <div className="sticky top-[61px] z-20 -mx-4 bg-paper/90 px-4 py-2 backdrop-blur dark:bg-char/90 sm:mx-0 sm:rounded-lg sm:px-2">

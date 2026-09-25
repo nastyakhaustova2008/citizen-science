@@ -12,6 +12,7 @@ import ProtocolPage from './pages/ProtocolPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PrivacyPage from './pages/PrivacyPage';
 import LabEditorPage from './pages/LabEditorPage';
+import LabReviewPage from './pages/LabReviewPage';
 import AdminProfilePrompt from './components/labs/AdminProfilePrompt';
 import LoginPage from './pages/auth/LoginPage';
 import SignUpPage from './pages/auth/SignUpPage';
@@ -72,6 +73,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <LabEditorPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/labs/:id/review"
+            element={
+              <RequireAuth>
+                <LabReviewPage />
               </RequireAuth>
             }
           />
