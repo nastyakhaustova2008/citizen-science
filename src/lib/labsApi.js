@@ -1,9 +1,10 @@
 import { supabase } from './supabase';
-import { labToPayload } from './labs';
+import { labToPayload, revisionFromApi } from './labs';
 
 /**
- * Lab editor API (roadmap steps 5a / 5b): thin wrappers over the RPCs in
- * supabase/migrations/010_lab_editor.sql and 011_lab_review.sql. Every rule is checked there; errors come back as
+ * Lab editor API (roadmap steps 5a / 5b / 5c): thin wrappers over the RPCs in
+ * supabase/migrations/010_lab_editor.sql, 011_lab_review.sql and 012_lab_revisions.sql.
+ * Every rule is checked there; errors come back as
  * LabError { code, details } — details is the parsed JSON for invalid_lab ({path: code}),
  * structural_change ([path]), not_ready ({path: code}) and invalid_admin_profile ({field: code}).
  */
@@ -27,6 +28,8 @@ const CODES = [
   'already_reviewed',
   'comment_required',
   'comment_too_long',
+  // 5c — revisions
+  'own_revision',
 ];
 
 export class LabError extends Error {
@@ -148,11 +151,15 @@ export const reviewLab = (id, round, verdict, comment = '') =>
   rpc('lab_review', { p_id: id, p_round: round, p_verdict: verdict, p_comment: comment });
 
 /**
- * Labs in review. myState: can_review | own_lab | edited_this_round | already_reviewed.
+ * Labs and revisions in review. kind: 'lab' | 'revision' (then revisionId is set; createdBy /
+ * creator* = who proposed it). myState: can_review | own_lab | own_revision | edited_this_round |
+ * already_reviewed.
  */
 export async function reviewQueue() {
   const rows = await rpc('lab_review_queue', {});
   return (rows || []).map((r) => ({
+    kind: r.kind || 'lab',
+    revisionId: r.revision_id ?? null,
     id: r.id,
     slug: r.slug,
     titleHe: r.title_he,
@@ -183,23 +190,28 @@ export async function reviewHistory(id) {
     reviewerFullName: r.reviewer_full_name,
     reviewerWorkplace: r.reviewer_workplace,
     currentRound: r.current_round,
+    revisionId: r.revision_id ?? null, // null = the lab's own review
   }));
 }
 
 /**
- * Public credits of a published lab: { legacy } or { legacy: false, publishedAt, creator, approvers }.
- * creator / approvers: { fullName, position, workplace } (fullName null = former staff member).
+ * Public credits of a published lab: { legacy, publishedAt, creator, approvers, update }.
+ * legacy = published before peer review (no creator / approvers). update = the latest applied
+ * revision { appliedAt, approvers } or null. People: { fullName, position, workplace }
+ * (fullName null = former staff member).
  */
 export async function labCredits(id) {
   const data = await rpc('lab_credits', { p_id: id });
   if (!data) return null;
-  if (data.legacy) return { legacy: true };
   const person = (p) => (p ? { fullName: p.full_name, position: p.position, workplace: p.workplace, at: p.at } : null);
   return {
-    legacy: false,
-    publishedAt: data.published_at,
-    creator: person(data.creator),
+    legacy: Boolean(data.legacy),
+    publishedAt: data.published_at || null,
+    creator: data.legacy ? null : person(data.creator),
     approvers: (data.approvers || []).map(person),
+    update: data.update
+      ? { appliedAt: data.update.applied_at, approvers: (data.update.approvers || []).map(person) }
+      : null,
   };
 }
 
@@ -210,3 +222,38 @@ export async function allCredits() {
     (rows || []).map((r) => [r.campaign_id, { fullName: r.creator_full_name, workplace: r.creator_workplace }]),
   );
 }
+
+/* ---- Revisions of published labs (step 5c, migration 012) --------- */
+
+/** The open revision of a lab (admins), or null. */
+export async function getRevision(campaignId) {
+  return revisionFromApi(await rpc('lab_revision_get', { p_campaign: campaignId }));
+}
+
+/**
+ * Save the proposed structure (+ protocol) of a published lab. rev = the open revision the
+ * editor loaded, or null to open one. → { revisionId, editNo, status, changed }; revisionId null
+ * = no structural difference left (an open revision was closed).
+ */
+export async function saveRevision(campaignId, rev, { fields, protocol }) {
+  const res = await rpc('lab_revision_save', {
+    p_campaign: campaignId,
+    p_rev: rev?.id ?? null,
+    p_edit_no: rev?.editNo ?? null,
+    p_fields: fields,
+    p_protocol: protocol,
+  });
+  return { revisionId: res.revision_id, editNo: res.edit_no, status: res.status, changed: res.changed };
+}
+
+/** → the new edit_no */
+export const submitRevision = (rev) => rpc('lab_revision_submit', { p_rev: rev.id, p_edit_no: rev.editNo });
+
+/** → the new edit_no */
+export const withdrawRevision = (rev) => rpc('lab_revision_withdraw', { p_rev: rev.id });
+
+export const discardRevision = (rev) => rpc('lab_revision_discard', { p_rev: rev.id });
+
+/** → { status: 'in_review' | 'draft' | 'applied', approvals } */
+export const reviewRevision = (rev, verdict, comment = '') =>
+  rpc('lab_revision_review', { p_rev: rev.id, p_round: rev.round, p_verdict: verdict, p_comment: comment });

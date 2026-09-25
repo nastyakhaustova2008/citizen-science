@@ -37,8 +37,30 @@ export default function LabCredits({ campaignId }) {
   }, [campaignId]);
 
   if (!credits) return null;
+  // Latest approved revision (5c): "Updated on …, approved by …".
+  const update = credits.update && (
+    <div className="flex items-start gap-2">
+      <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden="true" />
+      <div>
+        <p className="text-ink-faint">{t('labs.credits.updated', { date: formatDate(credits.update.appliedAt, locale) })}</p>
+        <ul className="mt-0.5 space-y-0.5">
+          {credits.update.approvers.map((a, i) => (
+            <li key={i}>
+              <Person p={a} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
   if (credits.legacy) {
-    return <p className="text-xs text-ink-faint">{t('labs.credits.legacy')}</p>;
+    if (!update) return <p className="text-xs text-ink-faint">{t('labs.credits.legacy')}</p>;
+    return (
+      <section className="surface space-y-2 p-3 text-sm" aria-label={t('labs.credits.title')}>
+        <p className="text-xs text-ink-faint">{t('labs.credits.legacy')}</p>
+        {update}
+      </section>
+    );
   }
   return (
     <section className="surface space-y-2 p-3 text-sm" aria-label={t('labs.credits.title')}>
@@ -64,6 +86,7 @@ export default function LabCredits({ campaignId }) {
           </ul>
         </div>
       </div>
+      {update}
     </section>
   );
 }

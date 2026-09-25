@@ -93,11 +93,16 @@ function LogRow({ event: e }) {
   if (d.fields_added?.length) parts.push(t('labs.log.fieldsAdded', { list: d.fields_added.join(', ') }));
   if (d.fields_changed?.length) parts.push(t('labs.log.fieldsChanged', { list: d.fields_changed.join(', ') }));
   if (d.fields_removed?.length) parts.push(t('labs.log.fieldsRemoved', { list: d.fields_removed.join(', ') }));
+  // revision_save: the structural changes it proposes (paths from lab_revision_diff)
+  if (d.changes?.length) {
+    const list = d.changes.map((c) => (c === 'protocol' ? t('labs.log.columns.protocol') : c.replace(/^field\./, '').replace('.option.', ' → ')));
+    parts.push(t('labs.log.revisionChanges', { list: list.join(', ') }));
+  }
 
   return (
     <li className="py-2.5 text-sm">
       <p className="flex flex-wrap items-baseline gap-x-1.5">
-        {e.action === 'publish' ? (
+        {e.action === 'publish' || e.action === 'revision_apply' ? (
           <span className="text-ink-faint">{t('labs.log.system')}</span>
         ) : e.actorId ? (
           <Link to={`/profile/${e.actorId}`} className="font-semibold hover:underline" dir="auto">
@@ -119,7 +124,7 @@ function LogRow({ event: e }) {
       </p>
       {parts.length > 0 && <p className="mt-0.5 text-xs text-ink-soft dark:text-paper/70">{parts.join(' · ')}</p>}
       <p className="mt-0.5 text-xs text-ink-faint">
-        {e.round != null && ['submit', 'withdraw', 'approve', 'request_changes', 'publish'].includes(e.action) && (
+        {e.round != null && e.action !== 'create' && e.action !== 'edit' && e.action !== 'revision_save' && (
           <span className="me-2">{t('labs.review.round', { n: e.round })}</span>
         )}
         <span>{formatDate(e.at, locale)}</span> <span dir="ltr">{formatTime(e.at, locale)}</span>

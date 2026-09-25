@@ -308,3 +308,34 @@ each with a filled admin profile.
    * a student can now add a measurement to it.
    * the author on the review page sees "you created this lab" instead of the buttons.
 4. Merge → production deploy.
+
+## 16. Revisions of published labs (roadmap step 5c) — migration 012
+
+Needs 011. Works with the 5b frontend already on production (it just cannot propose revisions),
+so it can run before the merge.
+
+1. SQL Editor → run `supabase/migrations/012_lab_revisions.sql`. Safe to re-run.
+2. Check (SQL Editor):
+
+   ```sql
+   select count(*) from public.lab_revisions;                       -- 0
+   select public.lab_credits('obs-schoolyard-heat') -> 'update';     -- null (no revision applied yet)
+   ```
+
+3. Vercel **preview** of the branch, with the lab's author + 3 other admins:
+   * author: open a published lab → **Edit**. Change a label (cosmetic), a maximum, archive a field,
+     add a field with options, change the protocol → **Save**: "changed texts are live already; the
+     structural changes are in the revision". The lab page shows the new label at once; the student
+     form and the protocol page are unchanged.
+   * the **Proposed revision** panel lists the changes and what is missing (click an item → the
+     field opens); fill it, save, **Submit changes for review**.
+   * another admin: the badge; **Waiting for review** shows the lab with an **Update** chip →
+     **Review**: the list of proposed changes, the lab and form as they will become, the current
+     protocol → **Approve**. The author sees "you created this lab" instead of the buttons.
+   * try **Request changes** once (back to draft, the author sees the comment), and editing the
+     revision while in review (approvals reset); a label-only edit does not reset them.
+   * three approvals → "the changes are live": the student form has the new field, the archived
+     one is gone, the protocol page shows the new protocol; logged out, the lab page shows
+     **Updated on … approved by …**.
+   * **Discard changes** on a new revision → the lab stays as it is.
+4. Merge → production deploy.
