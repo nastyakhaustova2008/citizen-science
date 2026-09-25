@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FileText, ListChecks, BookOpen, Eye, Save, Trash2, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAppData } from '../../context/AppDataContext';
-import { LANGS, labToPayload, validateLab, structuralChanges, line, block } from '../../lib/labs';
-import { saveLab, deleteLab } from '../../lib/labsApi';
+import { LANGS, labToPayload, validateLab, line, block, splitPublished, revisionShape, submitChecklist } from '../../lib/labs';
+import { saveLab, deleteLab, saveRevision } from '../../lib/labsApi';
 import Tabs from '../Tabs';
 import { Notice } from '../auth/AuthUI';
 import LangSwitch from './LangSwitch';
@@ -13,6 +13,7 @@ import FieldsEditor from './FieldsEditor';
 import ProtocolForm from './ProtocolForm';
 import FormPreview from './FormPreview';
 import SubmitPanel from './SubmitPanel';
+import RevisionPanel from './RevisionPanel';
 import { LabErrorText } from './LabErrorText';
 
 const tabOfPath = (path) => {
@@ -57,12 +58,15 @@ const markSaved = (lab, res) => ({
 });
 
 /**
- * The lab editor (step 5a): Info · Fields · Protocol · Preview, one save for everything
- * (lab_save), plus the review panel (5b: checklist, submit, withdraw). Drafts: anything goes;
- * in review: like a draft, but must stay complete, and every save resets the approvals. Published labs: texts, labels, help, order, icon, region,
- * difficulty, map, colours and status only — structure and protocol wait for 5c (review).
+ * The lab editor (step 5a): Info · Fields · Protocol · Preview, one save for everything, plus the
+ * review panel (5b: checklist, submit, withdraw). Drafts: anything goes (lab_save); in review:
+ * like a draft, but must stay complete, and every save resets the approvals.
+ * Published labs (5c): `live` = the published lab, `revision` = its open revision (or null);
+ * `initial` = live with the revision on top (labs.js → labWithRevision). One Save splits the
+ * changes: texts, labels, help, order, icon, map… go live at once (lab_save over the live
+ * structure); structure and protocol go into the revision (lab_revision_save) and need 3 approvals.
  */
-export default function LabEditor({ initial, onReload }) {
+export default function LabEditor({ initial, live = null, revision = null, onReload }) {
   const { t, locale } = useI18n();
   const navigate = useNavigate();
   const { refreshCampaigns } = useAppData();
@@ -75,6 +79,8 @@ export default function LabEditor({ initial, onReload }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [liveLab, setLiveLab] = useState(live); // published lab as it is now (after cosmetic saves)
+  const [rev, setRev] = useState(revision);
 
   const isNew = !lab.id;
   const published = lab.publication === 'published';
@@ -100,6 +106,16 @@ export default function LabEditor({ initial, onReload }) {
     setLab(fn);
   };
 
+  /** A checklist item was clicked: its tab and language, and the missing field texts marked (cards open). */
+  function goto(item) {
+    setTab(item.tab);
+    if (item.langs?.length) setLang(item.langs[0]);
+    const missingFields = Object.fromEntries(
+      Object.entries(submitChecklist(lab)).filter(([k]) => /^fields\.\d+\./.test(k)),
+    );
+    setErrors(missingFields);
+  }
+
   function showErrors(errs) {
     setErrors(errs);
     const first = Object.keys(errs)[0];
@@ -110,13 +126,41 @@ export default function LabEditor({ initial, onReload }) {
     }
   }
 
+  /** Published lab: cosmetic part live, structural part into the revision. */
+  async function savePublished() {
+    const { cosmetic, revision: proposal, structural } = splitPublished(liveLab, lab);
+    let nextLive = liveLab;
+    let changed = false;
+    if (JSON.stringify(labToPayload(cosmetic)) !== JSON.stringify(labToPayload(liveLab))) {
+      const res = await saveLab(cosmetic);
+      nextLive = markSaved(cosmetic, res);
+      changed = changed || res.changed;
+      setLiveLab(nextLive);
+    }
+    let nextRev = rev;
+    const savedProposal = splitPublished(liveLab, saved).revision;
+    const revChanged = revisionShape(nextLive, proposal) !== revisionShape(nextLive, savedProposal);
+    if ((structural.length > 0 && !rev) || (rev && revChanged)) {
+      const r = await saveRevision(lab.id, rev, proposal);
+      nextRev = r.revisionId
+        ? { ...(rev || { round: 0, approvals: 0 }), id: r.revisionId, editNo: r.editNo, status: r.status }
+        : null;
+      // in review: a new round (approvals reset)
+      if (rev && r.revisionId && r.changed && rev.status === 'in_review') nextRev.round = rev.round + 1;
+      changed = changed || r.changed;
+      setRev(nextRev);
+    }
+    const next = markSaved({ ...lab, editNo: nextLive.editNo }, { id: lab.id, slug: lab.slug, editNo: nextLive.editNo });
+    setLab(next);
+    setSaved(next);
+    setErrors({});
+    setNotice(!changed ? t('labs.editor.nothingChanged') : nextRev ? t('labs.revision.savedWithRevision') : t('labs.editor.saved'));
+    await refreshCampaigns();
+  }
+
   async function onSave() {
     setServerError(null);
     setNotice(null);
-    if (published && structuralChanges(saved, lab).length > 0) {
-      setServerError({ code: 'structural_change' });
-      return;
-    }
     const errs = validateLab(lab, { strict });
     if (Object.keys(errs).length) {
       showErrors(errs);
@@ -124,6 +168,10 @@ export default function LabEditor({ initial, onReload }) {
     }
     setBusy(true);
     try {
+      if (published) {
+        await savePublished();
+        return;
+      }
       const res = await saveLab(lab);
       const next = markSaved(lab, res);
       setLab(next);
@@ -187,20 +235,29 @@ export default function LabEditor({ initial, onReload }) {
         )}
       </header>
 
-      <SubmitPanel
-        lab={lab}
-        dirty={dirty}
-        onGoto={(item) => {
-          setTab(item.tab);
-          if (item.langs?.length) setLang(item.langs[0]);
-        }}
-        onChanged={({ publication, editNo }) => {
-          setLab((d) => ({ ...d, publication, editNo }));
-          setSaved((d) => ({ ...d, publication, editNo }));
-          setNotice(null);
-          setServerError(null);
-        }}
-      />
+      {published ? (
+        <RevisionPanel
+          lab={lab}
+          live={liveLab}
+          rev={rev}
+          dirty={dirty}
+          onGoto={goto}
+          onChanged={(next) => setRev(next)}
+          onDiscarded={onReload}
+        />
+      ) : (
+        <SubmitPanel
+          lab={lab}
+          dirty={dirty}
+          onGoto={goto}
+          onChanged={({ publication, editNo }) => {
+            setLab((d) => ({ ...d, publication, editNo }));
+            setSaved((d) => ({ ...d, publication, editNo }));
+            setNotice(null);
+            setServerError(null);
+          }}
+        />
+      )}
 
       {tab !== 'preview' && (
         <div className="sticky top-[61px] z-20 -mx-4 bg-paper/90 px-4 py-2 backdrop-blur dark:bg-char/90 sm:mx-0 sm:rounded-lg sm:px-2">
@@ -212,10 +269,10 @@ export default function LabEditor({ initial, onReload }) {
       <div role="tabpanel" id={`lab-editor-panel-${tab}`} aria-labelledby={`lab-editor-${tab}`}>
         {tab === 'info' && <InfoForm lab={lab} update={update} lang={lang} errors={errors} published={published} />}
         {tab === 'fields' && (
-          <FieldsEditor lab={lab} update={update} lang={lang} errors={errors} structureLocked={published} />
+          <FieldsEditor lab={lab} update={update} lang={lang} errors={errors} live={published ? liveLab : null} />
         )}
         {tab === 'protocol' && (
-          <ProtocolForm lab={lab} update={update} lang={lang} errors={errors} structureLocked={published} />
+          <ProtocolForm lab={lab} update={update} lang={lang} errors={errors} live={published ? liveLab : null} />
         )}
         {tab === 'preview' && <FormPreview lab={lab} />}
       </div>

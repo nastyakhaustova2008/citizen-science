@@ -45,6 +45,7 @@ export default function ObservationPage() {
     topicsFor,
     isJoined,
     toggleJoin,
+    reviewQueue,
   } = useAppData();
 
   const observation = getObservation(slug);
@@ -167,7 +168,8 @@ export default function ObservationPage() {
               {t('labs.page.edit')}
             </Link>
           )}
-          {isAdmin && observation.publication === 'in_review' && (
+          {/* in review: the lab itself, or a revision of the published lab (5c) */}
+          {isAdmin && reviewQueue.some((q) => q.id === observation.id) && (
             <Link to={`/labs/${observation.id}/review`} className="btn-secondary">
               <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
               {t('labs.page.review')}

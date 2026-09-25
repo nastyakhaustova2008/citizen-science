@@ -310,7 +310,8 @@ export function validateLab(lab, { strict = false } = {}) {
     for (const l of LANGS) {
       const label = line(f[`label_${l}`]);
       if (!label) {
-        if (strict) errs[`${p}label_${l}`] = 'required';
+        // A published lab's new fields (in a revision, 5c) may be saved incomplete; submit checks them.
+        if (strict && lab.fields[i].inLive !== false) errs[`${p}label_${l}`] = 'required';
       } else if (label.length > LIMITS.fieldLabel) errs[`${p}label_${l}`] = 'too_long';
       if (line(f[`help_${l}`]).length > LIMITS.help) errs[`${p}help_${l}`] = 'too_long';
     }
@@ -339,7 +340,7 @@ export function validateLab(lab, { strict = false } = {}) {
       for (const l of LANGS) {
         const label = line(o[`label_${l}`]);
         if (!label) {
-          if (strict) errs[`${q}label_${l}`] = 'required';
+          if (strict && lab.fields[i].options[j].inLive !== false) errs[`${q}label_${l}`] = 'required';
         } else if (label.length > LIMITS.optionLabel) errs[`${q}label_${l}`] = 'too_long';
       }
     });
@@ -493,4 +494,185 @@ export function checklistItems(missing, lab) {
     .filter(Boolean);
   if (noOpts.length) items.push({ kind: 'options', keys: noOpts, tab: 'fields' });
   return items;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Revisions of published labs (step 5c, migration 012)                */
+/* ------------------------------------------------------------------ */
+
+const STRUCT_PROPS = ['required', 'archived', 'isPrimary', 'min', 'max', 'decimals', 'textLong'];
+
+/** lab_revision_get result → { id, status, round, editNo, fields (payload), protocol, … } | null */
+export function revisionFromApi(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    status: r.status,
+    round: r.round,
+    editNo: r.edit_no,
+    fields: r.fields || [],
+    protocol: tri(r.protocol_he, r.protocol_en, r.protocol_ru),
+    proposedBy: r.proposed_by,
+    proposerName: r.proposer_full_name || r.proposer_username,
+    submittedAt: r.submitted_at,
+    approvals: Number(r.approvals || 0),
+    myState: r.my_state,
+  };
+}
+
+/** A lab_save payload field → editor field (texts from the payload). */
+function editorFieldFromPayload(x) {
+  return {
+    uid: uid(),
+    saved: true,
+    keyEdited: true,
+    key: x.key,
+    type: x.type,
+    label: tri(x.label_he, x.label_en, x.label_ru),
+    help: tri(x.help_he, x.help_en, x.help_ru),
+    required: Boolean(x.required),
+    archived: Boolean(x.archived),
+    isPrimary: Boolean(x.is_primary),
+    unit: x.unit || '',
+    min: x.min_value ?? '',
+    max: x.max_value ?? '',
+    decimals: x.decimals ?? null,
+    textLong: Boolean(x.text_long),
+    options: (x.options || []).map((o) => ({
+      uid: uid(),
+      saved: true,
+      keyEdited: true,
+      key: o.key,
+      label: tri(o.label_he, o.label_en, o.label_ru),
+      archived: Boolean(o.archived),
+    })),
+  };
+}
+
+/**
+ * Editor state of a published lab: the live lab (texts, order) with the open revision's
+ * structure on top — like applying it: existing fields keep their live texts and order and take
+ * the revision's structure; new fields / options come from the revision, after the live ones.
+ * Every field / option gets `inLive` (exists in the published form) — those are archived, never
+ * removed. `live` = labFromCampaign(campaign).
+ */
+export function labWithRevision(live, rev) {
+  const mark = (lab) => ({
+    ...lab,
+    fields: lab.fields.map((f) => ({ ...f, inLive: true, options: f.options.map((o) => ({ ...o, inLive: true })) })),
+  });
+  if (!rev) return { ...mark(live), protocol: { ...live.protocol } };
+  const proposed = new Map(rev.fields.map((x) => [x.key, editorFieldFromPayload(x)]));
+  const fields = live.fields.map((lf) => {
+    const pf = proposed.get(lf.key);
+    if (!pf) return { ...lf, inLive: true, options: lf.options.map((o) => ({ ...o, inLive: true })) };
+    const liveOpts = new Set(lf.options.map((o) => o.key));
+    const pOpts = new Map(pf.options.map((o) => [o.key, o]));
+    return {
+      ...lf,
+      ...Object.fromEntries(STRUCT_PROPS.map((k) => [k, pf[k]])),
+      inLive: true,
+      options: [
+        ...lf.options.map((o) => ({ ...o, archived: pOpts.get(o.key)?.archived ?? o.archived, inLive: true })),
+        ...pf.options.filter((o) => !liveOpts.has(o.key)).map((o) => ({ ...o, inLive: false })),
+      ],
+    };
+  });
+  const liveKeys = new Set(live.fields.map((f) => f.key));
+  for (const x of rev.fields) {
+    if (!liveKeys.has(x.key)) {
+      const f = editorFieldFromPayload(x);
+      fields.push({ ...f, inLive: false, options: f.options.map((o) => ({ ...o, inLive: false })) });
+    }
+  }
+  return { ...live, fields, protocol: { ...rev.protocol } };
+}
+
+/**
+ * Split an edited published lab into what goes live now (lab_save: texts, labels, help, order…
+ * over the LIVE structure, live protocol) and the proposed structure for the revision (the
+ * whole form + protocol). `live` = labFromCampaign(campaign).
+ */
+export function splitPublished(live, lab) {
+  const liveFields = new Map(live.fields.map((f) => [f.key, f]));
+  const cosmetic = {
+    ...lab,
+    protocol: { ...live.protocol },
+    fields: lab.fields
+      .filter((f) => f.inLive)
+      .map((f) => {
+        const lf = liveFields.get(f.key);
+        const liveOpts = new Map(lf.options.map((o) => [o.key, o]));
+        return {
+          ...f,
+          ...Object.fromEntries(STRUCT_PROPS.map((k) => [k, lf[k]])),
+          options: f.options.filter((o) => o.inLive).map((o) => ({ ...o, archived: liveOpts.get(o.key).archived })),
+        };
+      }),
+  };
+  return {
+    cosmetic,
+    revision: { fields: labToPayload(lab).fields, protocol: { ...lab.protocol } },
+    structural: structuralChanges(live, lab),
+  };
+}
+
+/** Is this field (or one of its options) different from the published form? For the "pending" badge. */
+export function fieldPending(live, f) {
+  if (!f.inLive) return true;
+  const lf = live.fields.find((x) => x.key === f.key);
+  if (!lf) return true;
+  const nums = (x) => [numOrNull(x.min), numOrNull(x.max), x.decimals].join('|');
+  if (['required', 'archived', 'isPrimary', 'textLong'].some((k) => lf[k] !== f[k])) return true;
+  if (f.type === 'number' && nums(lf) !== nums(f)) return true;
+  return f.options.some((o) => !o.inLive || lf.options.find((x) => x.key === o.key)?.archived !== o.archived);
+}
+
+/**
+ * What of a proposal matters for review (mirrors public.lab_revision_shape in 012): structure of
+ * every field / option, texts only of new ones, sorted by key (order is cosmetic) + protocol.
+ * Two proposals with the same shape are the same revision.
+ */
+export function revisionShape(live, { fields, protocol }) {
+  const liveFields = new Map(live.fields.map((f) => [f.key, f]));
+  const num = (v) => (v == null || v === '' ? null : Number(v));
+  const shape = [...fields]
+    .sort((a, b) => a.key.localeCompare(b.key))
+    .map((x) => {
+      const lf = liveFields.get(x.key);
+      const isNum = x.type === 'number';
+      return {
+        key: x.key,
+        type: x.type,
+        unit: line(x.unit) || null,
+        required: Boolean(x.required),
+        archived: Boolean(x.archived),
+        isPrimary: Boolean(x.is_primary),
+        min: isNum ? num(x.min_value) : null,
+        max: isNum ? num(x.max_value) : null,
+        decimals: isNum ? x.decimals : null,
+        textLong: x.type === 'text' && Boolean(x.text_long),
+        texts: lf ? null : [x.label_he, x.label_en, x.label_ru, x.help_he, x.help_en, x.help_ru].map((s) => line(s)),
+        options: [...(x.options || [])]
+          .sort((a, b) => a.key.localeCompare(b.key))
+          .map((o) => ({
+            key: o.key,
+            archived: Boolean(o.archived),
+            texts: lf?.options.some((lo) => lo.key === o.key) ? null : [o.label_he, o.label_en, o.label_ru].map((s) => line(s)),
+          })),
+      };
+    });
+  return JSON.stringify({ shape, protocol: LANGS.map((l) => block(protocol[l])) });
+}
+
+/** An editor state shown as a campaign (LabSummary): the base campaign with the lab's fields and protocol. */
+export function campaignFromLab(campaign, lab) {
+  return {
+    ...campaign,
+    fields: lab.fields.map(previewField),
+    protocolHe: lab.protocol.he,
+    protocolEn: lab.protocol.en,
+    protocolRu: lab.protocol.ru,
+  };
 }

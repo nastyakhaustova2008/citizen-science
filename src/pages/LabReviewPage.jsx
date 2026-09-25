@@ -6,20 +6,24 @@ import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppDataContext';
 import { observationTitle } from '../data/mockData';
 import { isAdminRole } from '../lib/roles';
-import { labFromCampaign } from '../lib/labs';
-import { reviewHistory, reviewLab } from '../lib/labsApi';
+import { labFromCampaign, labWithRevision, structuralChanges, campaignFromLab, block } from '../lib/labs';
+import { reviewHistory, reviewLab, getRevision, reviewRevision } from '../lib/labsApi';
 import { EmptyState, ErrorBlock, LoadingBlock, SectionHeading } from '../components/primitives';
 import { Notice } from '../components/auth/AuthUI';
 import LabSummary from '../components/labs/LabSummary';
 import FormPreview from '../components/labs/FormPreview';
 import ReviewHistory, { reviewerName } from '../components/labs/ReviewHistory';
 import { APPROVALS_NEEDED } from '../components/labs/SubmitPanel';
+import { ChangeList } from '../components/labs/RevisionPanel';
+import Markdown from '../components/Markdown';
 import { AdminProfileRequired, LabErrorText } from '../components/labs/LabErrorText';
 
 /**
- * /labs/:id/review — admins review a lab that is in review (step 5b): read-only summary, form
- * preview, the verdicts so far, and Approve / Request changes. The database decides who may
- * (lab_review): not the author, not whoever edited this round, once per round.
+ * /labs/:id/review — admins review a lab that is in review (step 5b), or the revision of a
+ * published lab that is in review (5c: the proposed changes, the form as it would become):
+ * read-only summary, form preview, the verdicts so far, Approve / Request changes. The database
+ * decides who may (lab_review / lab_revision_review): not the lab's author, not the revision's
+ * proposer, not whoever edited this round, once per round.
  */
 export default function LabReviewPage() {
   const { id } = useParams();
@@ -36,6 +40,22 @@ export default function LabReviewPage() {
   const [result, setResult] = useState(null);
 
   const campaignId = campaign?.id;
+  const isPublished = campaign?.publication === 'published';
+  // Published lab: its open revision (undefined = loading).
+  const [rev, setRev] = useState(undefined);
+  const loadRev = useCallback(async () => {
+    if (!campaignId || !isPublished) return setRev(null);
+    try {
+      setRev(await getRevision(campaignId));
+    } catch {
+      setRev(null);
+    }
+    return undefined;
+  }, [campaignId, isPublished]);
+  useEffect(() => {
+    loadRev();
+  }, [loadRev]);
+
   const loadHistory = useCallback(async () => {
     if (!campaignId) return;
     try {
@@ -62,19 +82,34 @@ export default function LabReviewPage() {
   if (campaignsError) return <ErrorBlock onRetry={reloadCampaigns} />;
   if (campaignsLoading) return <LoadingBlock />;
   if (!campaign) return <EmptyState title={t('observation.notFound')} />;
+  if (rev === undefined) return <LoadingBlock />;
 
-  const entry = reviewQueue.find((q) => q.id === campaign.id);
-  const inReview = campaign.publication === 'in_review';
-  const approvals = history.filter((r) => r.round === campaign.reviewRound && r.verdict === 'approve');
+  const isRevision = isPublished && rev?.status === 'in_review';
+  const entry = reviewQueue.find((q) => q.id === campaign.id && q.kind === (isRevision ? 'revision' : 'lab'));
+  const inReview = campaign.publication === 'in_review' || isRevision;
+  const relevant = history.filter((r) => (isRevision ? r.revisionId === rev.id : r.revisionId == null));
+  const round = isRevision ? rev.round : campaign.reviewRound;
+  const approvals = relevant.filter((r) => r.round === round && r.verdict === 'approve');
   const title = observationTitle(campaign, locale) || campaign.titleHe || campaign.slug;
+  const live = labFromCampaign(campaign);
+  const proposed = isRevision ? labWithRevision(live, rev) : null;
+  const changes = isRevision ? structuralChanges(live, proposed) : [];
+  const protocolChanged = isRevision && ['he', 'en', 'ru'].some((l) => block(live.protocol[l]) !== block(proposed.protocol[l]));
 
   async function submit(verdict) {
     setBusy(true);
     setError(null);
     try {
-      const res = await reviewLab(campaign.id, campaign.reviewRound, verdict, verdict === 'changes' ? comment : '');
-      await Promise.all([refreshCampaigns(), reloadReviewQueue(), loadHistory()]);
-      setResult(res.publication === 'published' ? 'published' : verdict === 'changes' ? 'changes' : 'approved');
+      const text = verdict === 'changes' ? comment : '';
+      if (isRevision) {
+        const res = await reviewRevision(rev, verdict, text);
+        await Promise.all([refreshCampaigns(), reloadReviewQueue(), loadHistory(), loadRev()]);
+        setResult(res.status === 'applied' ? 'applied' : verdict === 'changes' ? 'changes' : 'approved');
+      } else {
+        const res = await reviewLab(campaign.id, campaign.reviewRound, verdict, text);
+        await Promise.all([refreshCampaigns(), reloadReviewQueue(), loadHistory()]);
+        setResult(res.publication === 'published' ? 'published' : verdict === 'changes' ? 'changes' : 'approved');
+      }
       setMode(null);
       setComment('');
     } catch (err) {
@@ -83,24 +118,30 @@ export default function LabReviewPage() {
         await refreshCampaigns();
         reloadReviewQueue();
         loadHistory();
+        loadRev();
       }
     } finally {
       setBusy(false);
     }
   }
 
-  const blocked = entry && entry.myState !== 'can_review' ? entry.myState : null;
+  const myState = isRevision ? rev.myState : entry?.myState;
+  const blocked = myState && myState !== 'can_review' ? myState : null;
 
   return (
     <div className="mx-auto max-w-3xl space-y-5 pb-8">
       {back}
       <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">{t('labs.review.title')}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+          {isRevision ? t('labs.revision.reviewTitle') : t('labs.review.title')}
+        </p>
         <h1 className="font-serif text-2xl font-bold text-ink dark:text-paper" dir="auto">
           {title}
         </h1>
         <p className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="chip chip-active">{t(`labs.publication.${campaign.publication}`)}</span>
+          <span className="chip chip-active">
+            {isRevision ? t('labs.revision.inReviewTitle') : t(`labs.publication.${campaign.publication}`)}
+          </span>
           {inReview && (
             <span className="inline-flex items-center gap-1">
               <Hourglass className="h-4 w-4 text-moss" aria-hidden="true" />
@@ -112,10 +153,16 @@ export default function LabReviewPage() {
               )}
             </span>
           )}
-          {entry?.creatorFullName && (
+          {isRevision && rev.proposerName ? (
             <span className="text-ink-faint" dir="auto">
-              · {t('labs.list.by', { name: entry.creatorFullName })}
+              · {t('labs.revision.proposedBy', { name: rev.proposerName })}
             </span>
+          ) : (
+            entry?.creatorFullName && (
+              <span className="text-ink-faint" dir="auto">
+                · {t('labs.list.by', { name: entry.creatorFullName })}
+              </span>
+            )
           )}
         </p>
         <Link to={`/observations/${campaign.slug}`} className="text-sm text-ink-faint underline underline-offset-2">
@@ -126,7 +173,7 @@ export default function LabReviewPage() {
       {result && (
         <Notice>
           {t(`labs.review.done.${result}`)}{' '}
-          {result === 'published' && (
+          {(result === 'published' || result === 'applied') && (
             <Link to={`/observations/${campaign.slug}`} className="underline">
               {t('labs.review.openLabPage')}
             </Link>
@@ -209,17 +256,38 @@ export default function LabReviewPage() {
         </p>
       )}
 
-      <LabSummary campaign={campaign} />
+      {isRevision && (
+        <section className="surface space-y-2 border-warn/50 p-4">
+          <h2 className="font-serif text-lg font-bold text-ink dark:text-paper">{t('labs.revision.changesTitle')}</h2>
+          <p className="text-sm text-ink-soft dark:text-paper/80">{t('labs.revision.reviewExplain')}</p>
+          <ChangeList changes={changes} />
+          {protocolChanged && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-ink-faint">{t('labs.revision.currentProtocol')}</summary>
+              <div className="mt-2 rounded-lg border border-dashed border-edge p-3 dark:border-white/15" dir="auto">
+                {live.protocol[locale] || live.protocol.he ? (
+                  <Markdown source={live.protocol[locale] || live.protocol.he} />
+                ) : (
+                  <p className="text-ink-faint">{t('labs.protocol.empty')}</p>
+                )}
+              </div>
+            </details>
+          )}
+        </section>
+      )}
+
+      {isRevision && <p className="text-xs text-ink-faint">{t('labs.revision.proposedVersion')}</p>}
+      <LabSummary campaign={isRevision ? campaignFromLab(campaign, proposed) : campaign} />
 
       <section>
         <SectionHeading as="h2" title={t('labs.review.formPreview')} />
-        <FormPreview lab={labFromCampaign(campaign)} />
+        <FormPreview lab={isRevision ? proposed : live} />
       </section>
 
-      {history.length > 0 && (
+      {relevant.length > 0 && (
         <section>
           <SectionHeading as="h2" title={t('labs.review.history')} />
-          <ReviewHistory history={history} />
+          <ReviewHistory history={relevant} />
         </section>
       )}
     </div>

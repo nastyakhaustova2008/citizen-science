@@ -15,6 +15,7 @@ import {
   ToggleLeft,
   CalendarClock,
   Camera,
+  Hourglass,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import {
@@ -24,6 +25,7 @@ import {
   emptyOption,
   fieldKeyFromLabel,
   optionKeyFromLabel,
+  fieldPending,
 } from '../../lib/labs';
 import { langProps } from './LangSwitch';
 import { ErrorMsg, LockedHint, CheckRow } from './EditorBits';
@@ -47,10 +49,12 @@ const move = (list, i, dir) => {
 };
 
 /**
- * Field list of a lab (step-3 rules): add, order, edit, delete (draft) / archive (published, 5c).
- * `structureLocked` = published lab: only texts and order can change here until revisions (5c).
+ * Field list of a lab (step-3 rules): add, order, edit, delete (draft) / archive (published).
+ * `live` = the published form (labFromCampaign) when the lab is published, else null: then
+ * fields / options that exist in it (inLive) are archived instead of deleted, and structural
+ * changes are marked "pending review" (they go into the revision, step 5c).
  */
-export default function FieldsEditor({ lab, update, lang, errors, structureLocked }) {
+export default function FieldsEditor({ lab, update, lang, errors, live = null }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(() => new Set());
   const [adding, setAdding] = useState(false);
@@ -82,7 +86,7 @@ export default function FieldsEditor({ lab, update, lang, errors, structureLocke
     setFields((fields) => fields.map((f, j) => ({ ...f, isPrimary: j === i ? on : on ? false : f.isPrimary })));
 
   function addField(type) {
-    const f = emptyField(type);
+    const f = { ...emptyField(type), inLive: live ? false : undefined };
     // The first number field of a lab becomes its primary field.
     if (type === 'number' && !lab.fields.some((x) => x.isPrimary && !x.archived)) f.isPrimary = true;
     setFields((fields) => [...fields, f]);
@@ -123,7 +127,7 @@ export default function FieldsEditor({ lab, update, lang, errors, structureLocke
             onMove={(dir) => setFields((fields) => move(fields, i, dir))}
             onRemove={() => setFields((fields) => fields.filter((_, j) => j !== i))}
             onPrimary={(on) => setPrimary(i, on)}
-            structureLocked={structureLocked}
+            live={live}
           />
         ))}
       </ol>
@@ -134,9 +138,8 @@ export default function FieldsEditor({ lab, update, lang, errors, structureLocke
         </p>
       )}
 
-      {structureLocked ? (
-        <LockedHint reason={t('labs.locked.structureSoon')} />
-      ) : adding ? (
+      {live && <p className="text-xs text-ink-faint">{t('labs.revision.fieldsHint')}</p>}
+      {adding ? (
         <div className="surface p-3">
           <p className="label">{t('labs.fields.chooseType')}</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -164,8 +167,12 @@ export default function FieldsEditor({ lab, update, lang, errors, structureLocke
   );
 }
 
-function FieldCard({ field: f, index: i, count, lang, errors, open, onToggle, onChange, onMove, onRemove, onPrimary, structureLocked }) {
+function FieldCard({ field: f, index: i, count, lang, errors, open, onToggle, onChange, onMove, onRemove, onPrimary, live }) {
   const { t } = useI18n();
+  // Published lab: fields of the published form are archived, never deleted; structural changes
+  // are "pending review" until the revision is approved.
+  const archivable = Boolean(live && f.inLive);
+  const pending = Boolean(live && fieldPending(live, f));
   const p = `fields.${i}.`;
   const err = (k) => errors[p + k];
   const hasErrors = Object.keys(errors).some((k) => k.startsWith(p));
@@ -221,6 +228,12 @@ function FieldCard({ field: f, index: i, count, lang, errors, open, onToggle, on
               )}
               {f.required && <span>· {t('labs.fields.requiredBadge')}</span>}
               {f.archived && <span>· {t('labs.fields.archivedBadge')}</span>}
+              {pending && (
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-warn/15 px-1.5 text-warn">
+                  <Hourglass className="h-3 w-3" aria-hidden="true" />
+                  {live && !f.inLive ? t('labs.revision.newBadge') : t('labs.revision.pendingBadge')}
+                </span>
+              )}
             </span>
           </span>
           <ChevronDown className={`h-4 w-4 shrink-0 transition ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
@@ -308,20 +321,16 @@ function FieldCard({ field: f, index: i, count, lang, errors, open, onToggle, on
           <CheckRow
             id={`${id}-required`}
             checked={f.required}
-            disabled={structureLocked}
             onChange={(v) => set({ required: v })}
             label={t('labs.fields.required')}
           />
 
-          {f.type === 'number' && (
-            <NumberSettings f={f} id={id} err={err} set={set} onPrimary={onPrimary} structureLocked={structureLocked} />
-          )}
+          {f.type === 'number' && <NumberSettings f={f} id={id} err={err} set={set} onPrimary={onPrimary} />}
 
           {f.type === 'text' && (
             <CheckRow
               id={`${id}-long`}
               checked={f.textLong}
-              disabled={structureLocked}
               onChange={(v) => set({ textLong: v })}
               label={t('labs.fields.textLong')}
               hint={t('labs.fields.textLongHint', { short: 200, long: 2000 })}
@@ -329,14 +338,17 @@ function FieldCard({ field: f, index: i, count, lang, errors, open, onToggle, on
           )}
 
           {(f.type === 'choice' || f.type === 'multi_choice') && (
-            <OptionsEditor f={f} id={id} p={p} lang={lang} errors={errors} onChange={onChange} structureLocked={structureLocked} />
+            <OptionsEditor f={f} id={id} p={p} lang={lang} errors={errors} onChange={onChange} live={live} />
           )}
 
-          {structureLocked && <LockedHint reason={t('labs.locked.structureSoon')} />}
-
           <div className="flex flex-wrap gap-2 border-t border-edge pt-3 dark:border-white/10">
-            {structureLocked ? (
-              <button type="button" className="btn-secondary !py-1.5 text-xs" disabled>
+            {archivable ? (
+              <button
+                type="button"
+                className="btn-secondary !py-1.5 text-xs"
+                // an archived field cannot stay the primary one
+                onClick={() => set({ archived: !f.archived, isPrimary: f.archived ? f.isPrimary : false })}
+              >
                 {f.archived ? <ArchiveRestore className="h-3.5 w-3.5" aria-hidden="true" /> : <Archive className="h-3.5 w-3.5" aria-hidden="true" />}
                 {f.archived ? t('labs.fields.unarchive') : t('labs.fields.archive')}
               </button>
@@ -346,7 +358,9 @@ function FieldCard({ field: f, index: i, count, lang, errors, open, onToggle, on
                 {t('labs.fields.remove')}
               </button>
             )}
-            {!structureLocked && <p className="self-center text-xs text-ink-faint">{t('labs.fields.removeHint')}</p>}
+            <p className="self-center text-xs text-ink-faint">
+              {archivable ? t('labs.revision.archiveHint') : live ? t('labs.revision.removeNewHint') : t('labs.fields.removeHint')}
+            </p>
           </div>
         </div>
       )}
@@ -354,7 +368,7 @@ function FieldCard({ field: f, index: i, count, lang, errors, open, onToggle, on
   );
 }
 
-function NumberSettings({ f, id, err, set, onPrimary, structureLocked }) {
+function NumberSettings({ f, id, err, set, onPrimary }) {
   const { t } = useI18n();
   return (
     <div className="space-y-4 rounded-lg bg-paper-sunk/50 p-3 dark:bg-white/5">
@@ -383,7 +397,6 @@ function NumberSettings({ f, id, err, set, onPrimary, structureLocked }) {
             dir="ltr"
             inputMode="decimal"
             value={f.min}
-            disabled={structureLocked}
             onChange={(e) => set({ min: e.target.value })}
           />
         </div>
@@ -397,7 +410,6 @@ function NumberSettings({ f, id, err, set, onPrimary, structureLocked }) {
             dir="ltr"
             inputMode="decimal"
             value={f.max}
-            disabled={structureLocked}
             onChange={(e) => set({ max: e.target.value })}
           />
         </div>
@@ -409,7 +421,6 @@ function NumberSettings({ f, id, err, set, onPrimary, structureLocked }) {
             id={`${id}-decimals`}
             className="input"
             value={f.decimals ?? 0}
-            disabled={structureLocked}
             onChange={(e) => set({ decimals: Number(e.target.value) })}
           >
             {[0, 1, 2, 3, 4, 5, 6].map((n) => (
@@ -425,7 +436,7 @@ function NumberSettings({ f, id, err, set, onPrimary, structureLocked }) {
       <CheckRow
         id={`${id}-primary`}
         checked={f.isPrimary}
-        disabled={structureLocked || f.archived}
+        disabled={f.archived}
         onChange={onPrimary}
         label={t('labs.fields.primary')}
         hint={t('labs.fields.primaryHint')}
@@ -435,7 +446,7 @@ function NumberSettings({ f, id, err, set, onPrimary, structureLocked }) {
   );
 }
 
-function OptionsEditor({ f, id, p, lang, errors, onChange, structureLocked }) {
+function OptionsEditor({ f, id, p, lang, errors, onChange, live }) {
   const { t } = useI18n();
   const lp = langProps(lang);
   const setOptions = (fn) => onChange((x) => ({ ...x, options: fn(x.options) }));
@@ -480,10 +491,17 @@ function OptionsEditor({ f, id, p, lang, errors, onChange, structureLocked }) {
                   <ArrowDown className="h-4 w-4" aria-hidden="true" />
                   <span className="sr-only">{t('labs.fields.moveDown')}</span>
                 </button>
-                {structureLocked ? (
-                  <span className="p-1.5 text-ink-faint" title={t('labs.locked.structureSoon')}>
+                {live && o.inLive ? (
+                  // an option of the published form: archive / unarchive (goes into the revision)
+                  <button
+                    type="button"
+                    className="btn-ghost !p-1.5"
+                    aria-pressed={o.archived}
+                    onClick={() => updateOption(j, (x) => ({ ...x, archived: !x.archived }))}
+                  >
                     {o.archived ? <ArchiveRestore className="h-4 w-4" aria-hidden="true" /> : <Archive className="h-4 w-4" aria-hidden="true" />}
-                  </span>
+                    <span className="sr-only">{o.archived ? t('labs.fields.unarchive') : t('labs.fields.archive')}</span>
+                  </button>
                 ) : (
                   <button type="button" className="btn-ghost !p-1.5 text-danger" onClick={() => setOptions((opts) => opts.filter((_, k) => k !== j))}>
                     <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -512,8 +530,12 @@ function OptionsEditor({ f, id, p, lang, errors, onChange, structureLocked }) {
           );
         })}
       </ol>
-      {!structureLocked && f.options.length < LIMITS.options && (
-        <button type="button" className="btn-secondary !py-1.5 text-xs" onClick={() => setOptions((opts) => [...opts, emptyOption()])}>
+      {f.options.length < LIMITS.options && (
+        <button
+          type="button"
+          className="btn-secondary !py-1.5 text-xs"
+          onClick={() => setOptions((opts) => [...opts, { ...emptyOption(), inLive: live ? false : undefined }])}
+        >
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
           {t('labs.fields.addOption')}
         </button>

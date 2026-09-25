@@ -220,17 +220,19 @@ function ReviewQueue({ queue, locale }) {
       ) : (
         <ul className="space-y-2">
           {queue.map((q) => (
-            <li key={q.id} className={`surface flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between ${q.myState === 'can_review' ? '!border-moss' : ''}`}>
+            <li key={`${q.kind}-${q.id}`} className={`surface flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between ${q.myState === 'can_review' ? '!border-moss' : ''}`}>
               <div className="flex min-w-0 items-start gap-2.5">
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-paper-sunk dark:bg-white/5">
                   <ObsIcon name={q.icon} className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <p className="font-semibold text-ink dark:text-paper" dir="auto">
+                  <p className="flex flex-wrap items-center gap-1.5 font-semibold text-ink dark:text-paper" dir="auto">
                     {observationTitle(q, locale) || q.titleHe || q.slug}
+                    {q.kind === 'revision' && <span className="chip !text-[11px] !text-warn">{t('labs.revision.queueChip')}</span>}
                   </p>
                   <p className="text-xs text-ink-faint">
-                    {(q.creatorFullName || q.creatorUsername) && `${t('labs.list.by', { name: isolate(q.creatorFullName || q.creatorUsername) })} · `}
+                    {(q.creatorFullName || q.creatorUsername) &&
+                      `${t(q.kind === 'revision' ? 'labs.revision.proposedBy' : 'labs.list.by', { name: isolate(q.creatorFullName || q.creatorUsername) })} · `}
                     {q.submittedAt && `${t('labs.queue.submitted', { date: formatDate(q.submittedAt, locale) })} · `}
                     {t('labs.submit.approvals', { n: q.approvals, needed: APPROVALS_NEEDED })}
                   </p>

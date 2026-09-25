@@ -5,8 +5,8 @@ import { useI18n } from '../i18n';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppDataContext';
 import { isAdminRole } from '../lib/roles';
-import { emptyLab, labFromCampaign } from '../lib/labs';
-import { canEditLab } from '../lib/labsApi';
+import { emptyLab, labFromCampaign, labWithRevision } from '../lib/labs';
+import { canEditLab, getRevision } from '../lib/labsApi';
 import { EmptyState, ErrorBlock, LoadingBlock } from '../components/primitives';
 import LabEditor from '../components/labs/LabEditor';
 import { AdminProfileRequired } from '../components/labs/LabErrorText';
@@ -25,6 +25,23 @@ export default function LabEditorPage() {
   const [reloadNonce, setReloadNonce] = useState(0);
   const campaign = id ? getObservation(id) : null;
   const campaignId = campaign?.id;
+  const isPublished = campaign?.publication === 'published';
+  // Published lab: its open revision (step 5c), loaded before the editor opens. undefined = loading.
+  const [revision, setRevision] = useState(undefined);
+  useEffect(() => {
+    if (!campaignId || !isPublished) {
+      setRevision(null);
+      return undefined;
+    }
+    let alive = true;
+    setRevision(undefined);
+    getRevision(campaignId)
+      .then((r) => alive && setRevision(r))
+      .catch(() => alive && setRevision(null));
+    return () => {
+      alive = false;
+    };
+  }, [campaignId, isPublished, reloadNonce]);
 
   useEffect(() => {
     if (!id || !campaignId) return undefined;
@@ -62,7 +79,7 @@ export default function LabEditorPage() {
     if (campaignsError) return <ErrorBlock onRetry={reloadCampaigns} />;
     if (campaignsLoading) return <LoadingBlock />;
     if (!campaign) return <EmptyState title={t('observation.notFound')} />;
-    if (allowed === null) return <LoadingBlock />;
+    if (allowed === null || revision === undefined) return <LoadingBlock />;
     if (!allowed) {
       return (
         <div className="mx-auto max-w-2xl space-y-4">
@@ -83,7 +100,11 @@ export default function LabEditorPage() {
       {back}
       <LabEditor
         key={`${campaign?.id || 'new'}-${reloadNonce}`}
-        initial={campaign ? labFromCampaign(campaign) : emptyLab()}
+        initial={
+          !campaign ? emptyLab() : isPublished ? labWithRevision(labFromCampaign(campaign), revision) : labFromCampaign(campaign)
+        }
+        live={isPublished ? labFromCampaign(campaign) : null}
+        revision={isPublished ? revision : null}
         onReload={reload}
       />
     </div>
