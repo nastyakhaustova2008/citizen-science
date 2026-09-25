@@ -153,6 +153,15 @@ export function AppDataProvider({ children }) {
     }
   }, []);
 
+  /** Re-read these profiles (after an admin renamed them or changed their role). */
+  const refreshAuthors = useCallback(
+    (ids) => {
+      ids.forEach((id) => requestedAuthors.current.delete(id));
+      return loadAuthors(ids);
+    },
+    [loadAuthors],
+  );
+
   /** Author of a measurement / comment / post: real profile, demo (mock) user, or null (unknown). */
   const getAuthor = useCallback(
     (id) => {
@@ -470,6 +479,7 @@ export function AppDataProvider({ children }) {
       getAuthor,
       isAuthorResolved,
       loadAuthors,
+      refreshAuthors,
       campaigns: campaignsView,
       campaignsLoading,
       campaignsError,
@@ -500,6 +510,7 @@ export function AppDataProvider({ children }) {
       getAuthor,
       isAuthorResolved,
       loadAuthors,
+      refreshAuthors,
       campaignsView,
       campaignsLoading,
       campaignsError,

@@ -206,7 +206,16 @@
               <strong>Email (optional)</strong> — used only to reset your password and to confirm the address itself.
               We never show it to anyone and never send newsletters.
             </li>
-            <li><strong>When you joined and your role</strong> (student or admin) — shown on your profile page.</li>
+            <li><strong>When you joined and your role</strong> (student, admin, main admin or owner) — shown on your profile page.</li>
+            <li>
+              <strong>Changes to your role or username</strong> — if an admin makes you an admin, removes it, or changes your
+              username, we record who did it, what changed (including your previous username) and when. Only admins can
+              see this log. Your own username can be changed only by an admin.
+            </li>
+            <li>
+              <strong>If you are an admin</strong> — other admins can see who appointed you and when, and for each campaign
+              we store which admin created it. This is not shown publicly.
+            </li>
             <li><strong>When you last logged in</strong> — stored by our login system.</li>
           </ul>
 
@@ -303,6 +312,10 @@
             </li>
             <li><strong>Hashed IP addresses</strong> used to block too many attempts — deleted after one day.</li>
             <li>
+              <strong>The log of role and username changes</strong> — while your account exists. When the account is
+              deleted, your usernames are erased from the log.
+            </li>
+            <li>
               <strong>Hosting logs</strong> at Vercel and Supabase — a short time (a few days), under their own rules.
             </li>
           </ul>
@@ -322,7 +335,7 @@
           <h3>Deleting your account</h3>
           <p>
             There is no “delete account” button yet, so accounts are deleted on request by email. When we delete your
-            account, your username, email and login information are removed. Your measurements stay on the map
+            account, your username (also any previous usernames in the admin log), email and login information are removed. Your measurements stay on the map
             <strong>without your name</strong> (“Unknown participant”), because other students' science work may depend on
             them. If you want your measurements deleted too, just tell us and we will delete them.
           </p>
@@ -388,7 +401,17 @@
               <strong>Email (необязательно)</strong> — нужен только для сброса пароля и для подтверждения самого адреса.
               Мы никому его не показываем и не присылаем рассылок.
             </li>
-            <li><strong>Когда вы зарегистрировались и ваша роль</strong> (ученик или админ) — видны на странице профиля.</li>
+            <li><strong>Когда вы зарегистрировались и ваша роль</strong> (ученик, администратор, главный администратор или владелец) — видны на странице профиля.</li>
+            <li>
+              <strong>Изменения вашей роли или имени</strong> — если администратор назначает вас администратором, снимает
+              эту роль или меняет ваше имя пользователя, мы записываем, кто это сделал, что изменилось (в том числе прежнее
+              имя) и когда. Этот журнал видят только администраторы. Своё имя пользователя вы сами изменить не можете —
+              только администратор.
+            </li>
+            <li>
+              <strong>Если вы администратор</strong> — другие администраторы видят, кто и когда вас назначил, а у каждой
+              кампании хранится, какой администратор её создал. Публично это не показывается.
+            </li>
             <li><strong>Когда вы последний раз входили</strong> — хранится в системе входа.</li>
           </ul>
 
@@ -482,6 +505,10 @@
               <strong>до 30 дней</strong>.
             </li>
             <li><strong>Хешированные IP-адреса</strong> для блокировки лишних попыток — удаляются через сутки.</li>
+            <li>
+              <strong>Журнал изменений ролей и имён</strong> — пока существует ваш аккаунт. При удалении аккаунта ваши имена
+              стираются из журнала.
+            </li>
             <li><strong>Журналы хостинга</strong> Vercel и Supabase — недолго (несколько дней), по их правилам.</li>
           </ul>
 
@@ -501,7 +528,7 @@
           <h3>Удаление аккаунта</h3>
           <p>
             Кнопки «Удалить аккаунт» пока нет, поэтому аккаунты удаляются по просьбе на email. При удалении аккаунта
-            удаляются имя пользователя, email и данные для входа. Ваши измерения остаются на карте
+            удаляются имя пользователя (и прежние имена в журнале администраторов), email и данные для входа. Ваши измерения остаются на карте
             <strong>без вашего имени</strong> («Неизвестный участник»), потому что от них может зависеть научная работа
             других учеников. Если хотите удалить и измерения — просто напишите нам, и мы их удалим.
           </p>
@@ -568,7 +595,16 @@
               <strong>אימייל (לא חובה)</strong> — משמש רק לאיפוס סיסמה ולאישור הכתובת עצמה. אנחנו לא מציגים אותו לאף אחד
               ולא שולחים ניוזלטרים.
             </li>
-            <li><strong>מתי הצטרפתם והתפקיד שלכם</strong> (תלמיד או מנהל) — מוצגים בדף הפרופיל שלכם.</li>
+            <li><strong>מתי הצטרפתם והתפקיד שלכם</strong> (תלמיד, מנהל, מנהל ראשי או בעלים) — מוצגים בדף הפרופיל שלכם.</li>
+            <li>
+              <strong>שינויים בתפקיד או בשם המשתמש</strong> — אם מנהל ממנה אתכם למנהלים, מסיר את ההרשאה או משנה את שם
+              המשתמש שלכם, אנחנו רושמים מי עשה את זה, מה השתנה (כולל שם המשתמש הקודם) ומתי. רק מנהלים יכולים לראות את
+              היומן הזה. את שם המשתמש שלכם יכול לשנות רק מנהל.
+            </li>
+            <li>
+              <strong>אם אתם מנהלים</strong> — מנהלים אחרים רואים מי מינה אתכם ומתי, ולכל קמפיין נשמר איזה מנהל יצר
+              אותו. זה לא מוצג לציבור.
+            </li>
             <li><strong>מתי נכנסתם לאחרונה</strong> — נשמר במערכת הכניסה.</li>
           </ul>
 
@@ -658,6 +694,10 @@
               <strong>עד 30 יום</strong>.
             </li>
             <li><strong>כתובות IP מוצפנות</strong> לחסימת ניסיונות רבים מדי — נמחקות אחרי יום.</li>
+            <li>
+              <strong>יומן השינויים בתפקידים ובשמות</strong> — כל עוד החשבון קיים. כשהחשבון נמחק, השמות שלכם נמחקים
+              מהיומן.
+            </li>
             <li><strong>יומני האחסון</strong> של Vercel ו־Supabase — זמן קצר (כמה ימים), לפי הכללים שלהן.</li>
           </ul>
 
@@ -676,7 +716,7 @@
           <h3>מחיקת החשבון</h3>
           <p>
             עדיין אין באתר כפתור „מחיקת חשבון”, ולכן מוחקים חשבון לפי בקשה במייל. כשאנחנו מוחקים חשבון, נמחקים שם
-            המשתמש, האימייל ופרטי הכניסה. המדידות נשארות על המפה <strong>בלי השם שלכם</strong> („משתתף/ת לא ידוע/ה”),
+            המשתמש (וגם שמות קודמים ביומן המנהלים), האימייל ופרטי הכניסה. המדידות נשארות על המפה <strong>בלי השם שלכם</strong> („משתתף/ת לא ידוע/ה”),
             כי עבודת המדע של תלמידים אחרים עשויה להסתמך עליהן. אם תרצו שנמחק גם את המדידות — פשוט כתבו לנו, ונמחק אותן.
           </p>
 
