@@ -5,6 +5,19 @@ import { useI18n } from '../i18n';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from './primitives';
+import { useAppData } from '../context/AppDataContext';
+
+/** Number of labs waiting for my review (admins), on the profile links. */
+function ReviewBadge({ count }) {
+  const { t } = useI18n();
+  if (!count) return null;
+  return (
+    <span className="tnum rounded-full bg-bark px-1.5 text-xs font-semibold text-paper-raised" title={t('labs.queue.badge', { count })}>
+      {count}
+      <span className="sr-only"> {t('labs.queue.badge', { count })}</span>
+    </span>
+  );
+}
 
 function LanguageMenu() {
   const { locale, setLocale, locales, t } = useI18n();
@@ -80,6 +93,7 @@ export default function Header() {
   const { t } = useI18n();
   const { currentUser, session, authLoading, logOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { reviewCount } = useAppData();
   const location = useLocation();
   const loggedIn = Boolean(session);
   const onAuthPage = ['/login', '/signup'].includes(location.pathname);
@@ -88,7 +102,7 @@ export default function Header() {
 
   const links = [
     { to: '/', label: t('nav.home'), end: true },
-    ...(loggedIn ? [{ to: '/profile', label: t('nav.profile') }] : []),
+    ...(loggedIn ? [{ to: '/profile', label: t('nav.profile'), badge: reviewCount }] : []),
   ];
 
   return (
@@ -108,6 +122,7 @@ export default function Header() {
           {links.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end} className={navItemClass}>
               {l.label}
+              {l.badge ? <span className="ms-1.5"><ReviewBadge count={l.badge} /></span> : null}
             </NavLink>
           ))}
         </nav>
@@ -125,6 +140,7 @@ export default function Header() {
               <span className="max-w-[12rem] truncate" dir="auto">
                 {currentUser.displayName}
               </span>
+              <ReviewBadge count={reviewCount} />
             </Link>
           )}
           {!authLoading && !loggedIn && (
@@ -140,12 +156,15 @@ export default function Header() {
           )}
           <button
             type="button"
-            className="btn-ghost px-2 md:hidden"
-            aria-label={t('nav.menu')}
+            className="btn-ghost relative px-2 md:hidden"
+            aria-label={reviewCount ? `${t('nav.menu')} — ${t('labs.queue.badge', { count: reviewCount })}` : t('nav.menu')}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((o) => !o)}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {!mobileOpen && reviewCount > 0 && (
+              <span className="absolute end-1 top-1 h-2 w-2 rounded-full bg-bark" aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
@@ -168,6 +187,7 @@ export default function Header() {
               }
             >
               {l.label}
+              {l.badge ? <span className="ms-1.5"><ReviewBadge count={l.badge} /></span> : null}
             </NavLink>
           ))}
           <div className="mt-1 border-t border-edge pt-2 dark:border-white/10">

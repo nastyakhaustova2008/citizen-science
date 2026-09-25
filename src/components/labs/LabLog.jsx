@@ -97,7 +97,9 @@ function LogRow({ event: e }) {
   return (
     <li className="py-2.5 text-sm">
       <p className="flex flex-wrap items-baseline gap-x-1.5">
-        {e.actorId ? (
+        {e.action === 'publish' ? (
+          <span className="text-ink-faint">{t('labs.log.system')}</span>
+        ) : e.actorId ? (
           <Link to={`/profile/${e.actorId}`} className="font-semibold hover:underline" dir="auto">
             {e.actorUsername || t('admin.users.noUsername')}
           </Link>
@@ -117,6 +119,9 @@ function LogRow({ event: e }) {
       </p>
       {parts.length > 0 && <p className="mt-0.5 text-xs text-ink-soft dark:text-paper/70">{parts.join(' · ')}</p>}
       <p className="mt-0.5 text-xs text-ink-faint">
+        {e.round != null && ['submit', 'withdraw', 'approve', 'request_changes', 'publish'].includes(e.action) && (
+          <span className="me-2">{t('labs.review.round', { n: e.round })}</span>
+        )}
         <span>{formatDate(e.at, locale)}</span> <span dir="ltr">{formatTime(e.at, locale)}</span>
       </p>
     </li>

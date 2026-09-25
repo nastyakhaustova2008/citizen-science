@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, PencilLine, Trash2, Search } from 'lucide-react';
+import { Plus, PencilLine, Trash2, Search, ClipboardCheck, Hourglass } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { useAppData } from '../../context/AppDataContext';
@@ -11,6 +11,7 @@ import { EmptyState, ErrorBlock, SkeletonText } from '../primitives';
 import { isolate } from '../auth/AuthUI';
 import ObsIcon from '../ObsIcon';
 import { AdminProfileRequired, LabErrorText } from './LabErrorText';
+import { APPROVALS_NEEDED } from './SubmitPanel';
 
 const smallBtn = 'btn-secondary !px-2.5 !py-1.5 text-xs';
 
@@ -18,6 +19,7 @@ const smallBtn = 'btn-secondary !px-2.5 !py-1.5 text-xs';
 export default function LabList() {
   const { t } = useI18n();
   const { profile, adminProfile } = useAuth();
+  const { reviewQueue, reloadReviewQueue } = useAppData();
   const [labs, setLabs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -37,7 +39,8 @@ export default function LabList() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    reloadReviewQueue();
+  }, [load, reloadReviewQueue]);
 
   const { locale } = useI18n();
   const q = search.trim().toLowerCase();
@@ -74,6 +77,8 @@ export default function LabList() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+
+      <ReviewQueue queue={reviewQueue} locale={locale} />
 
       {loading ? (
         <SkeletonText lines={4} />
@@ -196,5 +201,52 @@ function LabRow({ lab, locale, onChanged }) {
         </div>
       )}
     </li>
+  );
+}
+
+/** "Waiting for review": labs in review, approvals so far, and whether I can review each one. */
+function ReviewQueue({ queue, locale }) {
+  const { t } = useI18n();
+  const mine = queue.filter((q) => q.myState === 'can_review').length;
+  return (
+    <section aria-labelledby="review-queue-title" className="space-y-2">
+      <h3 id="review-queue-title" className="flex items-center gap-2 text-sm font-semibold text-ink-soft dark:text-paper/80">
+        <Hourglass className="h-4 w-4 text-moss" aria-hidden="true" />
+        {t('labs.queue.title')}
+        {mine > 0 && <span className="tnum rounded-full bg-bark px-1.5 text-xs text-paper-raised">{mine}</span>}
+      </h3>
+      {queue.length === 0 ? (
+        <p className="text-sm text-ink-faint">{t('labs.queue.empty')}</p>
+      ) : (
+        <ul className="space-y-2">
+          {queue.map((q) => (
+            <li key={q.id} className={`surface flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between ${q.myState === 'can_review' ? '!border-moss' : ''}`}>
+              <div className="flex min-w-0 items-start gap-2.5">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-paper-sunk dark:bg-white/5">
+                  <ObsIcon name={q.icon} className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-ink dark:text-paper" dir="auto">
+                    {observationTitle(q, locale) || q.titleHe || q.slug}
+                  </p>
+                  <p className="text-xs text-ink-faint">
+                    {(q.creatorFullName || q.creatorUsername) && `${t('labs.list.by', { name: isolate(q.creatorFullName || q.creatorUsername) })} · `}
+                    {q.submittedAt && `${t('labs.queue.submitted', { date: formatDate(q.submittedAt, locale) })} · `}
+                    {t('labs.submit.approvals', { n: q.approvals, needed: APPROVALS_NEEDED })}
+                  </p>
+                  {q.myState !== 'can_review' && (
+                    <p className="text-xs text-ink-faint">{t(`labs.queue.state.${q.myState}`)}</p>
+                  )}
+                </div>
+              </div>
+              <Link to={`/labs/${q.id}/review`} className={q.myState === 'can_review' ? 'btn-primary !px-3 !py-1.5 text-xs' : 'btn-secondary !px-3 !py-1.5 text-xs'}>
+                <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                {q.myState === 'can_review' ? t('labs.queue.review') : t('labs.queue.view')}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

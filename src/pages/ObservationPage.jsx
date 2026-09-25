@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { Plus, FileText, Map as MapIcon, Table2, BarChart3, MessagesSquare, ArrowLeft, ArrowRight, PencilLine, EyeOff } from 'lucide-react';
+import { Plus, FileText, Map as MapIcon, Table2, BarChart3, MessagesSquare, ArrowLeft, ArrowRight, PencilLine, EyeOff, ClipboardCheck } from 'lucide-react';
 
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
@@ -9,6 +9,9 @@ import { fieldLabel } from '../lib/fields';
 import { useAuth } from '../context/AuthContext';
 import { isAdminRole } from '../lib/roles';
 import { canEditLab } from '../lib/labsApi';
+import { labFromCampaign } from '../lib/labs';
+import SubmitPanel from '../components/labs/SubmitPanel';
+import LabCredits from '../components/labs/LabCredits';
 
 import Tabs, { TabPanel } from '../components/Tabs';
 import ObservationMap from '../components/map/ObservationMap';
@@ -164,11 +167,24 @@ export default function ObservationPage() {
               {t('labs.page.edit')}
             </Link>
           )}
+          {isAdmin && observation.publication === 'in_review' && (
+            <Link to={`/labs/${observation.id}/review`} className="btn-secondary">
+              <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
+              {t('labs.page.review')}
+            </Link>
+          )}
         </div>
+
+        {published && <LabCredits campaignId={observation.id} />}
 
         <p className="rounded-lg border border-edge bg-paper-sunk/50 p-3 text-xs text-ink-faint dark:border-white/10 dark:bg-white/5">
           {t('observation.protocolNote')}
         </p>
+
+        {/* Draft / in review: the author's submit panel (checklist, submit, withdraw). */}
+        {!published && canEdit && (
+          <SubmitPanel key={`${observation.id}-${observation.editNo}`} lab={labFromCampaign(observation)} compact />
+        )}
       </header>
 
       <Tabs tabs={tabs} active={tab} onChange={setTab} idBase="obs" />

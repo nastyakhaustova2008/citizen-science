@@ -2,10 +2,10 @@ import { supabase } from './supabase';
 import { labToPayload } from './labs';
 
 /**
- * Lab editor API (roadmap step 5a): thin wrappers over the RPCs in
- * supabase/migrations/010_lab_editor.sql. Every rule is checked there; errors come back as
+ * Lab editor API (roadmap steps 5a / 5b): thin wrappers over the RPCs in
+ * supabase/migrations/010_lab_editor.sql and 011_lab_review.sql. Every rule is checked there; errors come back as
  * LabError { code, details } — details is the parsed JSON for invalid_lab ({path: code}),
- * structural_change ([path]) and invalid_admin_profile ({field: code}).
+ * structural_change ([path]), not_ready ({path: code}) and invalid_admin_profile ({field: code}).
  */
 
 const CODES = [
@@ -18,6 +18,15 @@ const CODES = [
   'structural_change',
   'has_measurements',
   'invalid_admin_profile',
+  // 5b — review
+  'bad_state',
+  'not_ready',
+  'round_changed',
+  'own_lab',
+  'edited_this_round',
+  'already_reviewed',
+  'comment_required',
+  'comment_too_long',
 ];
 
 export class LabError extends Error {
@@ -95,6 +104,7 @@ export async function labLog({ campaignId = null, limit = 30, before = null } = 
     actorId: r.actor_id,
     actorUsername: r.actor_username,
     details: r.details || {},
+    round: r.round,
   }));
 }
 
@@ -123,4 +133,80 @@ export async function saveAdminProfile({ fullName, workplace, position }) {
   });
   const r = rows?.[0];
   return r ? { fullName: r.full_name, workplace: r.workplace, position: r.position || '' } : null;
+}
+
+/* ---- Review (step 5b, migration 011) ------------------------------- */
+
+/** Draft → in review. → the new edit_no. */
+export const submitLab = (id, editNo) => rpc('lab_submit', { p_id: id, p_edit_no: editNo });
+
+/** In review → draft. → the new edit_no. */
+export const withdrawLab = (id) => rpc('lab_withdraw', { p_id: id });
+
+/** verdict 'approve' | 'changes' (comment required). → { publication, approvals } */
+export const reviewLab = (id, round, verdict, comment = '') =>
+  rpc('lab_review', { p_id: id, p_round: round, p_verdict: verdict, p_comment: comment });
+
+/**
+ * Labs in review. myState: can_review | own_lab | edited_this_round | already_reviewed.
+ */
+export async function reviewQueue() {
+  const rows = await rpc('lab_review_queue', {});
+  return (rows || []).map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    titleHe: r.title_he,
+    titleEn: r.title_en,
+    titleRu: r.title_ru,
+    icon: r.icon,
+    createdBy: r.created_by,
+    creatorUsername: r.creator_username,
+    creatorFullName: r.creator_full_name,
+    submittedAt: r.submitted_at,
+    round: r.review_round,
+    approvals: Number(r.approvals),
+    myState: r.my_state,
+  }));
+}
+
+/** Every verdict on a lab, newest first. */
+export async function reviewHistory(id) {
+  const rows = await rpc('lab_review_history', { p_id: id });
+  return (rows || []).map((r) => ({
+    id: r.id,
+    round: r.round,
+    verdict: r.verdict,
+    comment: r.comment,
+    at: r.at,
+    reviewerId: r.reviewer_id,
+    reviewerUsername: r.reviewer_username,
+    reviewerFullName: r.reviewer_full_name,
+    reviewerWorkplace: r.reviewer_workplace,
+    currentRound: r.current_round,
+  }));
+}
+
+/**
+ * Public credits of a published lab: { legacy } or { legacy: false, publishedAt, creator, approvers }.
+ * creator / approvers: { fullName, position, workplace } (fullName null = former staff member).
+ */
+export async function labCredits(id) {
+  const data = await rpc('lab_credits', { p_id: id });
+  if (!data) return null;
+  if (data.legacy) return { legacy: true };
+  const person = (p) => (p ? { fullName: p.full_name, position: p.position, workplace: p.workplace, at: p.at } : null);
+  return {
+    legacy: false,
+    publishedAt: data.published_at,
+    creator: person(data.creator),
+    approvers: (data.approvers || []).map(person),
+  };
+}
+
+/** Creator line of every reviewed published lab: { [campaignId]: { fullName, workplace } }. */
+export async function allCredits() {
+  const rows = await rpc('lab_credits_all', {});
+  return Object.fromEntries(
+    (rows || []).map((r) => [r.campaign_id, { fullName: r.creator_full_name, workplace: r.creator_workplace }]),
+  );
 }

@@ -3,6 +3,7 @@ import { TOPICS, USERS, getUser } from '../data/mockData';
 import { METRICS } from '../data/metrics';
 import { fieldFromRow, buildScale } from '../lib/fields';
 import { supabase } from '../lib/supabase';
+import { allCredits, reviewQueue as fetchReviewQueue } from '../lib/labsApi';
 import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
 
 /**
@@ -21,7 +22,7 @@ import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
  * still lives in memory over the mock dataset for the session only.
  */
 const CAMPAIGN_COLUMNS =
-  'id, slug, metric, icon, title_he, title_en, title_ru, desc_he, desc_en, desc_ru, status, region, difficulty, equipment, protocol_url, center_lat, center_lng, zoom, sort_order, form_version, publication, edit_no, equipment_he, equipment_en, equipment_ru, protocol_he, protocol_en, protocol_ru, campaign_fields(*, campaign_field_options(*))';
+  'id, slug, metric, icon, title_he, title_en, title_ru, desc_he, desc_en, desc_ru, status, region, difficulty, equipment, protocol_url, center_lat, center_lng, zoom, sort_order, form_version, publication, edit_no, equipment_he, equipment_en, equipment_ru, protocol_he, protocol_en, protocol_ru, review_round, submitted_at, published_at, campaign_fields(*, campaign_field_options(*))';
 
 /** DB row (snake_case) → the Observation (campaign) shape the UI uses (see mockData.js). */
 function campaignFromRow(row) {
@@ -53,6 +54,10 @@ function campaignFromRow(row) {
     // draft | in_review | published (step 5). Only admins receive non-published rows (RLS).
     publication: row.publication || 'published',
     editNo: row.edit_no ?? 0,
+    reviewRound: row.review_round ?? 0,
+    submittedAt: row.submitted_at || null,
+    // null on a published lab = published before peer review (step 5b)
+    publishedAt: row.published_at || null,
     // Drafts may have no map center yet: the maps get a default view (centerSet = false).
     centerSet: row.center_lat != null && row.center_lng != null,
     center: row.center_lat != null && row.center_lng != null ? [row.center_lat, row.center_lng] : [31.4, 34.9],
@@ -229,6 +234,33 @@ export function AppDataProvider({ children }) {
       console.error('[campaigns] refresh failed', err);
     }
   }, []);
+
+  // Public "by …" line of reviewed labs for the home cards ({campaignId: {fullName, workplace}}).
+  const [credits, setCredits] = useState({});
+  useEffect(() => {
+    let alive = true;
+    allCredits()
+      .then((map) => alive && setCredits(map))
+      .catch(() => {}); // cards simply show no credit line
+    return () => {
+      alive = false;
+    };
+  }, [campaignsNonce, campaigns]);
+
+  // Labs waiting for review (admins): the list, and the badge = the ones I can review now.
+  const [reviewQueue, setReviewQueue] = useState([]);
+  const reloadReviewQueue = useCallback(async () => {
+    try {
+      setReviewQueue(await fetchReviewQueue());
+    } catch {
+      setReviewQueue([]);
+    }
+  }, []);
+  useEffect(() => {
+    if (seesDrafts) reloadReviewQueue();
+    else setReviewQueue([]);
+  }, [seesDrafts, reloadReviewQueue]);
+  const reviewCount = reviewQueue.filter((r) => r.myState === 'can_review').length;
 
   useEffect(() => {
     let alive = true;
@@ -503,6 +535,10 @@ export function AppDataProvider({ children }) {
       refreshAuthors,
       campaigns: publishedView,
       allCampaigns: campaignsView,
+      credits,
+      reviewQueue,
+      reviewCount,
+      reloadReviewQueue,
       campaignsLoading,
       campaignsError,
       reloadCampaigns,
@@ -535,6 +571,10 @@ export function AppDataProvider({ children }) {
       refreshAuthors,
       campaignsView,
       publishedView,
+      credits,
+      reviewQueue,
+      reviewCount,
+      reloadReviewQueue,
       campaignsLoading,
       campaignsError,
       reloadCampaigns,
