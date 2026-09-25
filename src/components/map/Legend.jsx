@@ -1,12 +1,14 @@
 import { useI18n } from '../../i18n';
-import { METRICS, legendStops, metricLabel } from '../../data/metrics';
+import { legendStops } from '../../data/metrics';
+import { fieldLabel } from '../../lib/fields';
 import { formatNumber } from '../../lib/format';
 
-export default function Legend({ metric }) {
+/** Colour legend for the campaign's primary field (`scale` from buildScale). */
+export default function Legend({ scale }) {
   const { t, locale } = useI18n();
-  const m = METRICS[metric];
-  if (!m) return null;
-  const stops = legendStops(metric, 5);
+  if (!scale) return null;
+  const m = scale;
+  const stops = legendStops(scale, 5);
   const gradient = `linear-gradient(to ${
     document.documentElement.dir === 'rtl' ? 'left' : 'right'
   }, ${m.colors.join(', ')})`;
@@ -14,7 +16,7 @@ export default function Legend({ metric }) {
   return (
     <div className="surface pointer-events-auto w-56 p-3 text-xs">
       <div className="mb-2 font-semibold text-ink dark:text-paper">
-        {t('map.legendTitle', { metric: metricLabel(metric, locale) })}
+        {t('map.legendTitle', { metric: fieldLabel(scale.field, locale) })}
       </div>
       <div className="h-2.5 w-full rounded" style={{ background: gradient }} aria-hidden="true" />
       <div className="mt-1 flex justify-between text-ink-faint">
@@ -27,7 +29,9 @@ export default function Legend({ metric }) {
       <div className="mt-1 flex justify-between text-[10px] uppercase tracking-wide text-ink-faint">
         <span>{t('map.low')}</span>
         <span>
-          {m.unit} · {t('map.high')}
+          {m.unit && <span dir="ltr">{m.unit}</span>}
+          {m.unit && ' · '}
+          {t('map.high')}
         </span>
       </div>
     </div>

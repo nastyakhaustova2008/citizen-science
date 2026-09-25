@@ -15,7 +15,8 @@ import { useI18n } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppData } from '../../context/AppDataContext';
 import { getUser } from '../../data/mockData';
-import { METRICS, metricLabel, colorForValue } from '../../data/metrics';
+import { colorForValue } from '../../data/metrics';
+import { fieldLabel } from '../../lib/fields';
 import { dailyMeanSeries, histogram, meanByGroup } from '../../lib/stats';
 import { formatDate } from '../../lib/format';
 import { EmptyState, SectionHeading } from '../primitives';
@@ -33,7 +34,9 @@ export default function ObservationCharts({ observation, measurements }) {
   const { t, locale } = useI18n();
   const { isDark } = useTheme();
   const { currentUser } = useAppData();
-  const m = METRICS[observation.metric];
+  // Charts use the primary field (the page shows an empty state when there is none).
+  const scale = observation.scale;
+  const m = scale;
   const [scope, setScope] = useState('all');
 
   const axis = isDark ? '#8a8f86' : '#5C6B60';
@@ -114,7 +117,7 @@ export default function ObservationCharts({ observation, measurements }) {
                 <Tooltip
                   contentStyle={tooltipStyle}
                   labelFormatter={(d) => formatDate(d, locale)}
-                  formatter={(v) => [`${v} ${m.unit}`, metricLabel(observation.metric, locale)]}
+                  formatter={(v) => [`${v} ${m.unit}`, fieldLabel(scale.field, locale)]}
                 />
                 <Line
                   type="monotone"
@@ -145,7 +148,7 @@ export default function ObservationCharts({ observation, measurements }) {
                 />
                 <Bar dataKey="count" radius={[3, 3, 0, 0]}>
                   {bins.map((b, i) => (
-                    <Cell key={i} fill={colorForValue(observation.metric, (b.start + b.end) / 2)} />
+                    <Cell key={i} fill={colorForValue(scale, (b.start + b.end) / 2)} />
                   ))}
                 </Bar>
               </BarChart>

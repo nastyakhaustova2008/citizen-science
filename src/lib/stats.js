@@ -22,6 +22,12 @@ export function dayCoverage(measurements) {
   return new Set(measurements.map((m) => toISODate(m.timestamp))).size;
 }
 
+/**
+ * All functions below work on `m.value` — the campaign's primary field value
+ * (set by AppDataContext; null when missing). Missing values are skipped.
+ */
+const hasNum = (m) => typeof m.value === 'number';
+
 export function summarize(measurements) {
   const values = measurements.map((m) => m.value).filter((v) => typeof v === 'number');
   const { min, max } = minMax(values);
@@ -39,7 +45,7 @@ export function summarize(measurements) {
 /** Daily mean series, sorted by date ascending. */
 export function dailyMeanSeries(measurements) {
   const byDay = new Map();
-  for (const m of measurements) {
+  for (const m of measurements.filter(hasNum)) {
     const day = toISODate(m.timestamp);
     if (!byDay.has(day)) byDay.set(day, []);
     byDay.get(day).push(m.value);
@@ -51,7 +57,7 @@ export function dailyMeanSeries(measurements) {
 
 /** Histogram buckets of a fixed step, spanning the data. */
 export function histogram(measurements, step) {
-  const values = measurements.map((m) => m.value);
+  const values = measurements.filter(hasNum).map((m) => m.value);
   if (!values.length) return [];
   const lo = Math.floor(Math.min(...values) / step) * step;
   const hi = Math.ceil(Math.max(...values) / step) * step;
@@ -74,7 +80,7 @@ export function histogram(measurements, step) {
 /** Mean value grouped by a key extractor (e.g. school). */
 export function meanByGroup(measurements, keyOf) {
   const groups = new Map();
-  for (const m of measurements) {
+  for (const m of measurements.filter(hasNum)) {
     const k = keyOf(m);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(m.value);

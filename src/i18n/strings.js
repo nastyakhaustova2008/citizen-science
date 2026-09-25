@@ -26,6 +26,8 @@ const he = {
       'תלמידים מודדים טמפרטורה, לחות, בהירות שמיים ואיכות אוויר לפי פרוטוקול אחיד, ומסמנים את התוצאות על מפה משותפת.',
   },
   common: {
+    yes: 'כן',
+    no: 'לא',
     join: 'הצטרפות',
     joined: 'הצטרפת',
     open: 'פתיחה',
@@ -212,6 +214,7 @@ const he = {
     sortDesc: 'מיון יורד',
   },
   charts: {
+    noPrimary: 'לקמפיין הזה אין שדה מספרי ראשי, לכן אין מפת צבעים וגרפים.',
     scopeMine: 'בית הספר שלי',
     scopeAll: 'כל בתי הספר',
     overTime: {
@@ -261,7 +264,23 @@ const he = {
     inCategory: 'בקטגוריה {category}',
     backToTopics: 'חזרה לרשימת הנושאים',
   },
+  fields: {
+    archived: 'הוסר מהטופס',
+    photoAttached: 'צורפה תמונה',
+    errors: {
+      required: 'שדה חובה.',
+      type: 'ערך לא תקין.',
+      min: 'הערך המינימלי הוא {min}{unit}.',
+      max: 'הערך המקסימלי הוא {max}{unit}.',
+      decimals: 'עד {decimals} ספרות אחרי הנקודה.',
+      too_long: 'הטקסט ארוך מדי.',
+      option: 'האפשרות הזו כבר לא זמינה. בחרו אחרת.',
+      duplicate: 'אותה אפשרות נבחרה פעמיים.',
+      unknown_field: 'השדה הזה כבר לא קיים בטופס.',
+    },
+  },
   wizard: {
+    formUpdated: 'הטופס עודכן או שחלק מהערכים לא התקבלו. הערכים שהזנתם נשמרו — בדקו את השדות המסומנים ושלחו שוב.',
     saving: 'שומר…',
     saveError: 'לא הצלחנו לשמור את המדידה. בדקו את החיבור ונסו שוב.',
     title: 'הוספת מדידה',
@@ -270,6 +289,7 @@ const he = {
       location: 'מיקום',
       values: 'ערכים ותנאים',
       photo: 'תמונה ואישור',
+      review: 'בדיקה ואישור',
     },
     protocolReminder: 'תזכורת מהפרוטוקול',
     step1: {
@@ -280,6 +300,8 @@ const he = {
       locating: 'מאתר מיקום…',
       locationError: 'לא הצלחנו לאתר מיקום. בחרו נקודה על המפה ידנית.',
       selected: 'נבחר: {lat}, {lng}',
+      placeLabel: 'שם המקום',
+      placePlaceholder: 'לדוגמה: שער בית הספר',
       noneSelected: 'לא נבחרה נקודה עדיין.',
     },
     step2: {
@@ -297,6 +319,8 @@ const he = {
       valueRequired: 'יש להזין ערך מספרי.',
     },
     step3: {
+      titleReview: 'בדיקה ואישור',
+      photoHintShort: 'JPG או PNG, עד 8MB.',
       title: 'תמונה ואישור',
       reminder: 'צלמו את המכשיר עם הרקע של נקודת המדידה, כך שאפשר יהיה לאמת את המיקום.',
       addPhoto: 'הוספת תמונה',
@@ -416,6 +440,8 @@ const en = {
       'Students measure temperature, humidity, sky brightness and air quality on one shared protocol, and plot the results on a common map.',
   },
   common: {
+    yes: 'Yes',
+    no: 'No',
     join: 'Join',
     joined: 'Joined',
     open: 'Open',
@@ -585,6 +611,7 @@ const en = {
     sortDesc: 'Sort descending',
   },
   charts: {
+    noPrimary: 'This campaign has no primary numeric field, so there are no colours or charts.',
     scopeMine: 'My school',
     scopeAll: 'All schools',
     overTime: {
@@ -634,12 +661,28 @@ const en = {
     inCategory: 'in {category}',
     backToTopics: 'Back to topics',
   },
+  fields: {
+    archived: 'removed from the form',
+    photoAttached: 'Photo attached',
+    errors: {
+      required: 'Required.',
+      type: 'Invalid value.',
+      min: 'The minimum is {min}{unit}.',
+      max: 'The maximum is {max}{unit}.',
+      decimals: 'At most {decimals} digits after the point.',
+      too_long: 'The text is too long.',
+      option: 'This option is no longer available. Pick another one.',
+      duplicate: 'The same option is selected twice.',
+      unknown_field: 'This field is no longer in the form.',
+    },
+  },
   wizard: {
+    formUpdated: 'The form was updated or some values were not accepted. Your input is kept — check the highlighted fields and send again.',
     saving: 'Saving…',
     saveError: 'Could not save the measurement. Check your connection and try again.',
     title: 'Add measurement',
     stepOf: 'Step {current} of {total}',
-    steps: { location: 'Location', values: 'Values & conditions', photo: 'Photo & confirm' },
+    steps: { location: 'Location', values: 'Values & conditions', photo: 'Photo & confirm', review: 'Review & confirm' },
     protocolReminder: 'Protocol reminder',
     step1: {
       title: 'Where did you measure?',
@@ -649,6 +692,8 @@ const en = {
       locating: 'Locating…',
       locationError: 'Could not get your location. Pick a point on the map manually.',
       selected: 'Selected: {lat}, {lng}',
+      placeLabel: 'Place name',
+      placePlaceholder: 'e.g. school gate',
       noneSelected: 'No point selected yet.',
     },
     step2: {
@@ -666,6 +711,8 @@ const en = {
       valueRequired: 'Enter a numeric value.',
     },
     step3: {
+      titleReview: 'Review & confirm',
+      photoHintShort: 'JPG or PNG, up to 8MB.',
       title: 'Photo & confirm',
       reminder: 'Photograph the instrument against the site background so the location can be verified.',
       addPhoto: 'Add photo',
@@ -778,6 +825,8 @@ const ru = {
       'Школьники измеряют температуру, влажность, яркость неба и качество воздуха по единому протоколу и наносят результаты на общую карту.',
   },
   common: {
+    yes: 'Да',
+    no: 'Нет',
     join: 'Присоединиться',
     joined: 'Вы участник',
     open: 'Открыть',
@@ -947,6 +996,7 @@ const ru = {
     sortDesc: 'Сортировать по убыванию',
   },
   charts: {
+    noPrimary: 'У этой кампании нет основного числового поля, поэтому нет цветов и графиков.',
     scopeMine: 'Моя школа',
     scopeAll: 'Все школы',
     overTime: {
@@ -996,12 +1046,28 @@ const ru = {
     inCategory: 'в разделе {category}',
     backToTopics: 'К списку тем',
   },
+  fields: {
+    archived: 'убрано из формы',
+    photoAttached: 'Фото приложено',
+    errors: {
+      required: 'Обязательное поле.',
+      type: 'Неверное значение.',
+      min: 'Минимум — {min}{unit}.',
+      max: 'Максимум — {max}{unit}.',
+      decimals: 'Не больше {decimals} знаков после запятой.',
+      too_long: 'Слишком длинный текст.',
+      option: 'Этот вариант больше недоступен. Выберите другой.',
+      duplicate: 'Один и тот же вариант выбран дважды.',
+      unknown_field: 'Этого поля больше нет в форме.',
+    },
+  },
   wizard: {
+    formUpdated: 'Форма обновилась или часть значений не принята. Введённое сохранено — проверьте отмеченные поля и отправьте снова.',
     saving: 'Сохраняем…',
     saveError: 'Не удалось сохранить измерение. Проверьте подключение и попробуйте ещё раз.',
     title: 'Добавить измерение',
     stepOf: 'Шаг {current} из {total}',
-    steps: { location: 'Место', values: 'Значения и условия', photo: 'Фото и подтверждение' },
+    steps: { location: 'Место', values: 'Значения и условия', photo: 'Фото и подтверждение', review: 'Проверка и подтверждение' },
     protocolReminder: 'Напоминание из протокола',
     step1: {
       title: 'Где вы измеряли?',
@@ -1011,6 +1077,8 @@ const ru = {
       locating: 'Определение местоположения…',
       locationError: 'Не удалось определить местоположение. Выберите точку на карте вручную.',
       selected: 'Выбрано: {lat}, {lng}',
+      placeLabel: 'Название места',
+      placePlaceholder: 'напр. ворота школы',
       noneSelected: 'Точка ещё не выбрана.',
     },
     step2: {
@@ -1028,6 +1096,8 @@ const ru = {
       valueRequired: 'Введите числовое значение.',
     },
     step3: {
+      titleReview: 'Проверка и подтверждение',
+      photoHintShort: 'JPG или PNG, до 8 МБ.',
       title: 'Фото и подтверждение',
       reminder: 'Сфотографируйте прибор на фоне точки измерения, чтобы можно было проверить место.',
       addPhoto: 'Добавить фото',

@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, FileDown, Wrench } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
 import { observationTitle } from '../data/mockData';
-import { METRICS, metricLabel } from '../data/metrics';
+import { fieldLabel } from '../lib/fields';
 import ObsIcon from '../components/ObsIcon';
 import { EmptyState, ErrorBlock, LoadingBlock } from '../components/primitives';
 
@@ -34,7 +34,11 @@ export default function ProtocolPage() {
   if (!observation) {
     return <EmptyState title={t('observation.notFound')} />;
   }
-  const metric = METRICS[observation.metric];
+  // Usual range of the primary field: the preset's plausible range, else the field's min–max.
+  const primary = observation.primaryField;
+  const range =
+    observation.scale?.plausible ||
+    (primary && primary.min != null && primary.max != null ? [primary.min, primary.max] : null);
   const Back = locale === 'he' ? ArrowRight : ArrowLeft;
 
   return (
@@ -77,13 +81,15 @@ export default function ProtocolPage() {
         </span>
       </div>
 
-      <p className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-warn">
-        {t('protocol.rangeNote', {
-          min: metric.plausible[0],
-          max: metric.plausible[1],
-          unit: metric.unit,
-        })}
-      </p>
+      {range && (
+        <p className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-warn">
+          {t('protocol.rangeNote', {
+            min: range[0],
+            max: range[1],
+            unit: primary.unit || '',
+          })}
+        </p>
+      )}
 
       <StepList title={t('protocol.sections.prepare')} items={t('protocol.prepare')} />
       <StepList title={t('protocol.sections.measure')} items={t('protocol.measure')} />
@@ -92,7 +98,8 @@ export default function ProtocolPage() {
 
       <div className="pt-2">
         <Link to={`/observations/${observation.slug}/add`} className="btn-primary">
-          {t('observation.addMeasurement')} — {metricLabel(observation.metric, locale)}
+          {t('observation.addMeasurement')}
+          {primary && ` — ${fieldLabel(primary, locale)}`}
         </Link>
       </div>
     </article>

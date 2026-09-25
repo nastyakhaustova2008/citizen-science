@@ -1,24 +1,27 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MapPin,
   Crosshair,
   Check,
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
-  ImagePlus,
-  X,
   CircleCheck,
 } from 'lucide-react';
 
 import { useI18n } from '../../i18n';
-import { useAppData } from '../../context/AppDataContext';
-import { METRICS, metricLabel } from '../../data/metrics';
-import { observationTitle } from '../../data/mockData';
-import { formatValueWithUnit, coordLabel } from '../../lib/format';
-import { photoDataUri } from '../../lib/media';
+import { useAppData, InvalidValuesError } from '../../context/AppDataContext';
+import {
+  activeFields,
+  emptyInput,
+  inputToValue,
+  validateValue,
+  fieldLabel,
+  formatFieldValue,
+} from '../../lib/fields';
+import { coordLabel } from '../../lib/format';
 import LocationPicker from './LocationPicker';
+import FieldInput from './FieldInput';
 
 const STEPS = ['location', 'values', 'photo'];
 
@@ -40,11 +43,17 @@ function nowLocalInput() {
   return d.toISOString().slice(0, 16);
 }
 
+/**
+ * Add-measurement wizard. Steps 2–3 are built from the campaign's field definitions
+ * (observation.fields): step 2 — every active non-photo field, step 3 — photo fields,
+ * summary and confirmation. The database re-validates on insert; if it rejects the values
+ * (e.g. the form changed meanwhile), the campaign is re-read, the input is kept and the
+ * fields that need fixing are highlighted.
+ */
 export default function AddMeasurementWizard({ observation }) {
   const { t, locale } = useI18n();
   const navigate = useNavigate();
   const { addMeasurement } = useAppData();
-  const metric = METRICS[observation.metric];
 
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
@@ -52,31 +61,90 @@ export default function AddMeasurementWizard({ observation }) {
   const [coords, setCoords] = useState(null);
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState(false);
+  const [placeLabel, setPlaceLabel] = useState('');
 
-  const [value, setValue] = useState('');
   const [datetime, setDatetime] = useState(nowLocalInput);
-  const [instrument, setInstrument] = useState('');
-  const [conditions, setConditions] = useState('');
-  const [notes, setNotes] = useState('');
-  const [touchedValue, setTouchedValue] = useState(false);
+  const [inputs, setInputs] = useState({});
+  const [touched, setTouched] = useState(() => new Set());
+  const [triedValues, setTriedValues] = useState(false);
+  const [triedPhotos, setTriedPhotos] = useState(false);
+  const [serverErrors, setServerErrors] = useState({});
+  const [formUpdated, setFormUpdated] = useState(false);
 
-  const [photo, setPhoto] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
 
-  const numeric = value === '' ? null : Number(value);
-  const outOfRange =
-    numeric != null &&
-    !Number.isNaN(numeric) &&
-    (numeric < metric.plausible[0] || numeric > metric.plausible[1]);
-  const valueInvalid = touchedValue && (value === '' || Number.isNaN(numeric));
+  // Re-derived on every render, so a refreshed definition applies immediately.
+  const fields = activeFields(observation);
+  const valueFields = fields.filter((f) => f.type !== 'photo');
+  const photoFields = fields.filter((f) => f.type === 'photo');
+  const scale = observation.scale;
 
-  const canNext = useMemo(() => {
-    if (step === 0) return !!coords;
-    if (step === 1) return value !== '' && !Number.isNaN(numeric) && instrument.trim() !== '';
-    return confirmed;
-  }, [step, coords, value, numeric, instrument, confirmed]);
+  const rawOf = (f) => (f.key in inputs ? inputs[f.key] : emptyInput(f));
+
+  const values = useMemo(() => {
+    const out = {};
+    for (const f of fields) {
+      const v = inputToValue(f, f.key in inputs ? inputs[f.key] : emptyInput(f));
+      if (v !== undefined) out[f.key] = v;
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputs, observation]);
+
+  const clientErrors = useMemo(() => {
+    const out = {};
+    for (const f of fields) {
+      const e = validateValue(f, values[f.key]);
+      if (e) out[f.key] = e;
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values, observation]);
+
+  const datetimeInvalid = !datetime || Number.isNaN(new Date(datetime).getTime());
+
+  function errorFor(f) {
+    if (serverErrors[f.key]) return serverErrors[f.key];
+    const tried = f.type === 'photo' ? triedPhotos : triedValues;
+    return tried || touched.has(f.key) ? clientErrors[f.key] || null : null;
+  }
+
+  function warningFor(f) {
+    if (!f.isPrimary || !scale?.plausible || clientErrors[f.key]) return null;
+    const v = values[f.key];
+    if (typeof v !== 'number') return null;
+    const [min, max] = scale.plausible;
+    if (v >= min && v <= max) return null;
+    return t('wizard.step2.rangeWarning', { min, max, unit: f.unit || '' });
+  }
+
+  function setInput(key, raw) {
+    setInputs((prev) => ({ ...prev, [key]: raw }));
+    setServerErrors((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
+  function touch(key) {
+    setTouched((prev) => (prev.has(key) ? prev : new Set(prev).add(key)));
+  }
+
+  const valueStepErrors = valueFields.filter((f) => clientErrors[f.key] || serverErrors[f.key]);
+  const photoStepErrors = photoFields.filter((f) => clientErrors[f.key] || serverErrors[f.key]);
+
+  function focusField(key) {
+    setTimeout(() => {
+      const el =
+        document.getElementById(`field-${key}`) ||
+        document.querySelector(`input[name="field-${key}"]`);
+      el?.focus();
+    }, 0);
+  }
 
   function useMyLocation() {
     setLocError(false);
@@ -101,37 +169,80 @@ export default function AddMeasurementWizard({ observation }) {
     );
   }
 
-  function onPhoto(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setPhoto(reader.result);
-    reader.readAsDataURL(file);
+  function goNext() {
+    if (step === 0) {
+      if (coords) setStep(1);
+      return;
+    }
+    setTriedValues(true);
+    if (datetimeInvalid) return;
+    if (valueStepErrors.length) {
+      focusField(valueStepErrors[0].key);
+      return;
+    }
+    setStep(2);
   }
 
   async function submit() {
+    setTriedValues(true);
+    setTriedPhotos(true);
+    if (valueStepErrors.length || datetimeInvalid) {
+      setStep(1);
+      if (valueStepErrors.length) focusField(valueStepErrors[0].key);
+      return;
+    }
+    if (photoStepErrors.length) return;
+
     setSaving(true);
     setSaveError(false);
+    setFormUpdated(false);
     try {
+      const photos = {};
+      for (const f of photoFields) if (inputs[f.key]) photos[f.key] = inputs[f.key];
       await addMeasurement({
         observationId: observation.id,
         lat: coords[0],
         lng: coords[1],
-        value: numeric,
+        placeLabel: placeLabel.trim(),
         timestamp: new Date(datetime).toISOString(),
-        instrument: instrument.trim(),
-        conditions: conditions.trim(),
-        notes: notes.trim(),
-        photoDataUri: photo,
-        placeLabel: conditions.trim() || t('wizard.steps.location'),
+        values,
+        photos,
       });
       setDone(true);
     } catch (err) {
-      console.error('[wizard] save failed', err);
-      setSaveError(true);
+      if (err instanceof InvalidValuesError) {
+        // The campaign was re-read; keep every input and highlight what the database refused.
+        setServerErrors(err.fieldErrors);
+        setFormUpdated(true);
+        const keys = Object.keys(err.fieldErrors);
+        const onlyPhotos = keys.length > 0 && keys.every((k) => photoFields.some((f) => f.key === k));
+        if (!onlyPhotos) {
+          setStep(1);
+          const first = valueFields.find((f) => keys.includes(f.key));
+          if (first) focusField(first.key);
+        }
+      } else {
+        console.error('[wizard] save failed', err);
+        setSaveError(true);
+      }
     } finally {
       setSaving(false);
     }
+  }
+
+  function reset() {
+    setDone(false);
+    setStep(0);
+    setCoords(null);
+    setPlaceLabel('');
+    setDatetime(nowLocalInput());
+    setInputs({});
+    setTouched(new Set());
+    setTriedValues(false);
+    setTriedPhotos(false);
+    setServerErrors({});
+    setFormUpdated(false);
+    setConfirmed(false);
   }
 
   if (done) {
@@ -146,18 +257,7 @@ export default function AddMeasurementWizard({ observation }) {
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => {
-              setDone(false);
-              setStep(0);
-              setCoords(null);
-              setValue('');
-              setInstrument('');
-              setConditions('');
-              setNotes('');
-              setPhoto(null);
-              setConfirmed(false);
-              setTouchedValue(false);
-            }}
+            onClick={reset}
           >
             {t('wizard.success.addAnother')}
           </button>
@@ -198,7 +298,7 @@ export default function AddMeasurementWizard({ observation }) {
                 i === step ? 'font-semibold text-ink dark:text-paper' : 'text-ink-faint'
               }`}
             >
-              {t(`wizard.steps.${s}`)}
+              {t(`wizard.steps.${s === 'photo' && !photoFields.length ? 'review' : s}`)}
             </span>
             {i < STEPS.length - 1 && <span className="h-px flex-1 bg-edge dark:bg-white/10" />}
           </li>
@@ -241,145 +341,99 @@ export default function AddMeasurementWizard({ observation }) {
               : ''}
             {!coords && <span dir="auto">{t('wizard.step1.noneSelected')}</span>}
           </p>
+          <label className="block">
+            <span className="label">
+              {t('wizard.step1.placeLabel')}{' '}
+              <span className="font-normal text-ink-faint">({t('common.optional')})</span>
+            </span>
+            <input
+              type="text"
+              maxLength={120}
+              className="input"
+              placeholder={t('wizard.step1.placePlaceholder')}
+              value={placeLabel}
+              onChange={(e) => setPlaceLabel(e.target.value)}
+            />
+          </label>
         </div>
       )}
 
-      {/* Step 2 — values */}
+      {/* Step 2 — values (built from the campaign's fields) */}
       {step === 1 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <h2 className="font-serif text-lg font-bold text-ink dark:text-paper">
             {t('wizard.step2.title')}
           </h2>
           <ProtocolReminder text={t('wizard.step2.reminder')} />
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="label">{t('wizard.step2.valueLabel', { unit: metric.unit })}</span>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="any"
-                className={`input tnum ${valueInvalid ? '!border-danger' : ''}`}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onBlur={() => setTouchedValue(true)}
-                aria-invalid={valueInvalid}
-                aria-describedby="value-help"
-              />
-            </label>
-            <label className="block">
-              <span className="label">{t('wizard.step2.datetimeLabel')}</span>
-              <input
-                type="datetime-local"
-                className="input tnum"
-                value={datetime}
-                onChange={(e) => setDatetime(e.target.value)}
-              />
-            </label>
-          </div>
-
-          <div id="value-help" aria-live="polite">
-            {valueInvalid && <p className="text-sm text-danger">{t('wizard.step2.valueRequired')}</p>}
-            {outOfRange && !valueInvalid && (
-              <p className="flex items-start gap-1.5 rounded-lg border border-warn/40 bg-warn/10 p-2 text-sm text-warn">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                {t('wizard.step2.rangeWarning', {
-                  min: metric.plausible[0],
-                  max: metric.plausible[1],
-                  unit: metric.unit,
-                })}
-              </p>
-            )}
-          </div>
+          {formUpdated && <FormUpdatedNotice />}
 
           <label className="block">
-            <span className="label">{t('wizard.step2.instrumentLabel')}</span>
+            <span className="label">{t('wizard.step2.datetimeLabel')}</span>
             <input
-              type="text"
-              className="input"
-              placeholder={t('wizard.step2.instrumentPlaceholder')}
-              value={instrument}
-              onChange={(e) => setInstrument(e.target.value)}
+              type="datetime-local"
+              className={`input tnum ${triedValues && datetimeInvalid ? '!border-danger' : ''}`}
+              value={datetime}
+              onChange={(e) => setDatetime(e.target.value)}
+              aria-invalid={triedValues && datetimeInvalid}
             />
+            {triedValues && datetimeInvalid && (
+              <p className="mt-1 text-sm text-danger">{t('fields.errors.required')}</p>
+            )}
           </label>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="label">
-                {t('wizard.step2.conditionsLabel')}{' '}
-                <span className="font-normal text-ink-faint">({t('common.optional')})</span>
-              </span>
-              <input
-                type="text"
-                className="input"
-                placeholder={t('wizard.step2.conditionsPlaceholder')}
-                value={conditions}
-                onChange={(e) => setConditions(e.target.value)}
-              />
-            </label>
-            <label className="block">
-              <span className="label">
-                {t('wizard.step2.notesLabel')}{' '}
-                <span className="font-normal text-ink-faint">({t('common.optional')})</span>
-              </span>
-              <input
-                type="text"
-                className="input"
-                placeholder={t('wizard.step2.notesPlaceholder')}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </label>
-          </div>
+          {valueFields.map((f) => (
+            <FieldInput
+              key={f.key}
+              field={f}
+              value={rawOf(f)}
+              onChange={(raw) => setInput(f.key, raw)}
+              onBlur={() => touch(f.key)}
+              error={errorFor(f)}
+              warning={warningFor(f)}
+            />
+          ))}
         </div>
       )}
 
-      {/* Step 3 — photo & confirm */}
+      {/* Step 3 — photo fields, summary & confirm */}
       {step === 2 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <h2 className="font-serif text-lg font-bold text-ink dark:text-paper">
-            {t('wizard.step3.title')}
+            {photoFields.length ? t('wizard.step3.title') : t('wizard.step3.titleReview')}
           </h2>
-          <ProtocolReminder text={t('wizard.step3.reminder')} />
+          {photoFields.length > 0 && <ProtocolReminder text={t('wizard.step3.reminder')} />}
+          {formUpdated && <FormUpdatedNotice />}
 
-          {photo ? (
-            <div className="relative w-fit">
-              <img
-                src={photo}
-                alt={t('wizard.step3.photoAlt')}
-                className="max-h-64 rounded-lg border border-edge dark:border-white/10"
-              />
-              <button
-                type="button"
-                className="btn-secondary absolute end-2 top-2 !px-2 !py-1"
-                onClick={() => setPhoto(null)}
-              >
-                <X className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only">{t('wizard.step3.removePhoto')}</span>
-              </button>
-            </div>
-          ) : (
-            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-edge bg-paper-sunk/40 p-6 text-center text-sm text-ink-faint hover:border-moss dark:border-white/15 dark:bg-white/5">
-              <ImagePlus className="h-6 w-6" aria-hidden="true" strokeWidth={1.5} />
-              <span className="font-semibold text-ink dark:text-paper">{t('wizard.step3.addPhoto')}</span>
-              <span>{t('wizard.step3.photoHint')}</span>
-              <input type="file" accept="image/png,image/jpeg" className="sr-only" onChange={onPhoto} />
-            </label>
-          )}
+          {photoFields.map((f) => (
+            <FieldInput
+              key={f.key}
+              field={f}
+              value={rawOf(f)}
+              onChange={(raw) => setInput(f.key, raw)}
+              error={errorFor(f)}
+            />
+          ))}
 
           <div className="surface p-4">
             <h3 className="mb-2 text-sm font-semibold text-ink dark:text-paper">
               {t('wizard.step3.summary')}
             </h3>
             <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-              <dt className="text-ink-faint">{metricLabel(observation.metric, locale)}</dt>
-              <dd className="tnum font-semibold">
-                {formatValueWithUnit(numeric, metric.unit, { locale, decimals: metric.decimals })}
-              </dd>
+              {valueFields
+                .filter((f) => values[f.key] !== undefined)
+                .map((f) => (
+                  <SummaryRow key={f.key} label={fieldLabel(f, locale)} numeric={f.type === 'number'}>
+                    {formatFieldValue(f, values[f.key], { locale, t })}
+                  </SummaryRow>
+                ))}
               <dt className="text-ink-faint">{t('map.panel.date')}</dt>
               <dd className="tnum">{new Date(datetime).toLocaleString(locale)}</dd>
-              <dt className="text-ink-faint">{t('wizard.step2.instrumentLabel')}</dt>
-              <dd>{instrument}</dd>
+              {placeLabel.trim() && (
+                <>
+                  <dt className="text-ink-faint">{t('wizard.step1.placeLabel')}</dt>
+                  <dd>{placeLabel.trim()}</dd>
+                </>
+              )}
               <dt className="text-ink-faint">GPS</dt>
               <dd className="tnum text-xs" dir="ltr">
                 {coords && `${coordLabel(coords[0])}, ${coordLabel(coords[1])}`}
@@ -418,25 +472,41 @@ export default function AddMeasurementWizard({ observation }) {
         </button>
 
         {step < 2 ? (
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={!canNext}
-            onClick={() => {
-              if (step === 1) setTouchedValue(true);
-              if (canNext) setStep((s) => s + 1);
-            }}
-          >
+          <button type="button" className="btn-primary" disabled={step === 0 && !coords} onClick={goNext}>
             {t('common.next')}
             <Next className="h-4 w-4" aria-hidden="true" />
           </button>
         ) : (
-          <button type="button" className="btn-primary" disabled={!canNext || saving} onClick={submit}>
+          <button type="button" className="btn-primary" disabled={!confirmed || saving} onClick={submit}>
             <Check className="h-4 w-4" aria-hidden="true" />
             {saving ? t('wizard.saving') : t('wizard.step3.submit')}
           </button>
         )}
       </div>
     </div>
+  );
+}
+
+function FormUpdatedNotice() {
+  const { t } = useI18n();
+  return (
+    <p
+      className="flex items-start gap-1.5 rounded-lg border border-warn/40 bg-warn/10 p-2 text-sm text-warn"
+      role="alert"
+    >
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+      {t('wizard.formUpdated')}
+    </p>
+  );
+}
+
+function SummaryRow({ label, numeric, children }) {
+  return (
+    <>
+      <dt className="text-ink-faint">{label}</dt>
+      <dd className={numeric ? 'tnum font-semibold' : 'break-words'}>
+        {numeric ? <span dir="ltr">{children}</span> : children}
+      </dd>
+    </>
   );
 }

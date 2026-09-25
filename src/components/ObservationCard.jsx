@@ -40,7 +40,7 @@ export default function ObservationCard({ observation }) {
         <MiniMap
           center={observation.center}
           points={points}
-          metric={observation.metric}
+          scale={observation.scale}
         />
       </div>
 
