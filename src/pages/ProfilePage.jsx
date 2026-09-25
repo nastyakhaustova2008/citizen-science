@@ -12,7 +12,6 @@ import {
 
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
-import { useMockLoad } from '../hooks/useMockLoad';
 import {
   getUser,
   CURRENT_USER_ID,
@@ -22,7 +21,7 @@ import {
   observationTitle,
 } from '../data/mockData';
 
-import { Avatar, EmptyState, SectionHeading, Skeleton, LoadingBlock } from '../components/primitives';
+import { Avatar, EmptyState, SectionHeading, Skeleton, LoadingBlock, ErrorBlock } from '../components/primitives';
 import MiniMap from '../components/MiniMap';
 import ContributionGraph from '../components/ContributionGraph';
 import { formatDate } from '../lib/format';
@@ -40,8 +39,12 @@ export default function ProfilePage() {
   const { userId } = useParams();
   const id = userId || CURRENT_USER_ID;
   const { t, locale } = useI18n();
-  const { measurements } = useAppData();
-  const { loading } = useMockLoad([id]);
+  const {
+    measurements,
+    measurementsLoading: loading,
+    measurementsError: error,
+    reloadMeasurements: retry,
+  } = useAppData();
 
   const user = getUser(id);
   const myPoints = useMemo(
@@ -61,6 +64,7 @@ export default function ProfilePage() {
   }
 
   if (loading) return <LoadingBlock />;
+  if (error) return <ErrorBlock onRetry={retry} />;
 
   const center = myPoints[0] ? [myPoints[0].lat, myPoints[0].lng] : [31.9, 34.9];
 

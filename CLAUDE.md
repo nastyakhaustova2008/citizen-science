@@ -6,15 +6,19 @@
 
 ## Текущий статус
 
-* Демо-версия, бэкенда нет. Все данные захардкожены в `src/data/mockData.js`.
-* Изменения пользователя живут только в памяти (`AppDataContext`) и теряются при перезагрузке.
+* Бэкенд — Supabase, но **только для измерений** (таблица `measurements`). `AppDataContext` читает их из базы и сохраняет новые; состояния loading/error/empty берутся из контекста (`measurementsLoading`, `measurementsError`, `reloadMeasurements`).
+* Всё остальное пока захардкожено в `src/data/mockData.js`: пользователи, кампании, форум (темы/посты/реакции), бейджи, «присоединиться к кампании».
+* Ещё на моках (читают `MEASUREMENTS` из mockData, а не из базы): лента активности и счётчики школ/активных кампаний на главной, `participantsCount`, график вклада в профиле.
+* Только в памяти, теряется при перезагрузке: комментарии к точкам, пометки «проблема» (flag), фото, загруженные учениками (`photoDataUri`), новые темы/посты форума.
 * Авторизации нет: текущий пользователь зашит как `CURRENT_USER_ID = 'u-noa'`.
-* Загрузка имитируется `useMockLoad` (setTimeout ~550 мс).
+* Доступ к `measurements` — **временные** RLS-политики: все читают и добавляют, изменять/удалять нельзя. Заменить на шаге 4 (логин и роли).
+* `src/hooks/useMockLoad.js` (имитация загрузки, setTimeout ~550 мс) сейчас нигде не используется — оставлен для будущих мок-экранов.
 * Деплой: GitHub → Vercel. (В репо также лежит `netlify.toml` — остаток, не используется.)
 
 ## Стек
 
 * Vite 5 + React 18, JavaScript (JSX), без TypeScript
+* Бэкенд: Supabase (@supabase/supabase-js) — пока только таблица `measurements`
 * react-router-dom 6 (HashRouter)
 * Tailwind CSS 3
 * Карта: leaflet + react-leaflet + react-leaflet-cluster, тайлы OpenStreetMap
@@ -29,6 +33,14 @@
 * `npm run build` — сборка в `dist/`
 * `npm run preview` — просмотр сборки
 
+## Переменные окружения
+
+* `VITE_SUPABASE_URL` — URL проекта Supabase
+* `VITE_SUPABASE_ANON_KEY` — publishable (anon) ключ Supabase
+* В Vercel заданы для всех окружений. Локально — файл `.env.local` в корне (в `.gitignore`, не коммитить). После изменения перезапустить `npm run dev`.
+* Если переменных нет, `supabase` = `null` и измерения показывают состояние ошибки.
+* Имена не менять. Серверные ключи (service_role/secret) во фронтенд не класть.
+
 ## Структура
 
 ```
@@ -39,9 +51,9 @@ src/
 ├── leaflet-setup.js  — пути к иконкам маркеров Leaflet под Vite
 ├── i18n/             — strings.js (строки he/en/ru, LOCALES), index.jsx (I18nProvider, t(), useI18n/useT)
 ├── data/             — mockData.js (весь датасет), metrics.js (4 метрики: единицы, диапазоны, цветовые шкалы)
-├── context/          — AppDataContext.jsx (данные в памяти), ThemeContext.jsx (тема)
-├── hooks/            — useMockLoad.js (имитация loading/error/retry)
-├── lib/              — format.js, stats.js, export.js (CSV/JSON/GeoJSON), media.js (SVG-заглушки)
+├── context/          — AppDataContext.jsx (измерения из Supabase + остальное в памяти), ThemeContext.jsx (тема)
+├── hooks/            — useMockLoad.js (имитация loading/error/retry, сейчас не используется)
+├── lib/              — supabase.js (клиент), format.js, stats.js, export.js (CSV/JSON/GeoJSON), media.js (SVG-заглушки)
 ├── pages/            — Home, Observation (вкладки Карта·Данные·Графики·Обсуждение),
 │                       AddMeasurement, Profile, Protocol, NotFound
 └── components/
@@ -54,13 +66,22 @@ src/
     └── wizard/       — AddMeasurementWizard (место → значения → фото), LocationPicker
 ```
 
+```
+supabase/
+├── migrations/       — SQL-схема: 001_measurements.sql (таблица, индекс, временные RLS-политики)
+└── seed/             — демо-данные: 001_measurements_seed.sql (38 мок-измерений, повторный запуск безопасен)
+```
+
+SQL запускается вручную в Supabase SQL Editor: сначала migrations, потом seed. Supabase CLI не используется. Новые изменения схемы — новым файлом `00N_*.sql`, старые миграции не редактировать.
+
 Конфиги в корне: vite.config.js (base './', порт 5173), tailwind.config.js (палитра «forest», шрифты, тёмная тема).
 
 ## Где что менять
 
 * Данные и форматы записей → `src/data/mockData.js` (форматы описаны в комментарии в начале файла)
+* Схема измерений в базе → новая миграция в `supabase/migrations/` + `MEASUREMENT_COLUMNS`/`fromRow()` в `AppDataContext.jsx` (колонки snake_case, в UI camelCase; `measured_at` ↔ `timestamp`)
 * Новая метрика → `src/data/metrics.js`
-* Логика добавления/изменения данных → `src/context/AppDataContext.jsx`
+* Логика чтения/добавления/изменения данных → `src/context/AppDataContext.jsx`
 * Новая страница → `src/pages/` + маршрут в `App.jsx`
 * Компоненты одной фичи → своя папка в `src/components/` (как map/, wizard/)
 * Общие UI-элементы → `components/primitives.jsx`, не дублировать
@@ -92,7 +113,7 @@ src/
 
 ## Направление развития (черновик, уточнить)
 
-1. Подключить бэкенд (кандидат — Supabase) и перенести туда измерения.
+1. ~~Подключить бэкенд (Supabase) и перенести туда измерения.~~ Сделано.
 2. Перенести кампании/лабораторные из кода в базу.
 3. Строить форму измерения динамически из описания лабораторной.
 4. Логин и роли: student / admin.

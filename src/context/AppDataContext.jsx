@@ -1,46 +1,120 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
-  MEASUREMENTS,
   TOPICS,
   USERS,
   CURRENT_USER_ID,
   getUser,
   getObservation,
 } from '../data/mockData';
+import { supabase } from '../lib/supabase';
 
 /**
- * In-memory application state layered over the mock dataset.
- * New measurements / posts / joins live here for the session only —
- * nothing is persisted, there is no backend.
+ * Application state.
+ * Measurements are read from / inserted into Supabase (`measurements` table).
+ * Everything else (topics, posts, joins, point comments, flags, photos)
+ * still lives in memory over the mock dataset for the session only.
  */
+const MEASUREMENT_COLUMNS =
+  'id, observation_id, user_id, place_label, lat, lng, value, measured_at, instrument, conditions, notes, verification, photo_seed';
+
+/** DB row (snake_case) → the Measurement shape the UI uses (see mockData.js). */
+function fromRow(row) {
+  return {
+    id: row.id,
+    observationId: row.observation_id,
+    userId: row.user_id,
+    placeLabel: row.place_label,
+    lat: row.lat,
+    lng: row.lng,
+    value: row.value,
+    timestamp: row.measured_at,
+    instrument: row.instrument,
+    conditions: row.conditions,
+    notes: row.notes,
+    verification: row.verification,
+    photoSeed: row.photo_seed,
+    comments: [],
+  };
+}
+
 const AppDataContext = createContext(null);
 
 export function AppDataProvider({ children }) {
-  const [measurements, setMeasurements] = useState(MEASUREMENTS);
+  const [measurements, setMeasurements] = useState([]);
+  const [measurementsLoading, setMeasurementsLoading] = useState(true);
+  const [measurementsError, setMeasurementsError] = useState(false);
+  const [measurementsNonce, setMeasurementsNonce] = useState(0);
   const [topics, setTopics] = useState(TOPICS);
   const [joined, setJoined] = useState(() => new Set(['obs-schoolyard-heat', 'obs-dark-skies']));
 
   const currentUser = getUser(CURRENT_USER_ID);
 
-  const addMeasurement = useCallback((draft) => {
-    const id = `m-new-${Date.now()}`;
-    const record = {
-      id,
-      observationId: draft.observationId,
-      userId: CURRENT_USER_ID,
-      placeLabel: draft.placeLabel || draft.conditions || '—',
-      lat: draft.lat,
-      lng: draft.lng,
-      value: Number(draft.value),
-      timestamp: draft.timestamp,
-      instrument: draft.instrument,
-      conditions: draft.conditions,
-      notes: draft.notes || '',
-      verification: 'pending',
-      photoSeed: draft.photoDataUri ? null : null,
-      photoDataUri: draft.photoDataUri || null,
-      comments: [],
+  useEffect(() => {
+    let alive = true;
+    setMeasurementsLoading(true);
+    setMeasurementsError(false);
+    (async () => {
+      try {
+        if (!supabase) throw new Error('Supabase is not configured');
+        const { data, error } = await supabase
+          .from('measurements')
+          .select(MEASUREMENT_COLUMNS)
+          .order('measured_at', { ascending: false });
+        if (error) throw error;
+        if (!alive) return;
+        // Keep in-memory extras (photos, comments, flags) for rows already on screen.
+        setMeasurements((prev) => {
+          const local = new Map(prev.map((m) => [m.id, m]));
+          return data.map((row) => {
+            const m = fromRow(row);
+            const old = local.get(m.id);
+            return old
+              ? {
+                  ...m,
+                  photoDataUri: old.photoDataUri,
+                  comments: old.comments,
+                  verification: old.verification === 'flagged' ? 'flagged' : m.verification,
+                }
+              : m;
+          });
+        });
+      } catch (err) {
+        if (!alive) return;
+        console.error('[measurements] load failed', err);
+        setMeasurementsError(true);
+      } finally {
+        if (alive) setMeasurementsLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
     };
+  }, [measurementsNonce]);
+
+  const reloadMeasurements = useCallback(() => setMeasurementsNonce((n) => n + 1), []);
+
+  /** Insert into Supabase; resolves with the saved record, throws on failure. */
+  const addMeasurement = useCallback(async (draft) => {
+    if (!supabase) throw new Error('Supabase is not configured');
+    const { data, error } = await supabase
+      .from('measurements')
+      .insert({
+        observation_id: draft.observationId,
+        user_id: CURRENT_USER_ID,
+        place_label: draft.placeLabel || draft.conditions || '—',
+        lat: draft.lat,
+        lng: draft.lng,
+        value: Number(draft.value),
+        measured_at: draft.timestamp,
+        instrument: draft.instrument,
+        conditions: draft.conditions,
+        notes: draft.notes || '',
+      })
+      .select(MEASUREMENT_COLUMNS)
+      .single();
+    if (error) throw error;
+    // Photos are not stored in the database yet — keep them in memory only.
+    const record = { ...fromRow(data), photoDataUri: draft.photoDataUri || null };
     setMeasurements((prev) => [record, ...prev]);
     return record;
   }, []);
@@ -183,6 +257,9 @@ export function AppDataProvider({ children }) {
       users: USERS,
       currentUser,
       measurements,
+      measurementsLoading,
+      measurementsError,
+      reloadMeasurements,
       topics,
       joined,
       isJoined: (id) => joined.has(id),
@@ -202,6 +279,9 @@ export function AppDataProvider({ children }) {
     [
       currentUser,
       measurements,
+      measurementsLoading,
+      measurementsError,
+      reloadMeasurements,
       topics,
       joined,
       addMeasurement,

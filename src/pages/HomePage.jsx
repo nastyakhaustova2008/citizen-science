@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { MapPin, School, Radio, Search } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
-import { useMockLoad } from '../hooks/useMockLoad';
 import {
   OBSERVATIONS,
   NETWORK_STATS,
@@ -22,8 +21,12 @@ const ALL = '__all__';
 
 export default function HomePage() {
   const { t, locale } = useI18n();
-  const { measurements } = useAppData();
-  const { loading, error, retry } = useMockLoad([]);
+  const {
+    measurements,
+    measurementsLoading: loading,
+    measurementsError: error,
+    reloadMeasurements: retry,
+  } = useAppData();
 
   const [query, setQuery] = useState('');
   const [topic, setTopic] = useState(ALL);

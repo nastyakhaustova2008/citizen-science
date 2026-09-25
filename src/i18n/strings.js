@@ -262,6 +262,8 @@ const he = {
     backToTopics: 'חזרה לרשימת הנושאים',
   },
   wizard: {
+    saving: 'שומר…',
+    saveError: 'לא הצלחנו לשמור את המדידה. בדקו את החיבור ונסו שוב.',
     title: 'הוספת מדידה',
     stepOf: 'שלב {current} מתוך {total}',
     steps: {
@@ -633,6 +635,8 @@ const en = {
     backToTopics: 'Back to topics',
   },
   wizard: {
+    saving: 'Saving…',
+    saveError: 'Could not save the measurement. Check your connection and try again.',
     title: 'Add measurement',
     stepOf: 'Step {current} of {total}',
     steps: { location: 'Location', values: 'Values & conditions', photo: 'Photo & confirm' },
@@ -993,6 +997,8 @@ const ru = {
     backToTopics: 'К списку тем',
   },
   wizard: {
+    saving: 'Сохраняем…',
+    saveError: 'Не удалось сохранить измерение. Проверьте подключение и попробуйте ещё раз.',
     title: 'Добавить измерение',
     stepOf: 'Шаг {current} из {total}',
     steps: { location: 'Место', values: 'Значения и условия', photo: 'Фото и подтверждение' },

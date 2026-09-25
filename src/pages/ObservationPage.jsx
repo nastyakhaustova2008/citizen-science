@@ -4,7 +4,6 @@ import { Plus, FileText, Map as MapIcon, Table2, BarChart3, MessagesSquare, Arro
 
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
-import { useMockLoad } from '../hooks/useMockLoad';
 import { getObservation, observationTitle, observationDesc } from '../data/mockData';
 import { metricLabel } from '../data/metrics';
 
@@ -28,10 +27,17 @@ export default function ObservationPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { t, locale } = useI18n();
-  const { measurementsFor, topicsFor, isJoined, toggleJoin } = useAppData();
+  const {
+    measurementsFor,
+    measurementsLoading: loading,
+    measurementsError: error,
+    reloadMeasurements: retry,
+    topicsFor,
+    isJoined,
+    toggleJoin,
+  } = useAppData();
 
   const observation = getObservation(slug);
-  const { loading, error, retry } = useMockLoad([slug]);
 
   const measurements = useMemo(
     () => (observation ? measurementsFor(observation.id) : []),
