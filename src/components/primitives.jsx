@@ -6,6 +6,7 @@ import {
   Clock3,
   Flag,
 } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../i18n';
 import { avatarDataUri } from '../lib/media';
 
@@ -100,6 +101,37 @@ export function Avatar({ user, size = 32, className = '' }) {
       className={`shrink-0 rounded-lg border border-edge object-cover dark:border-white/10 ${className}`}
       style={{ width: size, height: size }}
     />
+  );
+}
+
+/** Author name for getAuthor() results: username, demo user (+ "demo" chip), or "unknown". */
+export function AuthorName({ user, className = '' }) {
+  const { t } = useI18n();
+  if (!user) return <span className={`text-ink-faint ${className}`}>{t('auth.unknownAuthor')}</span>;
+  return (
+    <span className={className}>
+      <span dir="auto">{user.displayName}</span>
+      {user.kind === 'demo' && (
+        <span className="chip ms-1.5 !px-1.5 !py-0 text-[10px]" title={t('auth.demoHint')}>
+          {t('auth.demoAuthor')}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** "Log in to …" line with a link back to the current page. */
+export function LoginPrompt({ message, className = '' }) {
+  const { t } = useI18n();
+  const location = useLocation();
+  const next = encodeURIComponent(location.pathname + location.search);
+  return (
+    <p className={`text-sm text-ink-faint ${className}`}>
+      {message}{' '}
+      <Link to={`/login?next=${next}`} className="font-semibold text-ink underline dark:text-paper">
+        {t('auth.login')}
+      </Link>
+    </p>
   );
 }
 

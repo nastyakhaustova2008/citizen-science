@@ -11,11 +11,11 @@ import {
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAppData } from '../../context/AppDataContext';
-import { getUser, topicTitle, lastPostAt } from '../../data/mockData';
+import { topicTitle, lastPostAt } from '../../data/mockData';
 import { EXPERT_IDS } from '../../data/mockData';
 import { relativeTime, formatDate } from '../../lib/format';
 import { photoDataUri } from '../../lib/media';
-import { Avatar, EmptyState } from '../primitives';
+import { Avatar, AuthorName, EmptyState, LoginPrompt } from '../primitives';
 import Markdown from '../Markdown';
 
 const CATEGORIES = ['all', 'general', 'method', 'data', 'expert'];
@@ -40,6 +40,7 @@ function ExpertBadge() {
 
 function TopicList({ topics, category, onCategory, onOpen, onNew }) {
   const { t, locale } = useI18n();
+  const { getAuthor, currentUser } = useAppData();
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -57,10 +58,12 @@ function TopicList({ topics, category, onCategory, onOpen, onNew }) {
             </button>
           ))}
         </div>
-        <button type="button" className="btn-primary ms-auto" onClick={onNew}>
-          <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
-          {t('discussion.newTopic')}
-        </button>
+        {currentUser && (
+          <button type="button" className="btn-primary ms-auto" onClick={onNew}>
+            <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
+            {t('discussion.newTopic')}
+          </button>
+        )}
       </div>
 
       {topics.length === 0 ? (
@@ -68,7 +71,7 @@ function TopicList({ topics, category, onCategory, onOpen, onNew }) {
       ) : (
         <ul className="surface divide-y divide-edge dark:divide-white/10">
           {topics.map((topic) => {
-            const author = getUser(topic.authorId);
+            const author = getAuthor(topic.authorId);
             const replies = topic.posts.length - 1;
             const hasExpert = topic.posts.some((p) => p.verifiedExpert);
             return (
@@ -93,7 +96,9 @@ function TopicList({ topics, category, onCategory, onOpen, onNew }) {
                       )}
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink-faint">
-                      <span>{t('discussion.startedBy', { user: author?.displayName })}</span>
+                      <span>
+                        {t('discussion.startedBy', { user: author?.displayName ?? t('auth.unknownAuthor') })}
+                      </span>
                       <span aria-hidden="true">·</span>
                       <span>
                         {t('discussion.topicMeta', {
@@ -199,9 +204,10 @@ function Composer({ onSubmit, quoted, onClearQuote }) {
 
 function Post({ topic, post, onQuote, onReact }) {
   const { t, locale } = useI18n();
-  const author = getUser(post.authorId);
+  const { getAuthor, currentUser } = useAppData();
+  const author = getAuthor(post.authorId);
   const quoted = post.quotedPostId ? topic.posts.find((p) => p.id === post.quotedPostId) : null;
-  const quotedAuthor = quoted ? getUser(quoted.authorId) : null;
+  const quotedAuthor = quoted ? getAuthor(quoted.authorId) : null;
   const isExpert = post.verifiedExpert || EXPERT_IDS.includes(post.authorId);
 
   return (
@@ -214,11 +220,9 @@ function Post({ topic, post, onQuote, onReact }) {
         <Avatar user={author} size={32} />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-ink dark:text-paper">
-              {author?.displayName}
-            </span>
+            <AuthorName user={author} className="text-sm font-semibold text-ink dark:text-paper" />
             {isExpert && <ExpertBadge />}
-            <span className="text-xs text-ink-faint">{author?.school}</span>
+            {author?.school && <span className="text-xs text-ink-faint">{author.school}</span>}
           </div>
           <time className="text-xs text-ink-faint" dateTime={post.createdAt}>
             {formatDate(post.createdAt, locale)} · {rel(t, post.createdAt)}
@@ -264,6 +268,7 @@ function Post({ topic, post, onQuote, onReact }) {
               key={emoji}
               type="button"
               onClick={() => onReact(post.id, emoji)}
+              disabled={!currentUser}
               className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition ${
                 count
                   ? 'border-moss/50 bg-moss/10 text-ink dark:text-paper'
@@ -276,14 +281,16 @@ function Post({ topic, post, onQuote, onReact }) {
             </button>
           );
         })}
-        <button
-          type="button"
-          className="ms-1 inline-flex items-center gap-1 text-xs text-ink-faint hover:text-ink dark:hover:text-paper"
-          onClick={() => onQuote(post.id)}
-        >
-          <QuoteIcon className="h-3 w-3" aria-hidden="true" />
-          {t('discussion.quote')}
-        </button>
+        {currentUser && (
+          <button
+            type="button"
+            className="ms-1 inline-flex items-center gap-1 text-xs text-ink-faint hover:text-ink dark:hover:text-paper"
+            onClick={() => onQuote(post.id)}
+          >
+            <QuoteIcon className="h-3 w-3" aria-hidden="true" />
+            {t('discussion.quote')}
+          </button>
+        )}
       </footer>
     </article>
   );
@@ -291,9 +298,9 @@ function Post({ topic, post, onQuote, onReact }) {
 
 function Thread({ topic, onBack }) {
   const { t, locale } = useI18n();
-  const { addPost, toggleReaction } = useAppData();
+  const { addPost, toggleReaction, getAuthor, currentUser } = useAppData();
   const [quotedId, setQuotedId] = useState(null);
-  const author = getUser(topic.authorId);
+  const author = getAuthor(topic.authorId);
   const quoted = quotedId ? topic.posts.find((p) => p.id === quotedId) : null;
 
   return (
@@ -308,7 +315,7 @@ function Thread({ topic, onBack }) {
           {topicTitle(topic, locale)}
         </h2>
         <p className="mt-1 text-xs text-ink-faint">
-          {t('discussion.startedBy', { user: author?.displayName })} ·{' '}
+          {t('discussion.startedBy', { user: author?.displayName ?? t('auth.unknownAuthor') })} ·{' '}
           {t('discussion.inCategory', { category: t(`discussion.categories.${topic.category}`) })}
         </p>
       </div>
@@ -325,14 +332,18 @@ function Thread({ topic, onBack }) {
         ))}
       </div>
 
-      <Composer
-        quoted={quoted}
-        onClearQuote={() => setQuotedId(null)}
-        onSubmit={({ body, images }) => {
-          addPost(topic.id, { body, images, quotedPostId: quotedId });
-          setQuotedId(null);
-        }}
-      />
+      {currentUser ? (
+        <Composer
+          quoted={quoted}
+          onClearQuote={() => setQuotedId(null)}
+          onSubmit={({ body, images }) => {
+            addPost(topic.id, { body, images, quotedPostId: quotedId });
+            setQuotedId(null);
+          }}
+        />
+      ) : (
+        <LoginPrompt message={t('auth.loginToParticipate')} />
+      )}
     </div>
   );
 }
@@ -340,7 +351,7 @@ function Thread({ topic, onBack }) {
 /* ------------------------------------------------------------------ shell */
 
 export default function Discussion({ observationId }) {
-  const { topicsFor, getTopic, addTopic } = useAppData();
+  const { topicsFor, getTopic, addTopic, currentUser } = useAppData();
   const [category, setCategory] = useState('all');
   const [openId, setOpenId] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -364,7 +375,8 @@ export default function Discussion({ observationId }) {
         onOpen={setOpenId}
         onNew={() => setCreating((c) => !c)}
       />
-      {creating && (
+      {!currentUser && <LoginPrompt className="mt-3" message={t('auth.loginToParticipate')} />}
+      {creating && currentUser && (
         <div className="mt-3">
           <p className="mb-2 text-sm font-semibold text-ink dark:text-paper">
             {t('discussion.newTopic')}

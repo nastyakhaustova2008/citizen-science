@@ -1,4 +1,3 @@
-import { getUser } from '../data/mockData';
 import { visibleFields, exportFieldValue } from './fields';
 import { toISODate, formatTime } from './format';
 
@@ -8,9 +7,11 @@ import { toISODate, formatTime } from './format';
  * `fields` the fields to export (visibleFields: active + archived ones that have data).
  * Field columns are named by the permanent field key; choice values are option keys;
  * number fields also get a "<key>_unit" column.
+ * `getAuthor` (from useAppData) resolves the author; only the (demo) school is exported,
+ * never usernames.
  */
-function toRow(m, obs, fields) {
-  const user = getUser(m.userId);
+function toRow(m, obs, fields, getAuthor) {
+  const user = getAuthor(m.userId);
   const row = {
     id: m.id,
     campaign: obs?.titleEn ?? m.observationId,
@@ -31,9 +32,9 @@ function toRow(m, obs, fields) {
   return row;
 }
 
-function toRows(measurements, observation) {
+function toRows(measurements, observation, getAuthor = () => null) {
   const fields = visibleFields(observation, measurements);
-  return measurements.map((m) => toRow(m, observation, fields));
+  return measurements.map((m) => toRow(m, observation, fields, getAuthor));
 }
 
 function csvCell(v) {
@@ -41,8 +42,8 @@ function csvCell(v) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export function toCSV(measurements, observation = null) {
-  const rows = toRows(measurements, observation);
+export function toCSV(measurements, observation = null, getAuthor) {
+  const rows = toRows(measurements, observation, getAuthor);
   if (!rows.length) return '';
   const headers = Object.keys(rows[0]);
   const lines = [
@@ -52,12 +53,12 @@ export function toCSV(measurements, observation = null) {
   return lines.join('\n');
 }
 
-export function toJSON(measurements, observation = null) {
-  return JSON.stringify(toRows(measurements, observation), null, 2);
+export function toJSON(measurements, observation = null, getAuthor) {
+  return JSON.stringify(toRows(measurements, observation, getAuthor), null, 2);
 }
 
-export function toGeoJSON(measurements, observation = null) {
-  const rows = toRows(measurements, observation);
+export function toGeoJSON(measurements, observation = null, getAuthor) {
+  const rows = toRows(measurements, observation, getAuthor);
   return JSON.stringify(
     {
       type: 'FeatureCollection',
@@ -94,13 +95,17 @@ export function downloadFile(filename, content, kind = 'csv') {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** `observation` — the campaign all `measurements` belong to (for title and field columns). */
-export function exportMeasurements(measurements, format, observation = null) {
+/**
+ * `observation` — the campaign all `measurements` belong to (for title and field columns).
+ * `getAuthor` — author lookup from useAppData().
+ */
+export function exportMeasurements(measurements, format, observation = null, getAuthor) {
   const baseName = observation?.slug || 'measurements';
   const stamp = new Date().toISOString().slice(0, 10);
-  if (format === 'csv') downloadFile(`${baseName}-${stamp}.csv`, toCSV(measurements, observation), 'csv');
+  if (format === 'csv')
+    downloadFile(`${baseName}-${stamp}.csv`, toCSV(measurements, observation, getAuthor), 'csv');
   if (format === 'json')
-    downloadFile(`${baseName}-${stamp}.json`, toJSON(measurements, observation), 'json');
+    downloadFile(`${baseName}-${stamp}.json`, toJSON(measurements, observation, getAuthor), 'json');
   if (format === 'geojson')
-    downloadFile(`${baseName}-${stamp}.geojson`, toGeoJSON(measurements, observation), 'geojson');
+    downloadFile(`${baseName}-${stamp}.geojson`, toGeoJSON(measurements, observation, getAuthor), 'geojson');
 }

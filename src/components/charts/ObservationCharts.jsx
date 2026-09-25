@@ -14,7 +14,6 @@ import {
 import { useI18n } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
 import { useAppData } from '../../context/AppDataContext';
-import { getUser } from '../../data/mockData';
 import { colorForValue } from '../../data/metrics';
 import { fieldLabel } from '../../lib/fields';
 import { dailyMeanSeries, histogram, meanByGroup } from '../../lib/stats';
@@ -33,11 +32,14 @@ function ChartCard({ title, subtitle, children }) {
 export default function ObservationCharts({ observation, measurements }) {
   const { t, locale } = useI18n();
   const { isDark } = useTheme();
-  const { currentUser } = useAppData();
+  const { currentUser, getAuthor } = useAppData();
   // Charts use the primary field (the page shows an empty state when there is none).
   const scale = observation.scale;
   const m = scale;
-  const [scope, setScope] = useState('all');
+  const [scopeChoice, setScope] = useState('all');
+  // "My school" needs a school; real accounts have none (we do not collect it), so only 'all'.
+  const mySchool = currentUser?.school ?? null;
+  const scope = mySchool ? scopeChoice : 'all';
 
   const axis = isDark ? '#8a8f86' : '#5C6B60';
   const grid = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(31,58,46,0.10)';
@@ -45,14 +47,14 @@ export default function ObservationCharts({ observation, measurements }) {
 
   const scoped = useMemo(() => {
     if (scope === 'all') return measurements;
-    return measurements.filter((x) => getUser(x.userId)?.school === currentUser?.school);
-  }, [measurements, scope, currentUser]);
+    return measurements.filter((x) => getAuthor(x.userId)?.school === mySchool);
+  }, [measurements, scope, mySchool, getAuthor]);
 
   const series = useMemo(() => dailyMeanSeries(scoped), [scoped]);
   const bins = useMemo(() => histogram(scoped, m.histogramStep), [scoped, m.histogramStep]);
   const bySchool = useMemo(
-    () => meanByGroup(measurements, (x) => getUser(x.userId)?.school ?? '—'),
-    [measurements],
+    () => meanByGroup(measurements, (x) => getAuthor(x.userId)?.school ?? '—'),
+    [measurements, getAuthor],
   );
 
   const tooltipStyle = {
@@ -67,26 +69,28 @@ export default function ObservationCharts({ observation, measurements }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-1 self-start rounded-lg border border-edge p-1 text-sm dark:border-white/10">
-        {[
-          { id: 'mine', label: t('charts.scopeMine') },
-          { id: 'all', label: t('charts.scopeAll') },
-        ].map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => setScope(opt.id)}
-            aria-pressed={scope === opt.id}
-            className={`rounded-md px-3 py-1.5 font-semibold transition ${
-              scope === opt.id
-                ? 'bg-paper-sunk text-ink dark:bg-white/10 dark:text-paper'
-                : 'text-ink-faint'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      {mySchool && (
+        <div className="flex items-center gap-1 self-start rounded-lg border border-edge p-1 text-sm dark:border-white/10">
+          {[
+            { id: 'mine', label: t('charts.scopeMine') },
+            { id: 'all', label: t('charts.scopeAll') },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setScope(opt.id)}
+              aria-pressed={scope === opt.id}
+              className={`rounded-md px-3 py-1.5 font-semibold transition ${
+                scope === opt.id
+                  ? 'bg-paper-sunk text-ink dark:bg-white/10 dark:text-paper'
+                  : 'text-ink-faint'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {noScopedData && scope === 'mine' && (
         <EmptyState title={t('charts.mySchoolNoData')} />
@@ -185,7 +189,7 @@ export default function ObservationCharts({ observation, measurements }) {
                       <Cell
                         key={i}
                         fill={
-                          row.key === currentUser?.school ? '#8B6F47' : isDark ? '#5A7A5F' : '#7C9880'
+                          row.key === mySchool ? '#8B6F47' : isDark ? '#5A7A5F' : '#7C9880'
                         }
                       />
                     ))}

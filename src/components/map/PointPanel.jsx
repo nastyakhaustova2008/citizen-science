@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { X, Flag, Send } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAppData } from '../../context/AppDataContext';
-import { getUser } from '../../data/mockData';
 import { colorForValue } from '../../data/metrics';
 import { formatDate, formatTime, formatNumber, relativeTime, coordLabel } from '../../lib/format';
 import { fieldLabel, formatFieldValue, hasValue, visibleFields } from '../../lib/fields';
 import { photoDataUri } from '../../lib/media';
-import { Avatar, VerificationBadge } from '../primitives';
+import { Avatar, AuthorName, LoginPrompt, VerificationBadge } from '../primitives';
 
 function relText(t, iso) {
   const r = relativeTime(iso);
@@ -16,7 +16,7 @@ function relText(t, iso) {
 
 export default function PointPanel({ measurement, observation, onClose }) {
   const { t, locale } = useI18n();
-  const { addComment, flagMeasurement } = useAppData();
+  const { addComment, flagMeasurement, getAuthor, currentUser } = useAppData();
   const [comment, setComment] = useState('');
   const [flagOpen, setFlagOpen] = useState(false);
   const [flagReason, setFlagReason] = useState('');
@@ -34,7 +34,7 @@ export default function PointPanel({ measurement, observation, onClose }) {
   if (!measurement) return null;
   const scale = observation.scale;
   const primary = observation.primaryField;
-  const user = getUser(measurement.userId);
+  const user = getAuthor(measurement.userId);
   // All fields with a value on this point, archived ones included; the primary one is in the header.
   const fields = visibleFields(observation, [measurement]).filter(
     (f) => f.key !== primary?.key && hasValue(measurement.values[f.key]),
@@ -96,7 +96,14 @@ export default function PointPanel({ measurement, observation, onClose }) {
             <dd className="mt-1 flex items-center gap-2">
               <Avatar user={user} size={26} />
               <span>
-                {user?.displayName} · <span className="text-ink-faint">{user?.school}</span>
+                {user ? (
+                  <Link to={`/profile/${measurement.userId}`} className="hover:underline">
+                    <AuthorName user={user} />
+                  </Link>
+                ) : (
+                  <AuthorName user={user} />
+                )}
+                {user?.school && <span className="text-ink-faint"> · {user.school}</span>}
               </span>
             </dd>
           </div>
@@ -158,13 +165,13 @@ export default function PointPanel({ measurement, observation, onClose }) {
           ) : (
             <ul className="space-y-2.5">
               {measurement.comments.map((c) => {
-                const cu = getUser(c.authorId);
+                const cu = getAuthor(c.authorId);
                 return (
                   <li key={c.id} className="flex gap-2">
                     <Avatar user={cu} size={24} />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs">
-                        <span className="font-semibold">{cu?.displayName}</span>{' '}
+                        <AuthorName user={cu} className="font-semibold" />{' '}
                         {c.verifiedExpert && (
                           <span className="chip chip-active !py-0 text-[10px]">
                             {t('discussion.expertBadge')}
@@ -186,36 +193,42 @@ export default function PointPanel({ measurement, observation, onClose }) {
             </ul>
           )}
 
-          <form
-            className="mt-3 flex items-start gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!comment.trim()) return;
-              addComment(measurement.id, comment.trim());
-              setComment('');
-            }}
-          >
-            <label className="sr-only" htmlFor="pp-comment">
-              {t('map.panel.addComment')}
-            </label>
-            <textarea
-              id="pp-comment"
-              rows={2}
-              className="input flex-1 py-2 text-sm"
-              placeholder={t('map.panel.addComment')}
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-            />
-            <button type="submit" className="btn-secondary mt-0.5 px-2.5" disabled={!comment.trim()}>
-              <Send className="h-4 w-4" aria-hidden="true" />
-              <span className="sr-only">{t('discussion.send')}</span>
-            </button>
-          </form>
+          {!currentUser ? (
+            <LoginPrompt className="mt-3 text-xs" message={t('auth.loginToParticipate')} />
+          ) : (
+            <form
+              className="mt-3 flex items-start gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!comment.trim()) return;
+                addComment(measurement.id, comment.trim());
+                setComment('');
+              }}
+            >
+              <label className="sr-only" htmlFor="pp-comment">
+                {t('map.panel.addComment')}
+              </label>
+              <textarea
+                id="pp-comment"
+                rows={2}
+                className="input flex-1 py-2 text-sm"
+                placeholder={t('map.panel.addComment')}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+              <button type="submit" className="btn-secondary mt-0.5 px-2.5" disabled={!comment.trim()}>
+                <Send className="h-4 w-4" aria-hidden="true" />
+                <span className="sr-only">{t('discussion.send')}</span>
+              </button>
+            </form>
+          )}
         </section>
       </div>
 
       <footer className="border-t border-edge p-3 dark:border-white/10">
-        {flagOpen ? (
+        {!currentUser ? (
+          <LoginPrompt className="text-xs" message={t('auth.loginToParticipate')} />
+        ) : flagOpen ? (
           <form
             className="space-y-2"
             onSubmit={(e) => {

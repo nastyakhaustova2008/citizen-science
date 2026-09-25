@@ -1,8 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { TOPICS, USERS, CURRENT_USER_ID, getUser } from '../data/mockData';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { TOPICS, USERS, getUser } from '../data/mockData';
 import { METRICS } from '../data/metrics';
 import { fieldFromRow, buildScale } from '../lib/fields';
 import { supabase } from '../lib/supabase';
+import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
 
 /**
  * Application state.
@@ -10,6 +11,10 @@ import { supabase } from '../lib/supabase';
  * (`campaigns`, `campaign_fields`, `campaign_field_options`; read-only for now).
  * Measurements are read from / inserted into Supabase (`measurements` table);
  * their values live in `field_values` (jsonb keyed by field key), validated by the database.
+ * The current user comes from AuthContext (Supabase Auth + profiles); adding measurements
+ * requires login and stores the real user id.
+ * Authors: real users → profiles (loaded for the ids on screen); seeded demo rows keep mock ids
+ * ('u-noa', …) → mock users from mockData, marked kind: 'demo'.
  * Everything else (topics, posts, joins, point comments, flags, photos)
  * still lives in memory over the mock dataset for the session only.
  */
@@ -105,6 +110,8 @@ function parseFieldErrors(details) {
 
 const AppDataContext = createContext(null);
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function AppDataProvider({ children }) {
   const [campaigns, setCampaigns] = useState([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
@@ -117,7 +124,52 @@ export function AppDataProvider({ children }) {
   const [topics, setTopics] = useState(TOPICS);
   const [joined, setJoined] = useState(() => new Set(['obs-schoolyard-heat', 'obs-dark-skies']));
 
-  const currentUser = getUser(CURRENT_USER_ID);
+  const { currentUser } = useAuth();
+  const currentUserId = currentUser?.id ?? null;
+
+  // Public profiles of real users whose ids are on screen: id → author, or null (no such profile).
+  const [authors, setAuthors] = useState({});
+  const requestedAuthors = useRef(new Set());
+
+  const loadAuthors = useCallback(async (ids) => {
+    if (!supabase) return;
+    const todo = [...new Set(ids)].filter((id) => UUID_RE.test(id) && !requestedAuthors.current.has(id));
+    if (todo.length === 0) return;
+    todo.forEach((id) => requestedAuthors.current.add(id));
+    for (let i = 0; i < todo.length; i += 100) {
+      const chunk = todo.slice(i, i + 100);
+      const { data, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).in('id', chunk);
+      if (error) {
+        console.error('[profiles] load failed', error);
+        chunk.forEach((id) => requestedAuthors.current.delete(id));
+        continue;
+      }
+      setAuthors((prev) => {
+        const next = { ...prev };
+        for (const id of chunk) next[id] = null;
+        for (const row of data) next[row.id] = authorFromProfile(row);
+        return next;
+      });
+    }
+  }, []);
+
+  /** Author of a measurement / comment / post: real profile, demo (mock) user, or null (unknown). */
+  const getAuthor = useCallback(
+    (id) => {
+      if (!id) return null;
+      if (currentUser && id === currentUser.id) return currentUser;
+      if (authors[id]) return authors[id];
+      const mock = getUser(id);
+      return mock ? { ...mock, kind: 'demo' } : null;
+    },
+    [authors, currentUser],
+  );
+
+  /** false while a real user's profile is still being looked up. */
+  const isAuthorResolved = useCallback(
+    (id) => !UUID_RE.test(id || '') || id === currentUserId || id in authors,
+    [authors, currentUserId],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -208,11 +260,12 @@ export function AppDataProvider({ children }) {
   const addMeasurement = useCallback(
     async (draft) => {
       if (!supabase) throw new Error('Supabase is not configured');
+      if (!currentUserId) throw new Error('not_logged_in');
       const { data, error } = await supabase
         .from('measurements')
         .insert({
           observation_id: draft.observationId,
-          user_id: CURRENT_USER_ID,
+          user_id: currentUserId,
           place_label: draft.placeLabel || null,
           lat: draft.lat,
           lng: draft.lng,
@@ -233,10 +286,12 @@ export function AppDataProvider({ children }) {
       setMeasurements((prev) => [record, ...prev]);
       return record;
     },
-    [refreshCampaigns],
+    [refreshCampaigns, currentUserId],
   );
 
+  // Comments, flags and forum posts are still in memory only; they need a logged-in author.
   const addComment = useCallback((measurementId, body) => {
+    if (!currentUserId) return;
     setMeasurements((prev) =>
       prev.map((m) =>
         m.id === measurementId
@@ -246,7 +301,7 @@ export function AppDataProvider({ children }) {
                 ...m.comments,
                 {
                   id: `c-${measurementId}-${m.comments.length + 1}`,
-                  authorId: CURRENT_USER_ID,
+                  authorId: currentUserId,
                   createdAt: new Date().toISOString(),
                   body,
                 },
@@ -255,9 +310,10 @@ export function AppDataProvider({ children }) {
           : m,
       ),
     );
-  }, []);
+  }, [currentUserId]);
 
   const flagMeasurement = useCallback((measurementId, reason) => {
+    if (!currentUserId) return;
     setMeasurements((prev) =>
       prev.map((m) =>
         m.id === measurementId
@@ -268,7 +324,7 @@ export function AppDataProvider({ children }) {
                 ...m.comments,
                 {
                   id: `c-${measurementId}-flag-${Date.now()}`,
-                  authorId: CURRENT_USER_ID,
+                  authorId: currentUserId,
                   createdAt: new Date().toISOString(),
                   body: reason,
                   isFlag: true,
@@ -278,9 +334,10 @@ export function AppDataProvider({ children }) {
           : m,
       ),
     );
-  }, []);
+  }, [currentUserId]);
 
   const addTopic = useCallback(({ observationId, title, body, category }) => {
+    if (!currentUserId) return null;
     const id = `t-new-${Date.now()}`;
     const now = new Date().toISOString();
     setTopics((prev) => [
@@ -291,13 +348,13 @@ export function AppDataProvider({ children }) {
         titleHe: title,
         titleEn: title,
         titleRu: title,
-        authorId: CURRENT_USER_ID,
+        authorId: currentUserId,
         createdAt: now,
         tags: [],
         posts: [
           {
             id: `${id}-p1`,
-            authorId: CURRENT_USER_ID,
+            authorId: currentUserId,
             createdAt: now,
             body,
             images: [],
@@ -310,9 +367,10 @@ export function AppDataProvider({ children }) {
       ...prev,
     ]);
     return id;
-  }, []);
+  }, [currentUserId]);
 
   const addPost = useCallback((topicId, { body, images = [], quotedPostId = null }) => {
+    if (!currentUserId) return;
     setTopics((prev) =>
       prev.map((t) =>
         t.id === topicId
@@ -322,7 +380,7 @@ export function AppDataProvider({ children }) {
                 ...t.posts,
                 {
                   id: `p-${topicId}-${t.posts.length + 1}`,
-                  authorId: CURRENT_USER_ID,
+                  authorId: currentUserId,
                   createdAt: new Date().toISOString(),
                   body,
                   images,
@@ -335,9 +393,10 @@ export function AppDataProvider({ children }) {
           : t,
       ),
     );
-  }, []);
+  }, [currentUserId]);
 
   const toggleReaction = useCallback((topicId, postId, emoji) => {
+    if (!currentUserId) return;
     setTopics((prev) =>
       prev.map((t) =>
         t.id !== topicId
@@ -358,7 +417,7 @@ export function AppDataProvider({ children }) {
             },
       ),
     );
-  }, []);
+  }, [currentUserId]);
 
   const toggleJoin = useCallback((observationId) => {
     setJoined((prev) => {
@@ -368,6 +427,10 @@ export function AppDataProvider({ children }) {
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    loadAuthors(measurements.map((m) => m.userId));
+  }, [measurements, loadAuthors]);
 
   /**
    * Measurements as the UI sees them: `value` = the campaign's primary field value
@@ -404,6 +467,9 @@ export function AppDataProvider({ children }) {
     () => ({
       users: USERS,
       currentUser,
+      getAuthor,
+      isAuthorResolved,
+      loadAuthors,
       campaigns: campaignsView,
       campaignsLoading,
       campaignsError,
@@ -431,6 +497,9 @@ export function AppDataProvider({ children }) {
     }),
     [
       currentUser,
+      getAuthor,
+      isAuthorResolved,
+      loadAuthors,
       campaignsView,
       campaignsLoading,
       campaignsError,

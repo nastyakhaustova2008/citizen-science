@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowUp, ArrowDown, ChevronsUpDown, Download, Search, X } from 'lucide-react';
 import { useI18n } from '../../i18n';
-import { getUser } from '../../data/mockData';
+import { useAppData } from '../../context/AppDataContext';
 import { formatDate, formatTime, toISODate } from '../../lib/format';
 import { visibleFields, fieldLabel, formatFieldValue, sortValue, optionLabel } from '../../lib/fields';
 import { exportMeasurements } from '../../lib/export';
@@ -11,6 +11,7 @@ const PAGE = 12;
 
 export default function DataTable({ observation, measurements }) {
   const { t, locale } = useI18n();
+  const { getAuthor } = useAppData();
   // Every active field, plus archived fields that still have data.
   const fields = useMemo(() => visibleFields(observation, measurements), [observation, measurements]);
 
@@ -23,14 +24,14 @@ export default function DataTable({ observation, measurements }) {
   const [page, setPage] = useState(0);
 
   const schools = useMemo(
-    () => [...new Set(measurements.map((m) => getUser(m.userId)?.school).filter(Boolean))].sort(),
-    [measurements],
+    () => [...new Set(measurements.map((m) => getAuthor(m.userId)?.school).filter(Boolean))].sort(),
+    [measurements, getAuthor],
   );
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = measurements.map((m) => {
-      const u = getUser(m.userId);
+      const u = getAuthor(m.userId);
       return {
         ...m,
         _school: u?.school ?? '',
@@ -78,7 +79,7 @@ export default function DataTable({ observation, measurements }) {
       return 0;
     });
     return list;
-  }, [measurements, fields, locale, school, from, to, query, sort]);
+  }, [measurements, fields, locale, school, from, to, query, sort, getAuthor]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE));
   const pageRows = rows.slice(page * PAGE, page * PAGE + PAGE);
@@ -190,7 +191,7 @@ export default function DataTable({ observation, measurements }) {
               key={fmt}
               type="button"
               className="btn-secondary"
-              onClick={() => exportMeasurements(exportSet, fmt, observation)}
+              onClick={() => exportMeasurements(exportSet, fmt, observation, getAuthor)}
             >
               <Download className="h-4 w-4" aria-hidden="true" />
               {t(`data.export${fmt[0].toUpperCase()}${fmt.slice(1)}`)}
