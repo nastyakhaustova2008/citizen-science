@@ -1,19 +1,41 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import {
-  TOPICS,
-  USERS,
-  CURRENT_USER_ID,
-  getUser,
-  getObservation,
-} from '../data/mockData';
+import { TOPICS, USERS, CURRENT_USER_ID, getUser } from '../data/mockData';
+import { METRICS } from '../data/metrics';
 import { supabase } from '../lib/supabase';
 
 /**
  * Application state.
+ * Campaigns are read from Supabase (`campaigns` table, read-only for now).
  * Measurements are read from / inserted into Supabase (`measurements` table).
  * Everything else (topics, posts, joins, point comments, flags, photos)
  * still lives in memory over the mock dataset for the session only.
  */
+const CAMPAIGN_COLUMNS =
+  'id, slug, metric, icon, title_he, title_en, title_ru, desc_he, desc_en, desc_ru, status, region, difficulty, equipment, protocol_url, center_lat, center_lng, zoom, sort_order';
+
+/** DB row (snake_case) → the Observation (campaign) shape the UI uses (see mockData.js). */
+function campaignFromRow(row) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    metric: row.metric,
+    icon: row.icon,
+    titleHe: row.title_he,
+    titleEn: row.title_en,
+    titleRu: row.title_ru,
+    descHe: row.desc_he,
+    descEn: row.desc_en,
+    descRu: row.desc_ru,
+    status: row.status,
+    region: row.region,
+    difficulty: row.difficulty,
+    equipment: row.equipment || [],
+    protocolUrl: row.protocol_url,
+    center: [row.center_lat, row.center_lng],
+    zoom: row.zoom,
+  };
+}
+
 const MEASUREMENT_COLUMNS =
   'id, observation_id, user_id, place_label, lat, lng, value, measured_at, instrument, conditions, notes, verification, photo_seed';
 
@@ -40,6 +62,10 @@ function fromRow(row) {
 const AppDataContext = createContext(null);
 
 export function AppDataProvider({ children }) {
+  const [campaigns, setCampaigns] = useState([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
+  const [campaignsError, setCampaignsError] = useState(false);
+  const [campaignsNonce, setCampaignsNonce] = useState(0);
   const [measurements, setMeasurements] = useState([]);
   const [measurementsLoading, setMeasurementsLoading] = useState(true);
   const [measurementsError, setMeasurementsError] = useState(false);
@@ -48,6 +74,48 @@ export function AppDataProvider({ children }) {
   const [joined, setJoined] = useState(() => new Set(['obs-schoolyard-heat', 'obs-dark-skies']));
 
   const currentUser = getUser(CURRENT_USER_ID);
+
+  useEffect(() => {
+    let alive = true;
+    setCampaignsLoading(true);
+    setCampaignsError(false);
+    (async () => {
+      try {
+        if (!supabase) throw new Error('Supabase is not configured');
+        const { data, error } = await supabase
+          .from('campaigns')
+          .select(CAMPAIGN_COLUMNS)
+          .order('sort_order', { ascending: true })
+          .order('id', { ascending: true });
+        if (error) throw error;
+        if (!alive) return;
+        // Metrics still live in code: skip campaigns whose metric the UI can't render.
+        const known = data.filter((row) => {
+          if (METRICS[row.metric]) return true;
+          console.warn(`[campaigns] skipping "${row.id}": unknown metric "${row.metric}"`);
+          return false;
+        });
+        setCampaigns(known.map(campaignFromRow));
+      } catch (err) {
+        if (!alive) return;
+        console.error('[campaigns] load failed', err);
+        setCampaignsError(true);
+      } finally {
+        if (alive) setCampaignsLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [campaignsNonce]);
+
+  const reloadCampaigns = useCallback(() => setCampaignsNonce((n) => n + 1), []);
+
+  /** Look up a loaded campaign by id or slug (null while loading / if missing). */
+  const getObservation = useCallback(
+    (idOrSlug) => campaigns.find((o) => o.id === idOrSlug || o.slug === idOrSlug) || null,
+    [campaigns],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -256,6 +324,10 @@ export function AppDataProvider({ children }) {
     () => ({
       users: USERS,
       currentUser,
+      campaigns,
+      campaignsLoading,
+      campaignsError,
+      reloadCampaigns,
       measurements,
       measurementsLoading,
       measurementsError,
@@ -278,6 +350,11 @@ export function AppDataProvider({ children }) {
     }),
     [
       currentUser,
+      campaigns,
+      campaignsLoading,
+      campaignsError,
+      reloadCampaigns,
+      getObservation,
       measurements,
       measurementsLoading,
       measurementsError,

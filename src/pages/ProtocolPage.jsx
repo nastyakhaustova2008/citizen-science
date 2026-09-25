@@ -1,10 +1,11 @@
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, FileDown, Wrench } from 'lucide-react';
 import { useI18n } from '../i18n';
-import { getObservation, observationTitle } from '../data/mockData';
+import { useAppData } from '../context/AppDataContext';
+import { observationTitle } from '../data/mockData';
 import { METRICS, metricLabel } from '../data/metrics';
 import ObsIcon from '../components/ObsIcon';
-import { EmptyState } from '../components/primitives';
+import { EmptyState, ErrorBlock, LoadingBlock } from '../components/primitives';
 
 function StepList({ title, items }) {
   return (
@@ -24,7 +25,11 @@ function StepList({ title, items }) {
 export default function ProtocolPage() {
   const { slug } = useParams();
   const { t, locale } = useI18n();
+  const { getObservation, campaignsLoading, campaignsError, reloadCampaigns } = useAppData();
   const observation = getObservation(slug);
+
+  if (campaignsError) return <ErrorBlock onRetry={reloadCampaigns} />;
+  if (campaignsLoading) return <LoadingBlock />;
 
   if (!observation) {
     return <EmptyState title={t('observation.notFound')} />;

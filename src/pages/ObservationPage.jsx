@@ -4,7 +4,7 @@ import { Plus, FileText, Map as MapIcon, Table2, BarChart3, MessagesSquare, Arro
 
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
-import { getObservation, observationTitle, observationDesc } from '../data/mockData';
+import { observationTitle, observationDesc } from '../data/mockData';
 import { metricLabel } from '../data/metrics';
 
 import Tabs, { TabPanel } from '../components/Tabs';
@@ -28,6 +28,10 @@ export default function ObservationPage() {
   const navigate = useNavigate();
   const { t, locale } = useI18n();
   const {
+    getObservation,
+    campaignsLoading,
+    campaignsError,
+    reloadCampaigns,
     measurementsFor,
     measurementsLoading: loading,
     measurementsError: error,
@@ -48,6 +52,9 @@ export default function ObservationPage() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') || 'map';
   const setTab = (id) => setParams({ tab: id }, { replace: true });
+
+  if (campaignsError) return <ErrorBlock onRetry={reloadCampaigns} />;
+  if (campaignsLoading) return <LoadingBlock />;
 
   if (!observation) {
     return (

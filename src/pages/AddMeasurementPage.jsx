@@ -1,14 +1,19 @@
 import { useParams, Link } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import { useI18n } from '../i18n';
-import { getObservation, observationTitle } from '../data/mockData';
+import { useAppData } from '../context/AppDataContext';
+import { observationTitle } from '../data/mockData';
 import AddMeasurementWizard from '../components/wizard/AddMeasurementWizard';
-import { EmptyState } from '../components/primitives';
+import { EmptyState, ErrorBlock, LoadingBlock } from '../components/primitives';
 
 export default function AddMeasurementPage() {
   const { slug } = useParams();
   const { t, locale } = useI18n();
+  const { getObservation, campaignsLoading, campaignsError, reloadCampaigns } = useAppData();
   const observation = getObservation(slug);
+
+  if (campaignsError) return <ErrorBlock onRetry={reloadCampaigns} />;
+  if (campaignsLoading) return <LoadingBlock />;
 
   if (!observation) {
     return (

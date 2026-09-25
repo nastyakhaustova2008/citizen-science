@@ -131,6 +131,10 @@ const CITY_ANCHOR = {
 
 /* ------------------------------------------------------------------ *
  * Observations — 12 measurement campaigns
+ * The UI reads campaigns from Supabase (`campaigns` table) via AppDataContext.
+ * This copy is kept only to generate the remaining mock data below
+ * (MEASUREMENTS → activity feed, participantsCount, contribution graph).
+ * It matches supabase/seed/002_campaigns_seed.sql — edit campaigns in the DB, not here.
  * ------------------------------------------------------------------ */
 export const OBSERVATIONS = [
   {

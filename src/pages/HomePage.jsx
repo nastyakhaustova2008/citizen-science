@@ -3,7 +3,6 @@ import { MapPin, School, Radio, Search } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
 import {
-  OBSERVATIONS,
   NETWORK_STATS,
   ACTIVITY_FEED,
   observationTitle,
@@ -22,11 +21,22 @@ const ALL = '__all__';
 export default function HomePage() {
   const { t, locale } = useI18n();
   const {
+    campaigns,
+    campaignsLoading,
+    campaignsError,
+    reloadCampaigns,
     measurements,
-    measurementsLoading: loading,
-    measurementsError: error,
-    reloadMeasurements: retry,
+    measurementsLoading,
+    measurementsError,
+    reloadMeasurements,
   } = useAppData();
+
+  const loading = campaignsLoading || measurementsLoading;
+  const error = campaignsError || measurementsError;
+  const retry = () => {
+    if (campaignsError) reloadCampaigns();
+    if (measurementsError) reloadMeasurements();
+  };
 
   const [query, setQuery] = useState('');
   const [topic, setTopic] = useState(ALL);
@@ -37,19 +47,19 @@ export default function HomePage() {
     () => ({
       measurements: measurements.length,
       schools: NETWORK_STATS.schools,
-      activeObservations: NETWORK_STATS.activeObservations,
+      activeObservations: campaigns.filter((o) => o.status === 'collecting').length,
     }),
-    [measurements.length],
+    [measurements.length, campaigns],
   );
 
   const regions = useMemo(
-    () => [...new Set(OBSERVATIONS.map((o) => o.region))],
-    [],
+    () => [...new Set(campaigns.map((o) => o.region))],
+    [campaigns],
   );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return OBSERVATIONS.filter((o) => {
+    return campaigns.filter((o) => {
       if (topic !== ALL && o.metric !== topic) return false;
       if (status !== ALL && o.status !== status) return false;
       if (region !== ALL && o.region !== region) return false;
@@ -60,7 +70,7 @@ export default function HomePage() {
         o.equipment.join(' ').toLowerCase().includes(q)
       );
     });
-  }, [query, topic, status, region, locale]);
+  }, [campaigns, query, topic, status, region, locale]);
 
   const hasActiveFilters = topic !== ALL || status !== ALL || region !== ALL || query.trim() !== '';
 

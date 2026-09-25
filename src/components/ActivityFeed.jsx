@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useI18n } from '../i18n';
-import { getUser, getObservation, observationTitle } from '../data/mockData';
+import { useAppData } from '../context/AppDataContext';
+import { getUser, observationTitle } from '../data/mockData';
 import { METRICS } from '../data/metrics';
 import { relativeTime, formatValueWithUnit } from '../lib/format';
 import { Avatar, EmptyState } from './primitives';
@@ -13,6 +14,7 @@ function timeText(t, iso) {
 
 export default function ActivityFeed({ items }) {
   const { t, locale } = useI18n();
+  const { getObservation } = useAppData();
 
   if (!items?.length) {
     return <EmptyState icon={Activity} title={t('home.activityEmpty')} />;
