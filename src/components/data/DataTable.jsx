@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { ArrowUp, ArrowDown, ChevronsUpDown, Download, Search, X } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { getUser } from '../../data/mockData';
-import { METRICS } from '../../data/metrics';
-import { formatDate, formatTime, formatNumber, toISODate } from '../../lib/format';
+import { formatDate, formatTime, toISODate } from '../../lib/format';
+import { visibleFields, fieldLabel, formatFieldValue, sortValue, optionLabel } from '../../lib/fields';
 import { exportMeasurements } from '../../lib/export';
 import { VerificationBadge, EmptyState } from '../primitives';
 
@@ -11,7 +11,8 @@ const PAGE = 12;
 
 export default function DataTable({ observation, measurements }) {
   const { t, locale } = useI18n();
-  const metric = METRICS[observation.metric];
+  // Every active field, plus archived fields that still have data.
+  const fields = useMemo(() => visibleFields(observation, measurements), [observation, measurements]);
 
   const [sort, setSort] = useState({ key: 'timestamp', dir: 'desc' });
   const [school, setSchool] = useState('__all__');
@@ -39,24 +40,37 @@ export default function DataTable({ observation, measurements }) {
     if (school !== '__all__') list = list.filter((r) => r._school === school);
     if (from) list = list.filter((r) => r._date >= from);
     if (to) list = list.filter((r) => r._date <= to);
-    if (q)
+    if (q) {
+      const searchable = fields.filter((f) => ['text', 'choice', 'multi_choice'].includes(f.type));
+      const textOf = (r, f) => {
+        const v = r.values[f.key];
+        if (v == null) return '';
+        if (f.type === 'choice') return `${v} ${optionLabel(f, v, locale)}`;
+        if (f.type === 'multi_choice') return v.map((k) => `${k} ${optionLabel(f, k, locale)}`).join(' ');
+        return String(v);
+      };
       list = list.filter(
         (r) =>
-          r.placeLabel.toLowerCase().includes(q) ||
+          (r.placeLabel || '').toLowerCase().includes(q) ||
           r._school.toLowerCase().includes(q) ||
-          r.instrument.toLowerCase().includes(q),
+          searchable.some((f) => textOf(r, f).toLowerCase().includes(q)),
       );
+    }
 
     const { key, dir } = sort;
     const mul = dir === 'asc' ? 1 : -1;
     list.sort((a, b) => {
       let av;
       let bv;
-      if (key === 'timestamp') [av, bv] = [a.timestamp, b.timestamp];
-      else if (key === 'value') [av, bv] = [a.value, b.value];
+      const field = key.startsWith('f:') ? fields.find((f) => `f:${f.key}` === key) : null;
+      if (field) {
+        av = sortValue(field, a.values[field.key], locale);
+        bv = sortValue(field, b.values[field.key], locale);
+        // Empty cells always last.
+        if (av == null || bv == null) return av == null ? (bv == null ? 0 : 1) : -1;
+      } else if (key === 'timestamp') [av, bv] = [a.timestamp, b.timestamp];
       else if (key === 'school') [av, bv] = [a._school, b._school];
       else if (key === 'place') [av, bv] = [a.placeLabel, b.placeLabel];
-      else if (key === 'equipment') [av, bv] = [a.instrument, b.instrument];
       else if (key === 'status') [av, bv] = [a.verification, b.verification];
       else [av, bv] = [a[key], b[key]];
       if (av < bv) return -1 * mul;
@@ -64,7 +78,7 @@ export default function DataTable({ observation, measurements }) {
       return 0;
     });
     return list;
-  }, [measurements, school, from, to, query, sort]);
+  }, [measurements, fields, locale, school, from, to, query, sort]);
 
   const pageCount = Math.max(1, Math.ceil(rows.length / PAGE));
   const pageRows = rows.slice(page * PAGE, page * PAGE + PAGE);
@@ -212,8 +226,16 @@ export default function DataTable({ observation, measurements }) {
                 <SortHeader colKey="timestamp" label={t('data.columns.date')} />
                 <SortHeader colKey="place" label={t('data.columns.place')} />
                 <SortHeader colKey="school" label={t('data.columns.school')} />
-                <SortHeader colKey="value" label={t('data.columns.value')} align="end" />
-                <SortHeader colKey="equipment" label={t('data.columns.equipment')} />
+                {fields.map((f) => (
+                  <SortHeader
+                    key={f.key}
+                    colKey={`f:${f.key}`}
+                    label={
+                      f.archived ? `${fieldLabel(f, locale)} (${t('fields.archived')})` : fieldLabel(f, locale)
+                    }
+                    align={f.type === 'number' ? 'end' : 'start'}
+                  />
+                ))}
                 <SortHeader colKey="status" label={t('data.columns.status')} />
               </tr>
             </thead>
@@ -244,10 +266,26 @@ export default function DataTable({ observation, measurements }) {
                   </td>
                   <td className="px-3 py-2">{r.placeLabel}</td>
                   <td className="px-3 py-2 text-ink-faint">{r._school}</td>
-                  <td className="tnum whitespace-nowrap px-3 py-2 text-end font-semibold">
-                    {formatNumber(r.value, { locale, decimals: metric.decimals })} {metric.unit}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-ink-faint">{r.instrument}</td>
+                  {fields.map((f) => {
+                    const text = formatFieldValue(f, r.values[f.key], { locale, t });
+                    if (f.type === 'number') {
+                      return (
+                        <td
+                          key={f.key}
+                          className={`tnum whitespace-nowrap px-3 py-2 text-end ${f.isPrimary ? 'font-semibold' : ''}`}
+                        >
+                          <span dir="ltr">{text}</span>
+                        </td>
+                      );
+                    }
+                    return (
+                      <td key={f.key} className="max-w-[16rem] px-3 py-2 text-xs text-ink-faint">
+                        <span className="line-clamp-2" title={text}>
+                          {text}
+                        </span>
+                      </td>
+                    );
+                  })}
                   <td className="px-3 py-2">
                     <VerificationBadge status={r.verification} withLabel={false} />
                     <span className="ms-1 align-middle text-xs">{t(`map.panel.${r.verification}`)}</span>

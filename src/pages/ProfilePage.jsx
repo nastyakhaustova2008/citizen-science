@@ -122,7 +122,7 @@ export default function ProfilePage() {
           <MiniMap
             center={center}
             points={myPoints}
-            metric={getObservation(myPoints[0].observationId)?.metric}
+            scale={getObservation(myPoints[0].observationId)?.scale}
             heightClass="h-72"
           />
         )}

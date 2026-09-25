@@ -3,8 +3,9 @@ import { X, Flag, Send } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAppData } from '../../context/AppDataContext';
 import { getUser } from '../../data/mockData';
-import { METRICS, metricLabel, colorForValue } from '../../data/metrics';
-import { formatDate, formatTime, formatValueWithUnit, relativeTime, coordLabel } from '../../lib/format';
+import { colorForValue } from '../../data/metrics';
+import { formatDate, formatTime, formatNumber, relativeTime, coordLabel } from '../../lib/format';
+import { fieldLabel, formatFieldValue, hasValue, visibleFields } from '../../lib/fields';
 import { photoDataUri } from '../../lib/media';
 import { Avatar, VerificationBadge } from '../primitives';
 
@@ -13,7 +14,7 @@ function relText(t, iso) {
   return t(r.key, r.count != null ? { count: r.count } : undefined);
 }
 
-export default function PointPanel({ measurement, metric, onClose }) {
+export default function PointPanel({ measurement, observation, onClose }) {
   const { t, locale } = useI18n();
   const { addComment, flagMeasurement } = useAppData();
   const [comment, setComment] = useState('');
@@ -31,11 +32,21 @@ export default function PointPanel({ measurement, metric, onClose }) {
   }, [measurement?.id, onClose]);
 
   if (!measurement) return null;
-  const m = METRICS[metric];
+  const scale = observation.scale;
+  const primary = observation.primaryField;
   const user = getUser(measurement.userId);
-  const photo =
-    measurement.photoDataUri ||
-    (measurement.photoSeed ? photoDataUri(measurement.photoSeed) : null);
+  // All fields with a value on this point, archived ones included; the primary one is in the header.
+  const fields = visibleFields(observation, [measurement]).filter(
+    (f) => f.key !== primary?.key && hasValue(measurement.values[f.key]),
+  );
+  const photos = [
+    ...fields
+      .filter((f) => f.type === 'photo' && measurement.photos?.[f.key])
+      .map((f) => ({ key: f.key, src: measurement.photos[f.key], label: fieldLabel(f, locale) })),
+    ...(measurement.photoSeed
+      ? [{ key: '_seed', src: photoDataUri(measurement.photoSeed), label: t('map.panel.photo') }]
+      : []),
+  ];
 
   return (
     <aside
@@ -49,17 +60,15 @@ export default function PointPanel({ measurement, metric, onClose }) {
           <div className="flex items-center gap-2">
             <span
               className="h-3.5 w-3.5 rounded-full ring-2 ring-paper-raised dark:ring-char-raised"
-              style={{ background: colorForValue(metric, measurement.value) }}
+              style={{ background: colorForValue(scale, measurement.value) }}
               aria-hidden="true"
             />
-            <span className="tnum text-xl font-semibold text-ink dark:text-paper">
-              {formatValueWithUnit(measurement.value, m.unit, {
-                locale,
-                decimals: m.decimals,
-              })}
+            <span className="tnum text-xl font-semibold text-ink dark:text-paper" dir="ltr">
+              {formatNumber(measurement.value, { locale, decimals: scale?.decimals ?? 0 })}
+              {scale?.unit && measurement.value != null ? ` ${scale.unit}` : ''}
             </span>
           </div>
-          <p className="mt-1 text-xs text-ink-faint">{metricLabel(metric, locale)}</p>
+          {primary && <p className="mt-1 text-xs text-ink-faint">{fieldLabel(primary, locale)}</p>}
         </div>
         <button
           ref={closeRef}
@@ -91,26 +100,35 @@ export default function PointPanel({ measurement, metric, onClose }) {
               </span>
             </dd>
           </div>
-          <div className="col-span-2">
-            <dt className="text-xs text-ink-faint">{t('wizard.step2.instrumentLabel')}</dt>
-            <dd>{measurement.instrument}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-ink-faint">{t('wizard.step2.conditionsLabel')}</dt>
-            <dd>{measurement.conditions}</dd>
-          </div>
+          {measurement.placeLabel && (
+            <div className="col-span-2">
+              <dt className="text-xs text-ink-faint">{t('data.columns.place')}</dt>
+              <dd>{measurement.placeLabel}</dd>
+            </div>
+          )}
+          {fields
+            .filter((f) => f.type !== 'photo' || !measurement.photos?.[f.key])
+            .map((f) => (
+              <div key={f.key} className="col-span-2">
+                <dt className="text-xs text-ink-faint">
+                  {fieldLabel(f, locale)}
+                  {f.archived && <span className="ms-1 italic">({t('fields.archived')})</span>}
+                </dt>
+                <dd className={f.type === 'number' ? 'tnum' : 'whitespace-pre-line break-words'}>
+                  {f.type === 'number' ? (
+                    <span dir="ltr">{formatFieldValue(f, measurement.values[f.key], { locale, t })}</span>
+                  ) : (
+                    formatFieldValue(f, measurement.values[f.key], { locale, t })
+                  )}
+                </dd>
+              </div>
+            ))}
           <div>
             <dt className="text-xs text-ink-faint">{t('data.columns.status')}</dt>
             <dd>
               <VerificationBadge status={measurement.verification} />
             </dd>
           </div>
-          {measurement.notes && (
-            <div className="col-span-2">
-              <dt className="text-xs text-ink-faint">{t('wizard.step2.notesLabel')}</dt>
-              <dd>{measurement.notes}</dd>
-            </div>
-          )}
           <div className="col-span-2">
             <dt className="text-xs text-ink-faint">GPS</dt>
             <dd dir="ltr" className="tnum text-xs">
@@ -119,16 +137,16 @@ export default function PointPanel({ measurement, metric, onClose }) {
           </div>
         </dl>
 
-        {photo && (
-          <figure>
+        {photos.map((p) => (
+          <figure key={p.key}>
             <img
-              src={photo}
-              alt={`${t('map.panel.photo')} — ${measurement.placeLabel}`}
+              src={p.src}
+              alt={[p.label, measurement.placeLabel].filter(Boolean).join(' — ')}
               className="w-full rounded-lg border border-edge dark:border-white/10"
               loading="lazy"
             />
           </figure>
-        )}
+        ))}
 
         {/* Comments */}
         <section>

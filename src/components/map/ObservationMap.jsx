@@ -48,7 +48,7 @@ function InvalidateOnMount() {
 
 export default function ObservationMap({ observation, measurements, height = 520 }) {
   const { t } = useI18n();
-  const metric = observation.metric;
+  const scale = observation.scale;
 
   const sortedDates = useMemo(
     () => [...new Set(measurements.map((m) => toISODate(m.timestamp)))].sort(),
@@ -100,10 +100,10 @@ export default function ObservationMap({ observation, measurements, height = 520
             <Marker
               key={m.id}
               position={[m.lat, m.lng]}
-              icon={markerIcon(colorForValue(metric, m.value), m.id === selectedId)}
+              icon={markerIcon(colorForValue(scale, m.value), m.id === selectedId)}
               eventHandlers={{ click: () => setSelectedId(m.id) }}
               keyboard
-              alt={`${m.value} ${observation.metric}`}
+              alt={m.value != null ? `${m.value} ${scale?.unit ?? ''}` : m.placeLabel || m.id}
             />
           ))}
         </MarkerClusterGroup>
@@ -111,7 +111,7 @@ export default function ObservationMap({ observation, measurements, height = 520
 
       {/* Legend — top start */}
       <div className="pointer-events-none absolute start-3 top-3 z-[800]">
-        <Legend metric={metric} />
+        <Legend scale={scale} />
       </div>
 
       {/* Time slider — bottom */}
@@ -126,7 +126,7 @@ export default function ObservationMap({ observation, measurements, height = 520
       </div>
 
       {selected && (
-        <PointPanel measurement={selected} metric={metric} onClose={() => setSelectedId(null)} />
+        <PointPanel measurement={selected} observation={observation} onClose={() => setSelectedId(null)} />
       )}
     </div>
   );

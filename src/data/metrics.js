@@ -1,6 +1,9 @@
 /**
- * Per-metric configuration: display, plausible range (used for the wizard
- * "are you sure?" warning), and a muted colour scale for the map + legend.
+ * Colour/scale presets, referenced by `campaigns.metric` (optional).
+ * Since step 3 the unit, decimals and label of a campaign's measured value come from its
+ * primary field (see src/lib/fields.js → buildScale); a preset only adds the colour ramp,
+ * the plausible range (wizard "are you sure?" warning) and the histogram step.
+ * labelHe/En/Ru are still used for the home page topic filter.
  *
  * `domain` is [min, max] for the colour ramp. `colors` are sampled left→right.
  */
@@ -81,26 +84,30 @@ function lerpColor(a, b, t) {
   return `#${((1 << 24) + (rr << 16) + (rg << 8) + rb).toString(16).slice(1)}`;
 }
 
-/** Map a value to a colour on the metric's scale. */
-export function colorForValue(metricKey, value) {
-  const m = METRICS[metricKey];
-  if (!m) return '#5A7A5F';
-  const [min, max] = m.domain;
+/** Colours for campaigns without a preset (same ramp as temperature). */
+export const DEFAULT_COLORS = METRICS.temperature.colors;
+
+/** Marker colour when a measurement has no primary value (or no scale). */
+export const NO_VALUE_COLOR = '#8a8f86';
+
+/** Map a value to a colour on a scale from buildScale() (src/lib/fields.js). */
+export function colorForValue(scale, value) {
+  if (!scale || typeof value !== 'number') return NO_VALUE_COLOR;
+  const [min, max] = scale.domain;
   const clamped = Math.max(min, Math.min(max, value));
   const frac = (clamped - min) / (max - min || 1);
-  const segments = m.colors.length - 1;
+  const segments = scale.colors.length - 1;
   const scaled = frac * segments;
   const idx = Math.min(segments - 1, Math.floor(scaled));
-  return lerpColor(m.colors[idx], m.colors[idx + 1], scaled - idx);
+  return lerpColor(scale.colors[idx], scale.colors[idx + 1], scaled - idx);
 }
 
 /** Evenly spaced legend stops for the gradient bar. */
-export function legendStops(metricKey, steps = 5) {
-  const m = METRICS[metricKey];
-  if (!m) return [];
-  const [min, max] = m.domain;
+export function legendStops(scale, steps = 5) {
+  if (!scale) return [];
+  const [min, max] = scale.domain;
   return Array.from({ length: steps }, (_, i) => {
     const value = min + ((max - min) * i) / (steps - 1);
-    return { value, color: colorForValue(metricKey, value) };
+    return { value, color: colorForValue(scale, value) };
   });
 }

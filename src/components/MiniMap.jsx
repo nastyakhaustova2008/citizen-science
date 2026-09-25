@@ -10,7 +10,7 @@ import { colorForValue } from '../data/metrics';
 export default function MiniMap({
   center,
   points = [],
-  metric,
+  scale, // colour scale of the campaign's primary field (buildScale)
   className = '',
   heightClass = 'h-28',
 }) {
@@ -42,7 +42,7 @@ export default function MiniMap({
           radius: 5,
           weight: 1.5,
           color: '#F7F4ED',
-          fillColor: colorForValue(metric, p.value),
+          fillColor: colorForValue(scale, p.value),
           fillOpacity: 0.9,
         }),
       ),

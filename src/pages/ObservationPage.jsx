@@ -5,7 +5,7 @@ import { Plus, FileText, Map as MapIcon, Table2, BarChart3, MessagesSquare, Arro
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
 import { observationTitle, observationDesc } from '../data/mockData';
-import { metricLabel } from '../data/metrics';
+import { fieldLabel } from '../lib/fields';
 
 import Tabs, { TabPanel } from '../components/Tabs';
 import ObservationMap from '../components/map/ObservationMap';
@@ -105,7 +105,9 @@ export default function ObservationPage() {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={observation.status} />
           <DifficultyBadge level={observation.difficulty} />
-          <span className="chip">{metricLabel(observation.metric, locale)}</span>
+          {observation.primaryField && (
+            <span className="chip">{fieldLabel(observation.primaryField, locale)}</span>
+          )}
           <span className="chip">{t(`regions.${observation.region}`)}</span>
         </div>
 
@@ -151,13 +153,15 @@ export default function ObservationPage() {
 
           <TabPanel id="data" active={tab} idBase="obs">
             <div className="space-y-4">
-              <StatsSummary measurements={measurements} metric={observation.metric} />
+              <StatsSummary measurements={measurements} scale={observation.scale} />
               <DataTable observation={observation} measurements={measurements} />
             </div>
           </TabPanel>
 
           <TabPanel id="charts" active={tab} idBase="obs">
-            {measurements.length === 0 ? (
+            {!observation.scale ? (
+              <EmptyState title={t('charts.noPrimary')} />
+            ) : measurements.length === 0 ? (
               <EmptyState title={t('charts.noData')} />
             ) : (
               <ObservationCharts observation={observation} measurements={measurements} />

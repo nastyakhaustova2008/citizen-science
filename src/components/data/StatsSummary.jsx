@@ -1,19 +1,19 @@
 import { useI18n } from '../../i18n';
-import { METRICS } from '../../data/metrics';
 import { summarize } from '../../lib/stats';
 import { formatNumber } from '../../lib/format';
 
-export default function StatsSummary({ measurements, metric }) {
+/** Summary of the primary field (`scale` from buildScale; null → count and coverage only). */
+export default function StatsSummary({ measurements, scale }) {
   const { t, locale } = useI18n();
-  const m = METRICS[metric];
   const s = summarize(measurements);
-  const d = m?.decimals ?? 1;
+  const d = scale?.decimals ?? 1;
+  const unit = scale?.unit ? ` ${scale.unit}` : '';
 
   const cells = [
-    { label: t('data.stats.count'), value: formatNumber(s.count, { locale }) },
+    { label: t('data.stats.count'), value: formatNumber(measurements.length, { locale }) },
     {
       label: t('data.stats.mean'),
-      value: s.mean != null ? `${formatNumber(s.mean, { locale, decimals: d })} ${m.unit}` : '—',
+      value: s.mean != null ? `${formatNumber(s.mean, { locale, decimals: d })}${unit}` : '—',
     },
     {
       label: t('data.stats.stddev'),
@@ -40,7 +40,9 @@ export default function StatsSummary({ measurements, metric }) {
       {cells.map((c) => (
         <div key={c.label} className="surface px-3 py-2.5">
           <dt className="text-xs font-medium text-ink-faint">{c.label}</dt>
-          <dd className="tnum mt-0.5 text-base font-semibold text-ink dark:text-paper">{c.value}</dd>
+          <dd className="tnum mt-0.5 text-base font-semibold text-ink dark:text-paper">
+            <span dir="ltr">{c.value}</span>
+          </dd>
         </div>
       ))}
     </dl>

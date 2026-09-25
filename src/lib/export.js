@@ -1,32 +1,39 @@
 import { getUser } from '../data/mockData';
-import { METRICS } from '../data/metrics';
+import { visibleFields, exportFieldValue } from './fields';
 import { toISODate, formatTime } from './format';
 
 /**
  * Flatten a measurement into a plain export row.
- * `obs` is the campaign the measurement belongs to (campaigns come from AppDataContext).
+ * `obs` is the campaign the measurement belongs to (campaigns come from AppDataContext),
+ * `fields` the fields to export (visibleFields: active + archived ones that have data).
+ * Field columns are named by the permanent field key; choice values are option keys;
+ * number fields also get a "<key>_unit" column.
  */
-function toRow(m, obs) {
+function toRow(m, obs, fields) {
   const user = getUser(m.userId);
-  const metric = METRICS[obs?.metric];
-  return {
+  const row = {
     id: m.id,
     campaign: obs?.titleEn ?? m.observationId,
-    metric: obs?.metric ?? '',
     date: toISODate(m.timestamp),
     time: formatTime(m.timestamp, 'en'),
     timestamp: m.timestamp,
-    place: m.placeLabel,
+    place: m.placeLabel ?? '',
     school: user?.school ?? '',
     lat: m.lat,
     lng: m.lng,
-    value: m.value,
-    unit: metric?.unit ?? '',
-    instrument: m.instrument,
-    conditions: m.conditions,
-    notes: m.notes ?? '',
-    verification: m.verification,
   };
+  for (const f of fields) {
+    row[f.key] = exportFieldValue(f, m.values?.[f.key]);
+    if (f.type === 'number' && f.unit) row[`${f.key}_unit`] = f.unit;
+  }
+  row.verification = m.verification;
+  row.form_version = m.formVersion ?? '';
+  return row;
+}
+
+function toRows(measurements, observation) {
+  const fields = visibleFields(observation, measurements);
+  return measurements.map((m) => toRow(m, observation, fields));
 }
 
 function csvCell(v) {
@@ -35,7 +42,7 @@ function csvCell(v) {
 }
 
 export function toCSV(measurements, observation = null) {
-  const rows = measurements.map((m) => toRow(m, observation));
+  const rows = toRows(measurements, observation);
   if (!rows.length) return '';
   const headers = Object.keys(rows[0]);
   const lines = [
@@ -46,21 +53,19 @@ export function toCSV(measurements, observation = null) {
 }
 
 export function toJSON(measurements, observation = null) {
-  return JSON.stringify(measurements.map((m) => toRow(m, observation)), null, 2);
+  return JSON.stringify(toRows(measurements, observation), null, 2);
 }
 
 export function toGeoJSON(measurements, observation = null) {
+  const rows = toRows(measurements, observation);
   return JSON.stringify(
     {
       type: 'FeatureCollection',
-      features: measurements.map((m) => {
-        const row = toRow(m, observation);
-        return {
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [m.lng, m.lat] },
-          properties: row,
-        };
-      }),
+      features: measurements.map((m, i) => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [m.lng, m.lat] },
+        properties: rows[i],
+      })),
     },
     null,
     2,
@@ -89,7 +94,7 @@ export function downloadFile(filename, content, kind = 'csv') {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** `observation` — the campaign all `measurements` belong to (for title/metric/unit columns). */
+/** `observation` — the campaign all `measurements` belong to (for title and field columns). */
 export function exportMeasurements(measurements, format, observation = null) {
   const baseName = observation?.slug || 'measurements';
   const stamp = new Date().toISOString().slice(0, 10);
