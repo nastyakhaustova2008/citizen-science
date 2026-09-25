@@ -213,3 +213,29 @@ where username_key = public.username_key(public.username_normalize('Anastasiia K
 ```
 
 Only possible from SQL (a trigger blocks it through the API); there can be only one owner.
+
+## 13. Admin roles (roadmap step 4b) — migration 009
+
+Needs 006 and an owner (step 12). Compatible with the old frontend, so it can run before the
+merge. Independent of 007 / 008.
+
+1. SQL Editor → run `supabase/migrations/009_admin_roles.sql`. Safe to re-run.
+2. Check (SQL Editor):
+
+   ```sql
+   -- every existing campaign now belongs to the owner
+   select slug, created_by from public.campaigns;
+   -- the old TEMPORARY rules are gone
+   select tablename, policyname from pg_policies
+   where tablename in ('campaigns', 'campaign_fields', 'campaign_field_options', 'role_events');
+   ```
+
+   If `created_by` is empty, the owner did not exist yet: set the owner (step 12) and run 009 again.
+3. Vercel **preview** of the branch, logged in as the owner → **Profile → Administration**:
+   make a test user admin, let them make another user admin, revoke the first one (the
+   confirmation must list both), check **Change log**. Log in as a student → no Administration
+   section; the map, campaigns and adding measurements still work.
+4. Merge → production deploy.
+
+Changing roles by hand in the SQL Editor still works (it is logged as "changed directly in the
+database"). The owner is changed only there.

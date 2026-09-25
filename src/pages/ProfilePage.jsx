@@ -19,9 +19,11 @@ import { Avatar, EmptyState, SectionHeading, Skeleton, LoadingBlock, ErrorBlock 
 import MiniMap from '../components/MiniMap';
 import ContributionGraph from '../components/ContributionGraph';
 import AccountSettings from '../components/auth/AccountSettings';
+import AdminPanel from '../components/admin/AdminPanel';
 import { loginPath } from '../components/auth/AuthUI';
 import { formatDate } from '../lib/format';
 import { monthlyCounts } from '../lib/stats';
+import { isAdminRole } from '../lib/roles';
 
 const BADGE_ICON = {
   firstMeasurement: MapPin,
@@ -204,6 +206,8 @@ function ProfileView({ id, isOwn }) {
           )}
         </section>
       )}
+
+      {isOwn && user.kind === 'real' && isAdminRole(user.role) && <AdminPanel />}
 
       {isOwn && <AccountSettings />}
     </div>
