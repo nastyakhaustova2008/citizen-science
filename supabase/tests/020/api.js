@@ -170,7 +170,7 @@ for (const fn of rpcs) {
   check(`rpc ${fn} (anon): no identifier in the answer`, !found, found || `${r.status} ${text.slice(0, 80)}`);
 }
 check('rpc list covers the home / lab / credits functions',
-  ['measurement_summary', 'measurement_lab_stats', 'measurement_participant_counts', 'lab_credits', 'lab_credits_all'].every((f) => rpcs.includes(f)),
+  ['measurement_summary', 'measurement_lab_stats', 'measurement_participant_counts', 'measurement_participants_total', 'lab_credits', 'lab_credits_all'].every((f) => rpcs.includes(f)),
   rpcs.join(','));
 check('rpc list: nothing that returns people (comments, photos, avatars, admin, logs)',
   !rpcs.some((f) => /^(comment_|photo_|avatar_|admin_|owner_|account_|lab_log|lab_review|link_domain)/.test(f)), rpcs.join(','));

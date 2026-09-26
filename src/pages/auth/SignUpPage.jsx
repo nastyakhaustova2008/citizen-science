@@ -97,7 +97,7 @@ export default function SignUpPage() {
           {t('auth.haveAccount')}{' '}
           <Link
             to={next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`}
-            className="font-semibold text-ink underline dark:text-paper"
+            className="tap-link font-semibold text-ink underline dark:text-paper"
           >
             {t('auth.login')}
           </Link>

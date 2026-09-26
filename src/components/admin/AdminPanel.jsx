@@ -27,14 +27,17 @@ export default function AdminPanel() {
   const [tab, setTab] = useState('labs');
   const [logKind, setLogKind] = useState('labs');
   // Badges: labs I can review now; photos, reported comments + link domain proposals waiting for me.
-  const { reviewCount, commentReportCount, photoQueueCount, avatarQueueCount, linkProposalCount } = useAppData();
+  const { reviewCount, commentReportCount, photoQueueCount, avatarQueueCount, linkProposalCount, queueStatus: q } =
+    useAppData();
+  // A queue that failed to load shows "!" (audit M5) — never looks like "nothing waiting".
+  const moderationError = q.commentReports.error || q.photos.error || q.avatars.error || q.linkProposals.error;
   const tabs = [
-    { id: 'labs', label: t('admin.tabs.labs'), icon: FlaskConical, count: reviewCount || null },
+    { id: 'labs', label: t('admin.tabs.labs'), icon: FlaskConical, count: q.review.error ? '!' : reviewCount || null },
     {
       id: 'comments',
       label: t('admin.tabs.comments'),
       icon: MessageSquareWarning,
-      count: avatarQueueCount + photoQueueCount + commentReportCount + linkProposalCount || null,
+      count: moderationError ? '!' : avatarQueueCount + photoQueueCount + commentReportCount + linkProposalCount || null,
     },
     { id: 'users', label: t('admin.tabs.users'), icon: Users },
     { id: 'log', label: t('admin.tabs.log'), icon: History },

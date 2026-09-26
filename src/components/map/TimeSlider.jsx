@@ -58,7 +58,7 @@ export default function TimeSlider({ dates, value, onChange, shownCount, totalCo
             setPlaying(false);
             onChange(Number(e.target.value));
           }}
-          className="w-full accent-bark"
+          className="h-6 w-full accent-bark"
           aria-label={t('map.timelineLabel')}
           aria-valuetext={atEnd ? t('map.allDates') : formatDate(dates[value], locale)}
         />

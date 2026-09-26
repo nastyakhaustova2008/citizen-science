@@ -6,6 +6,7 @@
  *   - export:           fetchLabAll()      — same filters, all rows up to EXPORT_CAP
  *   - profile:          fetchUserPoints()  — one user's rows up to PROFILE_CAP (logged-in only)
  *   - numbers / charts: fetchLabStats(), fetchSummary() — aggregate RPCs (migration 019)
+ *   - home page:        fetchRecent() (newest RECENT_COUNT rows), fetchParticipantsTotal() (023)
  * Inserting stays in AppDataContext (addMeasurement).
  *
  * Logged-out visitors (audit H2, migration 020): the anon role may read only the columns in
@@ -209,6 +210,33 @@ export async function fetchUserPoints(userId, { signal } = {}) {
     { cap: PROFILE_CAP, signal },
   );
   return { ...res, rows: res.rows.map(fromRow) };
+}
+
+// ---- home: newest measurements ------------------------------------------------------------------
+
+export const RECENT_COUNT = 10;
+
+/**
+ * The newest measurements of all visible labs (home page feed), at most RECENT_COUNT rows — a
+ * limited list, one request. Ordered by measured_at (anon has no created_at, 020); the author
+ * only with a session.
+ */
+export async function fetchRecent({ withAuthor = false } = {}) {
+  const { data, error } = await db()
+    .from('measurements')
+    .select(columns(withAuthor))
+    .order('measured_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(RECENT_COUNT);
+  if (error) throw error;
+  return (data || []).map(fromRow);
+}
+
+/** How many different people made measurements (migration 023, one number, no ids). */
+export async function fetchParticipantsTotal() {
+  const { data, error } = await db().rpc('measurement_participants_total');
+  if (error) throw error;
+  return Number(data) || 0;
 }
 
 // ---- aggregates (019) -----------------------------------------------------------------------

@@ -5,6 +5,7 @@ import { useAppData } from '../context/AppDataContext';
 import { observationTitle, observationDesc } from '../data/mockData';
 import ObsIcon from './ObsIcon';
 import { labEquipment } from '../lib/labs';
+import { FEATURES } from '../lib/features';
 import MiniMap from './MiniMap';
 import { StatusBadge, DifficultyBadge } from './primitives';
 
@@ -26,7 +27,7 @@ export default function ObservationCard({ observation }) {
           <h3 className="font-serif text-base font-bold leading-snug text-ink dark:text-paper">
             <Link
               to={`/observations/${observation.slug}`}
-              className="hover:underline focus-visible:outline-2"
+              className="tap-link hover:underline focus-visible:outline-2"
               aria-label={t('a11y.openObservation', { name: observationTitle(observation, locale) })}
             >
               {observationTitle(observation, locale)}
@@ -86,17 +87,25 @@ export default function ObservationCard({ observation }) {
       </div>
 
       <div className="mt-auto flex items-center gap-2 p-4 pt-3">
-        <button
-          type="button"
-          onClick={() => toggleJoin(observation.id)}
-          className={joined ? 'btn-secondary flex-1' : 'btn-primary flex-1'}
-          aria-pressed={joined}
-        >
-          {joined ? t('common.joined') : t('common.join')}
-        </button>
-        <Link to={`/observations/${observation.slug}`} className="btn-ghost">
-          {t('common.open')}
-        </Link>
+        {FEATURES.join ? (
+          <>
+            <button
+              type="button"
+              onClick={() => toggleJoin(observation.id)}
+              className={joined ? 'btn-secondary flex-1' : 'btn-primary flex-1'}
+              aria-pressed={joined}
+            >
+              {joined ? t('common.joined') : t('common.join')}
+            </button>
+            <Link to={`/observations/${observation.slug}`} className="btn-ghost">
+              {t('common.open')}
+            </Link>
+          </>
+        ) : (
+          <Link to={`/observations/${observation.slug}`} className="btn-primary flex-1">
+            {t('common.open')}
+          </Link>
+        )}
       </div>
     </article>
   );

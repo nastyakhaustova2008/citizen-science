@@ -1,13 +1,9 @@
 import { useMemo, useState } from 'react';
-import { MapPin, School, Radio, Search } from 'lucide-react';
+import { MapPin, Users, Radio, Search } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
-import {
-  NETWORK_STATS,
-  ACTIVITY_FEED,
-  observationTitle,
-  observationDesc,
-} from '../data/mockData';
+import { observationTitle, observationDesc } from '../data/mockData';
+import { useParticipantsTotal } from '../hooks/useMeasurements';
 import { METRICS } from '../data/metrics';
 import { labEquipment } from '../lib/labs';
 
@@ -44,10 +40,11 @@ export default function HomePage() {
   const [status, setStatus] = useState(ALL);
   const [region, setRegion] = useState(ALL);
 
+  // Participants: a separate small RPC (023); if it fails the counter shows "—", the page works.
+  const participants = useParticipantsTotal();
   const liveStats = useMemo(
     () => ({
       measurements: summary.total,
-      schools: NETWORK_STATS.schools,
       activeObservations: campaigns.filter((o) => o.status === 'collecting').length,
     }),
     [summary.total, campaigns],
@@ -129,7 +126,11 @@ export default function HomePage() {
           ) : (
             <>
               <Counter label={t('home.counters.measurements')} value={liveStats.measurements} icon={MapPin} />
-              <Counter label={t('home.counters.schools')} value={liveStats.schools} icon={School} />
+              <Counter
+                label={t('home.counters.participants')}
+                value={participants.data ?? null}
+                icon={Users}
+              />
               <Counter
                 label={t('home.counters.active')}
                 value={liveStats.activeObservations}
@@ -187,7 +188,7 @@ export default function HomePage() {
           title={t('home.activityTitle')}
           subtitle={t('home.activitySubtitle')}
         />
-        {loading ? <Skeleton className="h-64" /> : <ActivityFeed items={ACTIVITY_FEED} />}
+        <ActivityFeed />
       </section>
     </div>
   );

@@ -23,6 +23,7 @@ const CODES = [
   'edit_window_closed',
   'comment_hidden',
   'comment_under_review',
+  'report_rate_limited',
   'already_reported',
   // allowed link domains
   'invalid_domain',
@@ -106,8 +107,21 @@ export async function moderateComment(id, action) {
 
 /** → { hidden } — true when this was the 3rd report and the comment is now hidden. */
 export async function reportComment(id, reason) {
-  const res = await rpc('comment_report', { p_id: id, p_reason: reason });
+  const res = await reportRpc('comment_report', { p_id: id, p_reason: reason });
   return { hidden: Boolean(res?.hidden) };
+}
+
+/**
+ * Reports (comments, photos, pictures): "too many" means the daily report limit (20 a day, 5 about
+ * the same person — 022), not "writing too fast" → code report_rate_limited (audit L9).
+ */
+export async function reportRpc(name, args, call = rpc) {
+  try {
+    return await call(name, args);
+  } catch (err) {
+    if (err?.code === 'rate_limited') throw new CommentError('report_rate_limited');
+    throw err;
+  }
 }
 
 /** Measurement ids with a visible "problem" report. */

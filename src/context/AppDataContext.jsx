@@ -131,6 +131,35 @@ const AppDataContext = createContext(null);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const EMPTY = [];
+
+/**
+ * An admin queue (audit M5): { items, loading, error, reload, reset }. A failed load never looks
+ * like "nothing waiting": `error` stays set (the screen shows an error + retry) and the last list
+ * is kept. Disabled (not an admin) → empty, not loading.
+ */
+function useQueue(fetcher, enabled, empty) {
+  const [state, setState] = useState({ items: empty, loading: enabled, error: false });
+  const seq = useRef(0);
+  const reload = useCallback(async () => {
+    const n = ++seq.current;
+    setState((s) => ({ ...s, loading: true, error: false }));
+    try {
+      const items = await fetcher();
+      if (n === seq.current) setState({ items, loading: false, error: false });
+    } catch (err) {
+      console.error('[queue] load failed', err);
+      if (n === seq.current) setState((s) => ({ ...s, loading: false, error: true }));
+    }
+  }, [fetcher]);
+  const reset = useCallback(() => {
+    seq.current += 1;
+    setState({ items: empty, loading: false, error: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return { ...state, reload, reset };
+}
+
 export function AppDataProvider({ children }) {
   const [campaigns, setCampaigns] = useState([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
@@ -142,7 +171,8 @@ export function AppDataProvider({ children }) {
   const [summaryError, setSummaryError] = useState(false);
   const [measurementsVersion, setMeasurementsVersion] = useState(0);
   const [topics, setTopics] = useState(TOPICS);
-  const [joined, setJoined] = useState(() => new Set(['obs-schoolyard-heat', 'obs-dark-skies']));
+  // "Join" is a demo, hidden by FEATURES.join (src/lib/features.js); nobody starts as joined (audit M7).
+  const [joined, setJoined] = useState(() => new Set());
 
   const { currentUser, session } = useAuth();
   const currentUserId = currentUser?.id ?? null;
@@ -307,18 +337,12 @@ export function AppDataProvider({ children }) {
   }, [campaignsNonce, campaigns]);
 
   // Labs waiting for review (admins): the list, and the badge = the ones I can review now.
-  const [reviewQueue, setReviewQueue] = useState([]);
-  const reloadReviewQueue = useCallback(async () => {
-    try {
-      setReviewQueue(await fetchReviewQueue());
-    } catch {
-      setReviewQueue([]);
-    }
-  }, []);
+  const reviewQ = useQueue(fetchReviewQueue, seesDrafts, EMPTY);
+  const { items: reviewQueue, reload: reloadReviewQueue, reset: resetReviewQueue } = reviewQ;
   useEffect(() => {
     if (seesDrafts) reloadReviewQueue();
-    else setReviewQueue([]);
-  }, [seesDrafts, reloadReviewQueue]);
+    else resetReviewQueue();
+  }, [seesDrafts, reloadReviewQueue, resetReviewQueue]);
   const reviewCount = reviewQueue.filter((r) => r.myState === 'can_review').length;
 
   // Comments (015). Logged-in users: allowed link domains (null = not loaded: no link is
@@ -350,60 +374,48 @@ export function AppDataProvider({ children }) {
   }, [currentUserId, reloadLinkDomains, reloadIssues]);
 
   // Admins: reported comments I may moderate; main admins / owner: pending link domain proposals.
-  const [commentReports, setCommentReports] = useState([]);
-  const reloadCommentReports = useCallback(async () => {
-    try {
-      setCommentReports(await fetchCommentReports());
-    } catch {
-      setCommentReports([]);
-    }
-  }, []);
+  const reportsQ = useQueue(fetchCommentReports, seesDrafts, EMPTY);
+  const { items: commentReports, reload: reloadCommentReports, reset: resetCommentReports } = reportsQ;
   // Admins: measurement photos waiting for approval / reported, on labs I moderate (016).
-  const [photoQueue, setPhotoQueue] = useState([]);
-  const reloadPhotoQueue = useCallback(async () => {
-    try {
-      setPhotoQueue(await fetchPhotoQueue());
-    } catch {
-      setPhotoQueue([]);
-    }
-  }, []);
-  const [linkProposalCount, setLinkProposalCount] = useState(0);
-  const reloadLinkProposals = useCallback(async () => {
-    try {
-      setLinkProposalCount(await linkDomainPendingCount());
-    } catch {
-      setLinkProposalCount(0);
-    }
-  }, []);
+  const photoQ = useQueue(fetchPhotoQueue, seesDrafts, EMPTY);
+  const { items: photoQueue, reload: reloadPhotoQueue, reset: resetPhotoQueue } = photoQ;
+  const proposalsQ = useQueue(linkDomainPendingCount, seesDrafts, 0);
+  const { items: linkProposalCount, reload: reloadLinkProposals, reset: resetLinkProposals } = proposalsQ;
   useEffect(() => {
     if (seesDrafts) {
       reloadCommentReports();
       reloadPhotoQueue();
       reloadLinkProposals();
     } else {
-      setCommentReports([]);
-      setPhotoQueue([]);
-      setLinkProposalCount(0);
+      resetCommentReports();
+      resetPhotoQueue();
+      resetLinkProposals();
     }
-  }, [seesDrafts, currentUserId, reloadCommentReports, reloadPhotoQueue, reloadLinkProposals]);
+  }, [seesDrafts, currentUserId, reloadCommentReports, reloadPhotoQueue, reloadLinkProposals,
+      resetCommentReports, resetPhotoQueue, resetLinkProposals]);
   const commentReportCount = commentReports.length;
   const photoQueueCount = photoQueue.length;
   // Admins: pictures waiting for me (admin photos to confirm; reports for main admins / owner).
-  const [avatarQueue, setAvatarQueue] = useState([]);
-  const reloadAvatarQueue = useCallback(async () => {
-    try {
-      setAvatarQueue(await fetchAvatarQueue());
-    } catch {
-      setAvatarQueue([]);
-    }
-  }, []);
+  const avatarQ = useQueue(fetchAvatarQueue, seesDrafts, EMPTY);
+  const { items: avatarQueue, reload: reloadAvatarQueue, reset: resetAvatarQueue } = avatarQ;
   useEffect(() => {
     if (seesDrafts) reloadAvatarQueue();
-    else setAvatarQueue([]);
-  }, [seesDrafts, currentUserId, reloadAvatarQueue]);
+    else resetAvatarQueue();
+  }, [seesDrafts, currentUserId, reloadAvatarQueue, resetAvatarQueue]);
   const avatarQueueCount = avatarQueue.length;
   // Everything waiting for this admin (header badge).
   const adminTodoCount = reviewCount + commentReportCount + photoQueueCount + avatarQueueCount + linkProposalCount;
+  const queueStatus = useMemo(
+    () => ({
+      review: { loading: reviewQ.loading, error: reviewQ.error },
+      commentReports: { loading: reportsQ.loading, error: reportsQ.error },
+      photos: { loading: photoQ.loading, error: photoQ.error },
+      avatars: { loading: avatarQ.loading, error: avatarQ.error },
+      linkProposals: { loading: proposalsQ.loading, error: proposalsQ.error },
+    }),
+    [reviewQ.loading, reviewQ.error, reportsQ.loading, reportsQ.error, photoQ.loading, photoQ.error,
+      avatarQ.loading, avatarQ.error, proposalsQ.loading, proposalsQ.error],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -427,8 +439,9 @@ export function AppDataProvider({ children }) {
 
   /**
    * Insert into Supabase; resolves with the saved record.
-   * draft: { observationId, lat, lng, placeLabel, timestamp, values } — photo values are
-   * Storage paths already uploaded by the wizard.
+   * draft: { id, observationId, lat, lng, placeLabel, timestamp, values } — photo values are
+   * Storage paths already uploaded by the wizard; `id` is made once per wizard run (audit L3):
+   * if it already exists and is mine, the first try was saved but its answer was lost → success.
    * The database validates `values` against the campaign's CURRENT fields and stores the
    * current form_version. If it rejects them, the campaign is re-read and an
    * InvalidValuesError with per-field codes is thrown.
@@ -440,6 +453,7 @@ export function AppDataProvider({ children }) {
       const { data, error } = await supabase
         .from('measurements')
         .insert({
+          ...(draft.id ? { id: draft.id } : {}),
           observation_id: draft.observationId,
           user_id: currentUserId,
           place_label: draft.placeLabel || null,
@@ -450,6 +464,22 @@ export function AppDataProvider({ children }) {
         })
         .select(MEASUREMENT_COLUMNS)
         .single();
+      if (error && draft.id) {
+        // Already saved by an earlier try of this same measurement (its answer was lost)? The retry
+        // then fails — usually 23505 (same id), or earlier in the trigger (photo_taken: its photo is
+        // already used; rate_limited). The id is unique per wizard run, so "it exists and is mine"
+        // means saved.
+        const { data: saved } = await supabase
+          .from('measurements')
+          .select(MEASUREMENT_COLUMNS)
+          .eq('id', draft.id)
+          .eq('user_id', currentUserId)
+          .maybeSingle();
+        if (saved) {
+          setMeasurementsVersion((n) => n + 1);
+          return fromRow(saved);
+        }
+      }
       if (error) {
         if (error.message === 'invalid_values') {
           await refreshCampaigns();
@@ -626,6 +656,7 @@ export function AppDataProvider({ children }) {
       linkProposalCount,
       reloadLinkProposals,
       adminTodoCount,
+      queueStatus,
       campaignsLoading,
       campaignsError,
       reloadCampaigns,
@@ -678,6 +709,7 @@ export function AppDataProvider({ children }) {
       linkProposalCount,
       reloadLinkProposals,
       adminTodoCount,
+      queueStatus,
       campaignsLoading,
       campaignsError,
       reloadCampaigns,

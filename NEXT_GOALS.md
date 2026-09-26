@@ -223,5 +223,18 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
   * Residual: `set_my_username` has no failure limit (a failed call rolls back its own counter);
     it needs a logged-in Google account without a username.
   * Deploy order: read-only checks → Edge Function → code → 022 (`SETUP_AUTH.md` → 25).
-* **Final hardening, parts B and C** — next: moderation queues and mock data (B), privacy re-check,
-  security headers, dependencies, bundle size, docs (C).
+* **Final hardening, part B (moderation and UI) — done (migration 023).**
+  * Moderation queues show loading / error + retry; a failed load never looks like "nothing
+    waiting" (M5).
+  * Hidden data in photos (M1): the moderator's browser checks the stored file (EXIF / GPS, XMP,
+    IPTC, extra data) before approving, and profile pictures when a moderator looks at them; our
+    own upload checks (and if needed strips) its result. The server can't read file contents — this
+    is a check in the moderator's browser, not a guarantee.
+  * Home page without mock data (M7): real newest measurements (no names logged out), participants
+    count (023), real "x ago". "Join" and the forum are hidden (`src/lib/features.js`) until they
+    are real.
+  * One id per measurement: a retry after a lost answer doesn't duplicate (L3). Texts / RTL (L9),
+    tap targets ≥ 24 px, 44 px on touch (L10).
+  * Deploy order: 023 → code (`SETUP_AUTH.md` → 26).
+* **Final hardening, part C** — next: privacy re-check, security headers, dependencies, bundle
+  size, signed-URL reuse, backups, docs.

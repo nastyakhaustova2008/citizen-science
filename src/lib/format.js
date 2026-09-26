@@ -1,4 +1,3 @@
-import { REFERENCE_DATE } from '../data/mockData';
 
 const LOCALE_TAG = { he: 'he-IL', en: 'en-GB', ru: 'ru-RU' };
 
@@ -48,10 +47,10 @@ export function formatMonthShort(year, month, locale = 'he') {
 }
 
 /**
- * Relative time against the dataset's reference "now".
+ * Relative time against now (the real clock; before part B of the hardening it was the demo date).
  * Returns a { key, count } pair for the i18n layer to render.
  */
-export function relativeTime(iso, now = REFERENCE_DATE) {
+export function relativeTime(iso, now = new Date()) {
   const then = typeof iso === 'string' ? new Date(iso) : iso;
   const diffMs = now.getTime() - then.getTime();
   const min = Math.round(diffMs / 60000);

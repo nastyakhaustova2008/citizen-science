@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { CommentError } from './commentsApi';
+import { CommentError, reportRpc } from './commentsApi';
 import { AVATAR_BUCKET, UploadError, uploadPhoto } from './storage';
 
 /**
@@ -93,7 +93,7 @@ export async function getAvatar(userId) {
 
 /** → { hidden } — true when this report hid a student picture (3 reports). */
 export async function reportAvatar(userId, reason) {
-  const res = await rpc('avatar_report', { p_user: userId, p_reason: reason });
+  const res = await reportRpc('avatar_report', { p_user: userId, p_reason: reason }, rpc);
   return { hidden: Boolean(res?.hidden) };
 }
 

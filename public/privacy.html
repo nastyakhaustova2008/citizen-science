@@ -253,7 +253,7 @@
             <li>The values you enter, including any text you type. Our server checks that text like comments: it
               can't contain phone numbers or email addresses, links are allowed only to the approved sites, and the
               place name is at most 120 characters.</li>
-            <li><strong>Approximate location</strong> — coordinates are rounded to about 100 metres before they are saved (the server enforces this too), and the place name you entered. We do not store your exact location. Location data (GPS) and other metadata are removed from photos in your browser before they are uploaded; a photo that can't be cleaned is not attached.</li>
+            <li><strong>Approximate location</strong> — coordinates are rounded to about 100 metres before they are saved (the server enforces this too), and the place name you entered. We do not store your exact location. Location data (GPS) and other metadata are removed from photos in your browser before they are uploaded; a photo that can't be cleaned is not attached. Because a file could also reach our storage in another way, the moderator's browser checks every photo for hidden data before approving it, and checks profile pictures when a moderator looks at them; a file with hidden data is deleted.</li>
             <li>The date and time.</li>
           </ul>
           <p>
@@ -385,7 +385,7 @@
             <li>all measurements on the map and in the data table — the approximate place (about 100 m), time and values —
               <strong>without the username or any other sign of who made them</strong>. Visitors without an account can't
               tell which measurements were made by the same person;</li>
-            <li>the numbers on the home page: how many measurements and how many participants each lab has;</li>
+            <li>the home page: how many measurements and participants there are (in total and in each lab) and the newest measurements — place, value and time, without any name;</li>
             <li>if you are an admin: your full name, workplace and position on the labs you created or approved (not your
               username and not your profile picture).</li>
           </ul>
@@ -676,7 +676,7 @@
             <li>Значения, которые вы вводите, включая любой текст. Наш сервер проверяет этот текст так же, как
               комментарии: в нём не может быть номеров телефонов и адресов электронной почты, ссылки разрешены только на
               одобренные сайты, а название места — не длиннее 120 символов.</li>
-            <li><strong>Примерное место</strong> — координаты округляются примерно до 100 метров до сохранения (это проверяет и сервер), и название места, которое вы указали. Точное место мы не храним. Данные о месте (GPS) и другие метаданные удаляются из фотографий в вашем браузере до загрузки; фото, которое нельзя очистить, не прикрепляется.</li>
+            <li><strong>Примерное место</strong> — координаты округляются примерно до 100 метров до сохранения (это проверяет и сервер), и название места, которое вы указали. Точное место мы не храним. Данные о месте (GPS) и другие метаданные удаляются из фотографий в вашем браузере до загрузки; фото, которое нельзя очистить, не прикрепляется. Файл может попасть в хранилище и другим путём, поэтому браузер модератора перед одобрением проверяет каждое фото на скрытые данные, а фото профиля — когда модератор его смотрит; файл со скрытыми данными удаляется.</li>
             <li>Дата и время.</li>
           </ul>
           <p>
@@ -808,7 +808,7 @@
             <li>все измерения на карте и в таблице данных — примерное место (около 100 м), время и значения —
               <strong>без имени пользователя и без любого другого признака того, кто их сделал</strong>. Посетитель без
               аккаунта не может узнать, какие измерения сделал один и тот же человек;</li>
-            <li>цифры на главной странице: сколько измерений и сколько участников у каждой лабораторной;</li>
+            <li>главная страница: сколько измерений и участников (всего и в каждой лабораторной) и самые новые измерения — место, значение и время, без имён;</li>
             <li>если вы администратор: ваше полное имя, место работы и должность на лабораторных, которые вы создали или
               одобрили (но не имя пользователя и не фото профиля).</li>
           </ul>
@@ -1092,7 +1092,7 @@
           <ul>
             <li>הערכים שהזנתם, כולל כל טקסט שכתבתם. השרת שלנו בודק את הטקסט הזה כמו תגובות: אסור שיהיו בו מספרי
               טלפון או כתובות אימייל, קישורים מותרים רק לאתרים שאושרו, ושם המקום — עד 120 תווים.</li>
-            <li><strong>מיקום משוער</strong> — הקואורדינטות מעוגלות לכ־100 מטר לפני השמירה (והשרת בודק זאת), ושם המקום שציינתם. אנחנו לא שומרים את המיקום המדויק. מידע מיקום (GPS) ושאר המטא־דאטה מוסרים מהתמונות בדפדפן לפני ההעלאה; תמונה שלא ניתן לנקות לא מצורפת.</li>
+            <li><strong>מיקום משוער</strong> — הקואורדינטות מעוגלות לכ־100 מטר לפני השמירה (והשרת בודק זאת), ושם המקום שציינתם. אנחנו לא שומרים את המיקום המדויק. מידע מיקום (GPS) ושאר המטא־דאטה מוסרים מהתמונות בדפדפן לפני ההעלאה; תמונה שלא ניתן לנקות לא מצורפת. קובץ יכול להגיע לאחסון גם בדרך אחרת, ולכן הדפדפן של המנהל/ת בודק כל תמונה לפני האישור אם נשאר בה מידע נסתר, ותמונות פרופיל — כשמנהל/ת מסתכלים עליהן; קובץ עם מידע נסתר נמחק.</li>
             <li>התאריך והשעה.</li>
           </ul>
           <p>
@@ -1213,7 +1213,7 @@
             <li>את כל המדידות על המפה ובטבלת הנתונים — המקום המשוער (כ־100 מטר), הזמן והערכים —
               <strong>בלי שם המשתמש ובלי שום סימן אחר למי עשה אותן</strong>. מבקר בלי חשבון לא יכול לדעת אילו מדידות
               עשה אותו אדם;</li>
-            <li>את המספרים בדף הבית: כמה מדידות וכמה משתתפים יש בכל מעבדה;</li>
+            <li>את דף הבית: כמה מדידות ומשתתפים יש (בסך הכול ובכל מעבדה) ואת המדידות האחרונות — מקום, ערך וזמן, בלי שמות;</li>
             <li>אם אתם מנהלים: את השם המלא, מקום העבודה והתפקיד שלכם במעבדות שיצרתם או אישרתם (לא את שם המשתמש ולא את
               תמונת הפרופיל).</li>
           </ul>

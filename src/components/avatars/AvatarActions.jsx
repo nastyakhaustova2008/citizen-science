@@ -8,8 +8,9 @@ import { AVATAR_BUCKET, forgetSignedUrl, removeFile } from '../../lib/storage';
 import ReasonPicker from '../photos/ReasonPicker';
 import AvatarErrorText from './AvatarErrorText';
 import RejectForm from './RejectForm';
+import { FileCheckNotice, useFileCheck } from '../photos/FileCheck';
 
-const action = 'rounded px-1.5 py-0.5 text-[11px] font-semibold text-ink-faint hover:bg-paper-sunk hover:text-ink dark:hover:bg-white/5 dark:hover:text-paper';
+const action = 'tap-target rounded px-1.5 py-0.5 text-[11px] font-semibold text-ink-faint hover:bg-paper-sunk hover:text-ink dark:hover:bg-white/5 dark:hover:text-paper';
 
 /**
  * Someone else's profile page (logged-in viewers): what I may do with their picture (017) —
@@ -36,6 +37,13 @@ export default function AvatarActions({ userId }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Audit M1: moderators / the confirmer see whether the stored picture still has hidden data.
+  const check = useFileCheck(
+    info?.avatar?.path,
+    AVATAR_BUCKET,
+    Boolean(info?.avatar && (info.canModerate || info.canConfirm)),
+  );
 
   if (!info?.avatar) return null;
   const a = info.avatar;
@@ -76,6 +84,29 @@ export default function AvatarActions({ userId }) {
         <p className="font-semibold text-danger">{t('comments.reportsCount', { count: a.reports })}</p>
       )}
 
+      <FileCheckNotice check={check}>
+        {info.canConfirm && a.status === 'pending' ? (
+          <button
+            type="button"
+            className="btn-primary !bg-danger !px-2.5 !py-1 text-xs hover:!bg-danger/90"
+            disabled={busy}
+            onClick={() =>
+              run(() => confirmAvatar(userId, false, t('avatars.fileCheck.rejectReason')), () => removeFile(a.path, AVATAR_BUCKET))
+            }
+          >
+            {t('avatars.fileCheck.rejectForData')}
+          </button>
+        ) : info.canModerate ? (
+          <button
+            type="button"
+            className="btn-primary !bg-danger !px-2.5 !py-1 text-xs hover:!bg-danger/90"
+            disabled={busy}
+            onClick={() => run(() => moderateAvatar(userId, 'delete'), () => removeFile(a.path, AVATAR_BUCKET))}
+          >
+            {t('avatars.fileCheck.deleteForData')}
+          </button>
+        ) : null}
+      </FileCheckNotice>
       {mode === 'report' ? (
         <ReasonPicker
           name={`avatar-report-${userId}`}
@@ -112,7 +143,12 @@ export default function AvatarActions({ userId }) {
         <div className="flex flex-wrap gap-x-1">
           {info.canConfirm && (
             <>
-              <button type="button" className={action} disabled={busy} onClick={() => run(() => confirmAvatar(userId, true))}>
+              <button
+                type="button"
+                className={action}
+                disabled={busy || check === 'checking'}
+                onClick={() => run(() => confirmAvatar(userId, true))}
+              >
                 {t('avatars.confirm')}
               </button>
               <button type="button" className={`${action} !text-danger`} onClick={() => setMode('reject')}>

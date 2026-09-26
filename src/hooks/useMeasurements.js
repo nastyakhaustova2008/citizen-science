@@ -6,6 +6,8 @@ import {
   fetchLabPoints,
   fetchLabStats,
   fetchMeasurement,
+  fetchParticipantsTotal,
+  fetchRecent,
   fetchUserPoints,
 } from '../lib/measurementsApi';
 
@@ -115,4 +117,26 @@ export function useUserPoints(userId) {
     [res.data, viewMeasurement],
   );
   return { ...res, data };
+}
+
+/**
+ * Home page feed: the newest measurements (RECENT_COUNT), authors only with a session (020).
+ * data = Measurement[] (with m.value of the primary field).
+ */
+export function useRecentMeasurements() {
+  const { measurementsVersion, viewMeasurement } = useAppData();
+  const { session, sessionReady } = useAuth();
+  const withAuthor = Boolean(session);
+  const res = useLoad(
+    () => (sessionReady ? fetchRecent({ withAuthor }) : new Promise(() => {})),
+    [measurementsVersion, withAuthor, sessionReady],
+  );
+  const data = useMemo(() => (res.data ? res.data.map(viewMeasurement) : null), [res.data, viewMeasurement]);
+  return { ...res, data };
+}
+
+/** Home page counter: how many different people measured (migration 023). data = number. */
+export function useParticipantsTotal() {
+  const { measurementsVersion } = useAppData();
+  return useLoad(() => fetchParticipantsTotal(), [measurementsVersion]);
 }

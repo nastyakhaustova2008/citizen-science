@@ -136,7 +136,7 @@ function DomainChip({ domain: d, canRemove, onChanged }) {
         ) : (
           <button
             type="button"
-            className="ms-0.5 rounded p-0.5 hover:text-danger"
+            className="tap-target ms-0.5 rounded p-0.5 hover:text-danger"
             aria-label={t('comments.domains.removeDomain', { domain: d.domain })}
             onClick={() => setConfirm(true)}
           >

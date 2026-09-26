@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { CommentError } from './commentsApi';
+import { CommentError, reportRpc } from './commentsApi';
 
 /**
  * Measurement photos API (migration 016): thin wrappers over the security-definer RPCs.
@@ -68,7 +68,7 @@ export async function moderatePhoto(path, action, reason = null) {
 
 /** → { hidden } — true when this was the 3rd report and the photo is now hidden. */
 export async function reportPhoto(path, reason) {
-  const res = await rpc('photo_report', { p_path: path, p_reason: reason });
+  const res = await reportRpc('photo_report', { p_path: path, p_reason: reason }, rpc);
   return { hidden: Boolean(res?.hidden) };
 }
 

@@ -8,6 +8,8 @@
  * Limits match the Storage buckets (JPEG only; measurement-photos ≤ 1 MB — 016, avatars ≤ 100 KB — 017).
  */
 
+import { cleanJpegDataUrl } from './jpegCheck';
+
 export class UnsupportedImageError extends Error {
   constructor() {
     super('unsupported_image');
@@ -84,7 +86,12 @@ export async function redrawImage(file, { maxSide, maxBytes, square = false, qua
         const url = canvas.toDataURL('image/jpeg', q);
         // A failed export returns "data:," — never hand back anything but a redrawn image.
         if (!url.startsWith('data:image/jpeg')) throw new UnsupportedImageError();
-        if (dataUrlBytes(url) <= maxBytes) return url;
+        if (dataUrlBytes(url) > maxBytes) continue;
+        // Audit M1: the same check moderators run. Should a browser add a metadata block to its
+        // canvas export (they normally don't), it is stripped; if that fails, no upload.
+        const clean = cleanJpegDataUrl(url);
+        if (!clean) throw new UnsupportedImageError();
+        return clean;
       }
     }
     throw new UnsupportedImageError();

@@ -104,7 +104,7 @@ export default function PointPanel({ measurement, observation, onClose }) {
                 <span>{t('map.panel.participant')}</span>
                 <Link
                   to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
-                  className="mt-0.5 block text-xs font-semibold text-ink underline dark:text-paper"
+                  className="block py-1 text-xs font-semibold text-ink underline dark:text-paper"
                 >
                   {t('map.panel.signInForNames')}
                 </Link>
@@ -114,7 +114,7 @@ export default function PointPanel({ measurement, observation, onClose }) {
                 <Avatar user={user} size={26} />
                 <span>
                   {user ? (
-                    <Link to={`/profile/${measurement.userId}`} className="hover:underline">
+                    <Link to={`/profile/${measurement.userId}`} className="tap-link hover:underline">
                       <AuthorName user={user} />
                     </Link>
                   ) : (
@@ -128,7 +128,7 @@ export default function PointPanel({ measurement, observation, onClose }) {
           {measurement.placeLabel && (
             <div className="col-span-2">
               <dt className="text-xs text-ink-faint">{t('data.columns.place')}</dt>
-              <dd>{measurement.placeLabel}</dd>
+              <dd dir="auto" className="break-words">{measurement.placeLabel}</dd>
             </div>
           )}
           {fields
@@ -155,7 +155,7 @@ export default function PointPanel({ measurement, observation, onClose }) {
             </dd>
           </div>
           <div className="col-span-2">
-            <dt className="text-xs text-ink-faint">GPS</dt>
+            <dt className="text-xs text-ink-faint">{t('map.panel.coords')}</dt>
             <dd dir="ltr" className="tnum text-xs">
               {locationLabel(measurement.lat)}, {locationLabel(measurement.lng)}
             </dd>

@@ -24,7 +24,7 @@ function NoEmailRecovery() {
     <AuthCard
       title={t('auth.forgotTitle')}
       footer={
-        <Link to="/login" className="underline">
+        <Link to="/login" className="tap-link underline">
           {t('auth.backToLogin')}
         </Link>
       }
@@ -70,7 +70,7 @@ function ResetByEmail() {
       title={t('auth.forgotTitle')}
       intro={sent ? null : t('auth.forgotBody')}
       footer={
-        <Link to="/login" className="underline">
+        <Link to="/login" className="tap-link underline">
           {t('auth.backToLogin')}
         </Link>
       }

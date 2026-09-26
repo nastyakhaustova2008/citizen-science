@@ -94,6 +94,10 @@ export default function AddMeasurementWizard({ observation }) {
   const [savedWithPhoto, setSavedWithPhoto] = useState(false);
   // field key → { src: the data URL that was uploaded, path }
   const uploads = useRef({});
+  // Audit L3: one id per measurement, made once. If the answer to "save" is lost and the student
+  // presses again, the second insert hits the same id and is recognised as already saved — no
+  // duplicate. A UUID fits the 018 id rule ([A-Za-z0-9_-], ≤ 64).
+  const measurementId = useRef(crypto.randomUUID());
 
   // Shared computers sign out after inactivity: the warning says an unsent measurement is lost.
   const started = !done && (step > 0 || Boolean(coords) || Boolean(placeLabel) || Object.keys(inputs).length > 0);
@@ -245,6 +249,7 @@ export default function AddMeasurementWizard({ observation }) {
         withPhoto = true;
       }
       await addMeasurement({
+        id: measurementId.current,
         observationId: observation.id,
         lat: coords[0],
         lng: coords[1],
@@ -253,6 +258,7 @@ export default function AddMeasurementWizard({ observation }) {
         values: toSave,
       });
       uploads.current = {};
+      measurementId.current = crypto.randomUUID(); // the next measurement gets its own id
       setSavedWithPhoto(withPhoto);
       setDone(true);
     } catch (err) {
@@ -523,10 +529,10 @@ export default function AddMeasurementWizard({ observation }) {
               {placeLabel.trim() && (
                 <>
                   <dt className="text-ink-faint">{t('wizard.step1.placeLabel')}</dt>
-                  <dd>{placeLabel.trim()}</dd>
+                  <dd dir="auto" className="break-words">{placeLabel.trim()}</dd>
                 </>
               )}
-              <dt className="text-ink-faint">GPS</dt>
+              <dt className="text-ink-faint">{t('map.panel.coords')}</dt>
               <dd className="tnum text-xs" dir="ltr">
                 {coords && `${locationLabel(coords[0])}, ${locationLabel(coords[1])}`}
               </dd>
