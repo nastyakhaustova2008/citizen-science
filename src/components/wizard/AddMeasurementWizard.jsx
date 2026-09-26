@@ -7,6 +7,7 @@ import {
   ChevronRight,
   AlertTriangle,
   CircleCheck,
+  ShieldCheck,
 } from 'lucide-react';
 
 import { useI18n } from '../../i18n';
@@ -19,7 +20,7 @@ import {
   fieldLabel,
   formatFieldValue,
 } from '../../lib/fields';
-import { coordLabel } from '../../lib/format';
+import { roundLatLng, locationLabel } from '../../lib/location';
 import LocationPicker from './LocationPicker';
 import FieldInput from './FieldInput';
 
@@ -155,10 +156,8 @@ export default function AddMeasurementWizard({ observation }) {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setCoords([
-          Number(pos.coords.latitude.toFixed(5)),
-          Number(pos.coords.longitude.toFixed(5)),
-        ]);
+        // Rounded right away (~100 m): the exact position never enters the wizard's state.
+        setCoords(roundLatLng(pos.coords.latitude, pos.coords.longitude));
         setLocating(false);
       },
       () => {
@@ -332,11 +331,17 @@ export default function AddMeasurementWizard({ observation }) {
             onPick={setCoords}
             height={320}
           />
+          <div className="flex items-start gap-1.5 text-sm text-ink-soft dark:text-paper/80">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-moss" aria-hidden="true" />
+            <p dir="auto">
+              {t('wizard.step1.roundingNote')} {t('wizard.step1.notAtHome')}
+            </p>
+          </div>
           <p className="tnum text-sm text-ink-soft dark:text-paper/80" dir="ltr" aria-live="polite">
             {coords
               ? t('wizard.step1.selected', {
-                  lat: coordLabel(coords[0]),
-                  lng: coordLabel(coords[1]),
+                  lat: locationLabel(coords[0]),
+                  lng: locationLabel(coords[1]),
                 })
               : ''}
             {!coords && <span dir="auto">{t('wizard.step1.noneSelected')}</span>}
@@ -436,7 +441,7 @@ export default function AddMeasurementWizard({ observation }) {
               )}
               <dt className="text-ink-faint">GPS</dt>
               <dd className="tnum text-xs" dir="ltr">
-                {coords && `${coordLabel(coords[0])}, ${coordLabel(coords[1])}`}
+                {coords && `${locationLabel(coords[0])}, ${locationLabel(coords[1])}`}
               </dd>
             </dl>
           </div>
