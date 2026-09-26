@@ -6,47 +6,43 @@ Each goal is one task = one branch = one PR. Before each one: plan first, code a
 
 ## Suggested order
 
-1. Coordinate rounding (~100 m) — safety, before schools start using the site
-2. Delete my account
+Done: goal 1 (coordinate rounding) and goal 2 (delete my account).
+
 3. Privacy policy details + Brevo emails
 4. Date and time of a measurement
 5. Six languages
 6. Save comments to the database
 7. Automatic translation of comments and user data
 
-Goals 1–3 should be done before real schools use the platform. Goal 5 comes before goal 7, because translation depends on the final list of languages. Goal 6 comes before goal 7, because there must be stored comments to translate.
+Goal 3 should be done before real schools use the platform (goals 1 and 2, also needed before that, are done). Goal 5 comes before goal 7, because translation depends on the final list of languages. Goal 6 comes before goal 7, because there must be stored comments to translate.
 
-## 1. Coordinate rounding (~100 m)
+## 1. Coordinate rounding (~100 m) — done
 
-**Goal:** the public sees each point snapped to a grid of about 100 × 100 m. The database still stores the exact coordinates — nothing is lost for the science. The author still sees their own exact point. The public (map, table, export) sees only the rounded version.
+**Built (migrations 013, 013b):** coordinates are rounded to 3 decimal places (~100 m) for every lab. Exact coordinates are not stored for anyone — not the author, not admins.
 
-Notes:
+* Rounded twice: in the browser as soon as a point is picked on the map or from "my location" (the exact point never enters the wizard state), and by a database trigger on every insert and coordinate change (013), so the client can't bypass it.
+* Snapped to a grid, no random offset (random offsets can be averaged out over repeated measurements from the same place).
+* Existing rows were rounded by 013b (destructive; run after a CSV export and the production deploy).
+* Photos: EXIF/GPS and other metadata are stripped in the browser by redrawing the image. A photo that can't be cleaned (e.g. HEIC in Chrome) is not attached.
+* The wizard shows a rounding note and the "don't measure at your home" tip next to the map.
+* The privacy policy describes this.
 
-* Must be enforced in the database, not only in the UI: today anyone can read exact coordinates directly through the public API.
-* Snap to a grid (e.g. 3 decimal places), don't add random offsets — random offsets can be averaged out over repeated measurements from the same place.
-* The author seeing their own exact point needs a separate database function (column-level hiding works per column, not per person).
-* Adding a measurement currently reads the saved row back with exact coordinates — adjust that.
-* Decide: do admins see exact coordinates?
-* Update the privacy policy and the "don't measure at home" tip.
+## 2. Delete my account — done
 
-## 2. Delete my account
+**Built (migration 014, `account` Edge Function):** a "Delete account" button in the profile (Account).
 
-**Goal:** a "Delete my account" button in the profile.
+Decisions:
 
-Decisions already made:
+* Measurements: kept by default as "unknown participant" with a new random id (one per deleted account), so they can't be linked back; or deleted, if the user chooses.
+* Admins they appointed move up one level (under whoever appointed the deleted admin); their own chains stay under them.
+* Labs and drafts stay, credited to "former staff member"; the user's open revisions are discarded; approvals and review comments stay without a name.
+* Names are removed from the role log; the lab log never had names.
+* The owner cannot delete their own account.
+* Confirmation: type your username, and sign in again (password or Google) if this session's sign-in is older than 15 minutes.
+* Runs in the Edge Function (needs the secret key). Deletion by email request is still possible, done manually (steps in CLAUDE.md).
+* The privacy policy describes the button and what is deleted.
 
-* Measurements stay on the map as "unknown participant" by default.
-* Offer an option to delete the measurements too.
-* Names in the role log and lab credits become "former staff member".
-
-To decide:
-
-* Confirmation step (type the username? re-enter the password?).
-* Admins: what happens to admins they granted (`role_granted_by` chain)?
-* Labs the user created: keep them, credited to "former staff member".
-* The owner cannot delete their own account from the app.
-* Needs the secret key, so it runs in the Edge Function.
-* Update the privacy policy ("deletion on request" → "delete button + on request").
+Future: once photo Storage exists, photos are **always** deleted on account deletion, even when the measurements are kept.
 
 ## 3. Privacy policy details + Brevo
 
