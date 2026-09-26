@@ -83,6 +83,35 @@ function LogRow({ event: e }) {
   const cascade = e.action === 'cascade_revoke';
   const role = (r) => (r ? t(`profile.role.${r}`) : '—');
 
+  // Account deletion (014): the deletion itself, then one row per admin moved up the chain.
+  if (e.action === 'account_deleted' || e.action === 'chain_moved') {
+    const deleted = e.action === 'account_deleted';
+    return (
+      <li className={`py-2.5 text-sm ${deleted ? '' : 'ps-5'}`}>
+        <p className="flex flex-wrap items-baseline gap-x-1.5">
+          {deleted ? (
+            <span className="text-ink-faint">{t('admin.log.deletedAccount')}</span>
+          ) : (
+            <PersonLink id={e.targetId} username={e.targetUsername} />
+          )}
+          <span className="text-ink-soft dark:text-paper/80">{t(`admin.log.actions.${e.action}`)}</span>
+          {!deleted &&
+            (e.movedUnder ? (
+              <PersonLink id={e.movedUnder} username={e.movedUnderUsername} />
+            ) : (
+              <span className="text-ink-faint">{t('admin.log.noGranter')}</span>
+            ))}
+        </p>
+        <p className="mt-0.5 text-xs text-ink-faint">
+          <span className="me-2">
+            {deleted ? t('admin.log.deletedRole', { role: role(e.oldRole) }) : t('admin.log.afterDeletion')}
+          </span>
+          <span>{formatDate(e.at, locale)}</span> <span dir="ltr">{formatTime(e.at, locale)}</span>
+        </p>
+      </li>
+    );
+  }
+
   let detail = null;
   if (e.action === 'rename') {
     detail = t('admin.log.renamedFromTo', {

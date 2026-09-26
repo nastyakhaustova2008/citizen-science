@@ -19,6 +19,11 @@
 //             answer nor its timing tells whether the account has an email.
 //   client-ip {}                          → which client IP this function sees (to verify that it
 //             cannot be spoofed — see CLAUDE.md → «Аккаунты» → «Проверка IP»).
+//   delete    { username, deleteMeasurements } + header Authorization: Bearer <user's access token>
+//             → { ok: true } | { error: 'not_logged_in' | 'too_many_attempts' | 'reauth_required'
+//             | 'username_mismatch' | 'owner_cannot_delete' | 'no_username' }
+//             "Delete my account" (migration 014). Only the logged-in user, only themselves; the
+//             session must have signed in within REAUTH_MAX_AGE_MINUTES (shared school computers).
 //
 // Rate limits (table private.rate_limit_hits via rpc rate_limit_take; IPs stored only as HMAC):
 //   signup: SIGNUP_LIMIT_PER_IP per hour per IP (default 30 — a whole class behind one school
@@ -27,6 +32,8 @@
 //   login:  10 failed attempts per username per 15 min (IP-independent) + Supabase Auth's own
 //           per-IP limit (the client IP is forwarded with Sb-Forwarded-For).
 //   recover: 20 per IP and 3 per username per hour.
+//   delete:  DELETE_LIMIT_PER_USER (default 10) per account and DELETE_LIMIT_PER_IP (default 30)
+//            per IP per hour, every attempt counts.
 // Limits are Edge Function secrets (Dashboard → Edge Functions → Secrets), no redeploy needed.
 //
 // Username rules are a copy of src/lib/username.js and public.username_error() in
@@ -49,6 +56,10 @@ const LIMITS = {
   loginFailsPerUser: envInt('LOGIN_FAIL_LIMIT_PER_USER', 10),
   recoverPerIp: envInt('RECOVER_LIMIT_PER_IP', 20),
   recoverPerUser: envInt('RECOVER_LIMIT_PER_USER', 3),
+  deletePerUser: envInt('DELETE_LIMIT_PER_USER', 10),
+  deletePerIp: envInt('DELETE_LIMIT_PER_IP', 30),
+  // "Delete my account" needs a sign-in (password or Google) at most this long ago.
+  reauthMaxAgeMinutes: envInt('REAUTH_MAX_AGE_MINUTES', 15),
 };
 const HOUR = 3600;
 const LOGIN_WINDOW = 15 * 60;
@@ -323,6 +334,81 @@ function recover(req, body) {
   return json({ ok: true });
 }
 
+/* ------------------------------------------------------------ delete account */
+
+function bearer(req) {
+  const m = /^Bearer\s+(\S+)$/i.exec(req.headers.get('authorization') || '');
+  return m ? m[1] : null;
+}
+
+/**
+ * When THIS session signed in (ms), from the access token's `amr` claim — it keeps the time of
+ * the password / Google sign-in across token refreshes, and belongs to this session only, so a
+ * fresh sign-in on another device does not make an old session on a shared computer "recent".
+ * The token has already been verified by auth.getUser. Falls back to the user's last_sign_in_at.
+ */
+function sessionSignedInAt(token, user) {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const claims = JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '=')));
+    const times = (Array.isArray(claims.amr) ? claims.amr : [])
+      .map((a) => Number(a?.timestamp))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (times.length) return Math.max(...times) * 1000;
+  } catch {
+    // fall through
+  }
+  const last = Date.parse(user.last_sign_in_at || '');
+  return Number.isFinite(last) ? last : null;
+}
+
+const DELETE_ERRORS = new Set(['username_mismatch', 'owner_cannot_delete', 'no_username']);
+
+async function deleteAccount(req, body) {
+  const token = bearer(req);
+  if (!token) return json({ error: 'not_logged_in' });
+  const { data: got, error: userError } = await admin.auth.getUser(token);
+  const user = got?.user;
+  if (userError || !user) return json({ error: 'not_logged_in' });
+
+  const { ip } = clientIp(req);
+  if (!(await take(await ipBucket('delete', ip), LIMITS.deletePerIp, HOUR))) {
+    return json({ error: 'too_many_attempts' });
+  }
+  if (!(await take(`delete:user:${user.id}`, LIMITS.deletePerUser, HOUR))) {
+    return json({ error: 'too_many_attempts' });
+  }
+
+  const signedInAt = sessionSignedInAt(token, user);
+  if (!signedInAt || Date.now() - signedInAt > LIMITS.reauthMaxAgeMinutes * 60 * 1000) {
+    return json({ error: 'reauth_required' });
+  }
+
+  const deleteMeasurements = body.deleteMeasurements === true;
+  const { data: prep, error: prepError } = await admin.rpc('account_delete_prepare', {
+    p_user: user.id,
+    p_username: normalizeUsername(body.username),
+    p_delete_measurements: deleteMeasurements,
+  });
+  if (prepError) {
+    if (DELETE_ERRORS.has(prepError.message)) return json({ error: prepError.message });
+    throw prepError;
+  }
+
+  // Everything above is safe to repeat, so if this fails the user just tries again.
+  const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
+  if (deleteError) throw deleteError;
+
+  const { error: finishError } = await admin.rpc('account_delete_finish', {
+    p_user: user.id,
+    p_anon: prep.anon_id,
+    p_delete_measurements: deleteMeasurements,
+  });
+  // The account is gone already; leftovers go with the 30-day cleanup (008).
+  if (finishError) console.error('[account] delete finish failed', finishError.message);
+  return json({ ok: true });
+}
+
 function clientIpInfo(req) {
   const chosen = clientIp(req);
   return json({
@@ -355,6 +441,8 @@ Deno.serve(async (req) => {
         return recover(req, body);
       case 'client-ip':
         return clientIpInfo(req);
+      case 'delete':
+        return await deleteAccount(req, body);
       default:
         return json({ error: 'bad_request' }, 400);
     }

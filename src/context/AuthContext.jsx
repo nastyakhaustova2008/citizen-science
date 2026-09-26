@@ -38,13 +38,15 @@ export class AuthError extends Error {
   }
 }
 
-async function callAccount(body) {
+async function callAccount(body, accessToken = null) {
   if (!supabaseUrl) throw new AuthError('generic');
+  const headers = { 'Content-Type': 'application/json', apikey: supabaseKey };
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   let res;
   try {
     res = await fetch(`${supabaseUrl}/functions/v1/account`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: supabaseKey },
+      headers,
       body: JSON.stringify(body),
     });
   } catch {
@@ -181,16 +183,59 @@ export function AuthProvider({ children }) {
     await startSession(data.session);
   }, []);
 
-  const logInWithGoogle = useCallback(async (next = '/') => {
+  /** reauth: always show Google's account chooser (confirming it is you, e.g. before deleting). */
+  const logInWithGoogle = useCallback(async (next = '/', { reauth = false } = {}) => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${authRedirectBase()}#${next}` },
+      options: {
+        redirectTo: `${authRedirectBase()}#${next}`,
+        ...(reauth ? { queryParams: { prompt: 'select_account' } } : {}),
+      },
     });
     if (error) throw new AuthError('oauth');
   }, []);
 
   const logOut = useCallback(async () => {
     await supabase.auth.signOut();
+  }, []);
+
+  /**
+   * "Delete my account" (migration 014): what will happen — {role, canDelete, measurements,
+   * adminsMoved, movedUnder: {id, username} | null, labsCreated, drafts, openRevisions}.
+   */
+  const accountDeletePreview = useCallback(async () => {
+    const { data, error } = await supabase.rpc('account_delete_preview');
+    if (error || !data) throw new AuthError(error?.message === 'not_logged_in' ? 'not_logged_in' : 'generic');
+    return {
+      role: data.role,
+      canDelete: data.can_delete,
+      measurements: data.measurements,
+      adminsMoved: data.admins_moved,
+      movedUnder: data.moved_under,
+      labsCreated: data.labs_created,
+      drafts: data.drafts,
+      openRevisions: data.open_revisions,
+    };
+  }, []);
+
+  /**
+   * Deletes the account on the server (Edge Function). Throws AuthError, e.g. 'reauth_required'
+   * (sign in again first) or 'username_mismatch'. Does NOT sign out: the caller leaves the
+   * profile page first, then calls finishAccountDeletion().
+   */
+  const deleteAccount = useCallback(async ({ username, deleteMeasurements }) => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new AuthError('not_logged_in');
+    await callAccount(
+      { action: 'delete', username: normalizeUsername(username), deleteMeasurements: Boolean(deleteMeasurements) },
+      token,
+    );
+  }, []);
+
+  /** After deleteAccount: the server sessions are gone, so only the local one is cleared. */
+  const finishAccountDeletion = useCallback(async () => {
+    await supabase.auth.signOut({ scope: 'local' });
   }, []);
 
   /**
@@ -251,6 +296,11 @@ export function AuthProvider({ children }) {
   const user = session?.user ?? null;
   const email = user && !isPlaceholderEmail(user.email) ? user.email : null;
   const pendingEmail = user?.new_email && !isPlaceholderEmail(user.new_email) ? user.new_email : null;
+  // How this account can sign in: 'email' (username + password) and/or 'google'.
+  const providers = useMemo(
+    () => user?.app_metadata?.providers || (user?.app_metadata?.provider ? [user.app_metadata.provider] : []),
+    [user],
+  );
   const profileReady = !userId || profileError || profile?.id === userId;
 
   const currentUser = useMemo(
@@ -265,6 +315,7 @@ export function AuthProvider({ children }) {
       user,
       email,
       pendingEmail,
+      providers,
       profile: profile?.id === userId ? profile : null,
       currentUser,
       authLoading: authLoading || !profileReady,
@@ -275,6 +326,9 @@ export function AuthProvider({ children }) {
       logIn,
       logInWithGoogle,
       logOut,
+      accountDeletePreview,
+      deleteAccount,
+      finishAccountDeletion,
       requestReset,
       checkUsername,
       chooseUsername,
@@ -292,6 +346,7 @@ export function AuthProvider({ children }) {
       user,
       email,
       pendingEmail,
+      providers,
       profile,
       userId,
       currentUser,
@@ -302,6 +357,9 @@ export function AuthProvider({ children }) {
       logIn,
       logInWithGoogle,
       logOut,
+      accountDeletePreview,
+      deleteAccount,
+      finishAccountDeletion,
       requestReset,
       checkUsername,
       chooseUsername,

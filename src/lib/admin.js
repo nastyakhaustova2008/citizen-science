@@ -98,5 +98,7 @@ export async function roleLog({ limit = 30, before = null } = {}) {
     newUsername: r.new_username,
     causeId: r.cause_id,
     confirmedStaff: r.confirmed_staff,
+    movedUnder: r.moved_under,
+    movedUnderUsername: r.moved_under_username,
   }));
 }

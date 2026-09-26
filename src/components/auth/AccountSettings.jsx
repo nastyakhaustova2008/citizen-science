@@ -5,13 +5,14 @@ import { useAuth } from '../../context/AuthContext';
 import { passwordError } from '../../lib/username';
 import { SectionHeading } from '../primitives';
 import { Field, FormError, Notice, isolate } from './AuthUI';
+import DeleteAccount from './DeleteAccount';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Own profile → "Account": email (add / change), password, log out. */
+/** Own profile → "Account": email (add / change), password, log out, delete account (not the owner). */
 export default function AccountSettings() {
   const { t } = useI18n();
-  const { logOut } = useAuth();
+  const { logOut, profile } = useAuth();
   return (
     <section>
       <SectionHeading as="h2" title={t('auth.account.title')} />
@@ -23,6 +24,7 @@ export default function AccountSettings() {
         <LogOut className="h-4 w-4" aria-hidden="true" />
         {t('auth.logout')}
       </button>
+      {profile && profile.role !== 'owner' && <DeleteAccount />}
     </section>
   );
 }
