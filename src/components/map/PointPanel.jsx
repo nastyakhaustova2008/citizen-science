@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { X, Flag } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAppData } from '../../context/AppDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { colorForValue } from '../../data/metrics';
 import { formatDate, formatTime, formatNumber } from '../../lib/format';
 import { locationLabel } from '../../lib/location';
@@ -18,6 +19,9 @@ import CommentForm from '../comments/CommentForm';
 export default function PointPanel({ measurement, observation, onClose }) {
   const { t, locale } = useI18n();
   const { getAuthor, currentUser } = useAppData();
+  // Logged out (audit H2): the author isn't read at all — a neutral label and a sign-in link.
+  const loggedIn = Boolean(useAuth().session);
+  const location = useLocation();
   const thread = useComments(measurement?.id);
   const photoThread = usePhotos(measurement?.id);
   const [flagOpen, setFlagOpen] = useState(false);
@@ -95,19 +99,31 @@ export default function PointPanel({ measurement, observation, onClose }) {
           </div>
           <div className="col-span-2">
             <dt className="text-xs text-ink-faint">{t('map.panel.author')}</dt>
-            <dd className="mt-1 flex items-center gap-2">
-              <Avatar user={user} size={26} />
-              <span>
-                {user ? (
-                  <Link to={`/profile/${measurement.userId}`} className="hover:underline">
+            {!loggedIn ? (
+              <dd className="mt-1">
+                <span>{t('map.panel.participant')}</span>
+                <Link
+                  to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
+                  className="mt-0.5 block text-xs font-semibold text-ink underline dark:text-paper"
+                >
+                  {t('map.panel.signInForNames')}
+                </Link>
+              </dd>
+            ) : (
+              <dd className="mt-1 flex items-center gap-2">
+                <Avatar user={user} size={26} />
+                <span>
+                  {user ? (
+                    <Link to={`/profile/${measurement.userId}`} className="hover:underline">
+                      <AuthorName user={user} />
+                    </Link>
+                  ) : (
                     <AuthorName user={user} />
-                  </Link>
-                ) : (
-                  <AuthorName user={user} />
-                )}
-                {user?.school && <span className="text-ink-faint"> · {user.school}</span>}
-              </span>
-            </dd>
+                  )}
+                  {user?.school && <span className="text-ink-faint"> · {user.school}</span>}
+                </span>
+              </dd>
+            )}
           </div>
           {measurement.placeLabel && (
             <div className="col-span-2">

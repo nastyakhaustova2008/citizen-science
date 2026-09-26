@@ -621,3 +621,79 @@ change.**
    * a profile with measurements: the count is right.
    With today's data (~44 rows) no cap notice appears — they were tested locally with 24,000 rows.
 4. Merge → production deploy.
+
+## 23. Hide who made a measurement from logged-out visitors (audit H2) — migration 020
+
+Needs 019. Logged-out visitors keep seeing points, values, the table, statistics, charts and
+exports, but **no username and no user id** anywhere (not in responses, URLs or files), and no
+profile pages. Admin credits on labs (full name, position, workplace) stay public. Logged-in users
+see everything as before. **No Edge Function change.**
+
+**Order matters, and it is the reverse of 019:** preview and production share one database, and the
+production frontend from before this change asks logged-out visitors for `user_id` — after 020 its
+point panel, data table, export and profile page fail for them ("permission denied"). The new
+frontend works both before and after 020. So: **code first, 020 last.**
+
+0. Optional, on a computer with PostgreSQL 16: `supabase/tests/run.sh` → `ALL TESTS PASSED`
+   (with `POSTGREST_BIN` set, also the 020 API tests: every table and function logged out, and the
+   app's own queries logged out and logged in — see `supabase/tests/README.md`).
+1. **Preview of the branch, BEFORE 020** (on a phone or at 360 px width, in he / en / ru).
+   *Logged out* (private window):
+   * a lab → Map → a point: "Measured by: A participant" + "Sign in to see names"; no name;
+   * Data: rows, pages, sort, search, date filters; **no "Filter by school"** and no school column;
+     export CSV / JSON / GeoJSON downloads;
+   * Charts appear; the home page shows the measurement and participant counts;
+   * open `#/profile/<any user id>` → the "Profiles are for signed-in users" card with a Log in button;
+   * browser DevTools → Network, filter `rest/v1/measurements`: no request mentions `user_id` or
+     `created_at`, and nothing goes to `rest/v1/profiles`.
+   *Logged in* (student, then admin): everything as before — the author's name in the point panel
+   (links to the profile), "Filter by school", profiles, comments, photos, profile pictures.
+2. Merge → **wait until the production deploy is finished** (Vercel → Deployments → Production →
+   Ready) and hard-reload production once to be sure it serves the new code (logged out, a point
+   panel shows "A participant").
+3. SQL Editor → run `supabase/migrations/020_hide_identities.sql`. Safe to re-run.
+4. Check queries (SQL Editor):
+
+   ```sql
+   -- anon's columns on measurements: exactly these 10 (no user_id, no created_at)
+   select string_agg(column_name, ', ' order by ordinal_position) from information_schema.columns
+   where table_schema = 'public' and table_name = 'measurements'
+     and has_column_privilege('anon', 'public.measurements', column_name, 'select');
+     -- id, observation_id, place_label, lat, lng, measured_at, verification, photo_seed, field_values, form_version
+   select has_table_privilege('anon', 'public.measurements', 'select');                    -- false
+   select has_column_privilege('anon', 'public.measurements', 'user_id', 'select');        -- false
+
+   -- profiles: nothing for anon; one read policy, for authenticated
+   select count(*) from information_schema.columns
+   where table_schema = 'public' and table_name = 'profiles'
+     and has_column_privilege('anon', 'public.profiles', column_name, 'select');           -- 0
+   select policyname, roles from pg_policies where schemaname = 'public' and tablename = 'profiles';
+     -- logged-in users read profiles | {authenticated}
+
+   -- participants: SECURITY DEFINER with an empty search_path; the other two stay INVOKER
+   select proname, prosecdef, proconfig from pg_proc
+   where proname in ('measurement_summary', 'measurement_lab_stats', 'measurement_participant_counts');
+     -- measurement_participant_counts: true, {search_path=""}; the others: false
+
+   -- the home numbers as a logged-out visitor
+   begin;
+   set local role anon;
+   select public.measurement_summary() -> 'total';                 -- = the next line
+   select count(*) from public.measurements;
+   select * from public.measurement_participant_counts();         -- published labs only
+   select user_id from public.measurements limit 1;               -- ERROR: permission denied
+   rollback;
+
+   -- Realtime must not publish these tables (the app doesn't use it; keep them out): expect 0 rows
+   select * from pg_publication_tables
+   where pubname = 'supabase_realtime' and tablename in ('measurements', 'profiles');
+   ```
+
+   If Dashboard → API Docs / GraphQL is used: GraphQL follows the same grants, nothing else to do.
+5. **Production, after 020**, the same list as step 1: logged out (private window) and logged in
+   (student, admin). Also: the home counts are unchanged from before 020, and a lab page's
+   "Created by / Approved by" credits still show logged out.
+6. **Rollback — only if needed** (e.g. step 5 fails logged out because production still serves old
+   code): SQL Editor → `supabase/rollback/020_hide_identities_rollback.sql` restores the 019 state
+   (anon reads `user_id` and profiles again; the new frontend keeps working). The privacy policy no
+   longer matches then — fix the cause and run 020 again as soon as possible.

@@ -10,7 +10,8 @@ import { myAvatar as fetchMyAvatar } from '../lib/avatarsApi';
  *   resolves username → auth email on the server; the browser never sees another user's email.
  * - Google: supabase.auth.signInWithOAuth (PKCE). First sign-in → profile without username →
  *   the app sends the user to /auth/choose-username.
- * - profiles (id, username, role, created_at) are public; role fields are read-only for users.
+ * - profiles (id, username, role, created_at) are readable by logged-in users only (020); role fields
+ *   are read-only for users.
  * - Admins also have an admin profile (step 5a: full name, workplace, position) — loaded here;
  *   until it is filled the database refuses every lab action (admin_profile_required).
  * - My profile picture (017): { avatar, rejected, confirmerUsername, required } — admins need a
@@ -350,6 +351,9 @@ export function AuthProvider({ children }) {
       profile: profile?.id === userId ? profile : null,
       currentUser,
       authLoading: authLoading || !profileReady,
+      // The stored session has been checked (profile may still be loading): reads that depend on
+      // being logged in (authors, audit H2) wait for this instead of asking twice.
+      sessionReady: !authLoading,
       needsUsername: Boolean(userId && profile?.id === userId && !profile.username),
       oauthError,
       clearOauthError: () => setOauthError(null),

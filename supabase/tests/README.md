@@ -29,7 +29,8 @@ The script:
    010 → seed 004 → 011 → 012 → 013 → 013b → 014 → 015 → 016 → 017. Then, for 018:
    `018/before.sql` → 018 → 018 again (it must be safe to re-run) → `018/tests.sql` → the mirror check;
    then 019 twice → `019/bulk.sql` (3000+ measurements, above the API's 1000-row limit) →
-   `019/tests.sql` → `019/mirror.*` → `019/api.js` (needs PostgREST, see below);
+   `019/tests.sql` → `019/mirror.*`; then 020 twice → `020/tests.sql`; then (needs PostgREST, see
+   below) `019/api.js` → `020/api.js`; last `020/rollback.sql`;
 4. runs the tests of each migration that has a folder here. The last line says
    `ALL TESTS PASSED`; if any test failed, the exit code is 1.
 
@@ -41,6 +42,7 @@ It takes a few seconds. If you run it as root, the database server runs as the `
 |---|---|---|
 | `018/` | `018_measurement_limits.sql` | see below |
 | `019/` | `019_row_limits.sql` | see below |
+| `020/` | `020_hide_identities.sql` | see below |
 
 **`018/`** runs its files in this order:
 
@@ -83,6 +85,36 @@ It takes a few seconds. If you run it as root, the database server runs as the `
   `fetchPage` (`src/lib/paging.js`), and runs the table search (`searchFilter`) with needles like
   `a,b`, `a)b`, `"x"`, `50%`, `a_b`, `\`, `.or(id.neq.0)`, Hebrew and Russian text: each must
   return exactly the rows a plain JS "contains" finds. Without PostgREST it prints `SKIPPED`.
+
+**`020/`** (hide who made a measurement from logged-out visitors, audit H2):
+
+- **`tests.sql`** (after 020 is applied twice, on the 019 data):
+  - **allow-lists**: every column anon may read (schemas public, auth, storage) and every function anon
+    may execute must be on a list in the file — a new one fails the test until it is reviewed; no
+    anon column looks like a person (`user_id`, `username`, `created_by`, …);
+  - anon: `user_id` / `created_at` can't be selected, filtered, sorted or embedded (42501), `select *`
+    is refused, `profiles` is refused; the public columns and `count(*)` work;
+  - logged in (student, admin): `user_id`, the profile filter, profiles and insert … returning work;
+  - home numbers: `measurement_participant_counts` is SECURITY DEFINER with an empty search_path and
+    equals the direct count; a draft lab counts only for admins; the summary as anon is right;
+  - credits: `lab_credits` / `lab_credits_all` show the admins' full names logged out, with no ids,
+    usernames or photos;
+  - account deletion (keep anonymised, delete) still works; anon can't read the new random id.
+- **`api.js`** (PostgREST with `db-max-rows = 1000` and a test JWT secret; the app's
+  `src/lib/supabase.js` points at a small proxy that maps `/rest/v1` to PostgREST and stubs
+  `/auth/v1`):
+  - logged out: every table and every RPC in the anon OpenAPI is called (all rows of each table,
+    every granted column); no answer may contain any user id, username or anonymised id from the
+    database (`ids20.json`, dumped by `run.sh`) or a key like `user_id`;
+  - probes that must be refused: `select=user_id|created_at`, filters, `or=()`, `order=`, embedding,
+    `profiles`, a HEAD count filtered by `user_id`;
+  - the app's own queries (`src/lib/measurementsApi.js`): home numbers, map, statistics, the table
+    with every sort / filters / search, export (CSV and GeoJSON built from it), point panel — none
+    refused, none returns an identifier, none asks for `user_id` / `created_at`;
+  - logged in as a student, then an admin (signed JWT + `setSession`): the same queries with authors,
+    profiles, the profile page query, the author filter.
+- **`rollback.sql`** (last): `supabase/rollback/020_hide_identities_rollback.sql` restores the 019
+  state, and 020 applied again hides identities again.
 
 ## Adding tests for a new migration
 

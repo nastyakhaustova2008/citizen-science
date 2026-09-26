@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   MapPin,
   Flag,
+  Lock,
 } from 'lucide-react';
 
 import { useI18n } from '../i18n';
@@ -39,18 +40,34 @@ const BADGE_ICON = {
 };
 
 /**
- * /profile → the logged-in user (logged out → login). /profile/:userId → anyone:
- * a real user (profiles) or a demo author of the seeded measurements (mockData, marked "demo").
+ * /profile → the logged-in user (logged out → login). /profile/:userId → logged-in users only
+ * (audit H2): a real user (profiles) or a demo author of the seeded measurements (mockData,
+ * marked "demo"). Logged out → a "sign in to see profiles" card; nothing is queried.
  */
 export default function ProfilePage() {
   const { userId } = useParams();
   const { session, authLoading } = useAuth();
   const ownId = session?.user?.id ?? null;
-  if (!userId) {
-    if (authLoading) return <LoadingBlock />;
-    if (!ownId) return <Navigate to={loginPath('/profile')} replace />;
-  }
+  if (authLoading) return <LoadingBlock />;
+  if (!userId && !ownId) return <Navigate to={loginPath('/profile')} replace />;
+  if (!ownId) return <SignInForProfiles path={`/profile/${userId}`} />;
   return <ProfileView id={userId || ownId} isOwn={!userId || userId === ownId} />;
+}
+
+function SignInForProfiles({ path }) {
+  const { t } = useI18n();
+  return (
+    <EmptyState
+      icon={Lock}
+      title={t('profile.signInTitle')}
+      body={t('profile.signInBody')}
+      action={
+        <Link to={loginPath(path)} className="btn-primary mt-1">
+          {t('auth.login')}
+        </Link>
+      }
+    />
+  );
 }
 
 function ProfileView({ id, isOwn }) {
