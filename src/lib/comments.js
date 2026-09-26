@@ -1,6 +1,7 @@
 /**
  * Comments on measurements (migration 015): the text rules, mirrored from the SQL functions
  * comment_clean / comment_detect_text / comment_link_error / comment_body_error /
+ * private.text_safety_error (018, also used for measurement text — see fields.js) /
  * link_domain_normalize / link_domain_error — same order of checks, same error codes.
  * The database is the real check; this is only for instant feedback in the form and for
  * making allowed links clickable.
@@ -99,13 +100,13 @@ function analyzeToken(rawTok, domains) {
 }
 
 /**
- * Problem with a cleaned comment text (= comment_body_error): null or { code, host?, domains? }.
+ * First safety problem in a cleaned text (= private.text_safety_error, 018 — shared by comments and
+ * measurement text): null or { code, host?, domains? }. No length check.
  * domains = the allowed link domains (null = not loaded: the domain check is left to the server).
  */
-export function commentError(body, domains) {
-  if (!body) return { code: 'empty' };
-  if (commentLength(body) > COMMENT_MAX) return { code: 'too_long' };
-  const d = detectText(body);
+export function textSafetyError(text, domains) {
+  if (!text) return null;
+  const d = detectText(text);
   for (const tok of d.split(SPLIT_RE)) {
     const a = analyzeToken(tok, domains);
     if (a?.error) {
@@ -126,6 +127,16 @@ export function commentError(body, domains) {
     return { code: 'phone_not_allowed' };
   }
   return null;
+}
+
+/**
+ * Problem with a cleaned comment text (= comment_body_error): null or { code, host?, domains? }.
+ * domains = the allowed link domains (null = not loaded: the domain check is left to the server).
+ */
+export function commentError(body, domains) {
+  if (!body) return { code: 'empty' };
+  if (commentLength(body) > COMMENT_MAX) return { code: 'too_long' };
+  return textSafetyError(body, domains);
 }
 
 /**
