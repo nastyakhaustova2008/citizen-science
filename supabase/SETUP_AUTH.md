@@ -775,29 +775,70 @@ the same). The function works before 021 too (it skips the ticket while the RPC 
    select private.privacy_cleanup();   -- now also has "change_tickets"
    ```
 
-6. **Direct API test on production** (use a test account, not a real student; the token is a
-   credential — don't paste it anywhere else). Log in to the test account on a computer, wait
-   more than 15 minutes, then DevTools → Application → Local Storage (or Session Storage) →
-   `sb-<project>-auth-token` → copy `access_token`. In a terminal (URL and publishable key as in
-   Vercel):
+6. **Direct API test on production** — Windows PowerShell. Use a test account, not a real student.
+   The access token is a password-like credential: **never paste it into a chat, an issue, a
+   screenshot or a screen share**, and close the PowerShell window when done.
 
-   ```sh
-   URL=https://<project>.supabase.co; KEY=<publishable key>; TOKEN=<access_token>
-   # a) through our function: refused
-   curl -s -X POST "$URL/functions/v1/account" -H "apikey: $KEY" -H "Authorization: Bearer $TOKEN" \
-     -H 'Content-Type: application/json' -d '{"action":"change-password","password":"direct-test-123"}'
-     # {"error":"reauth_required"}
-   # b) straight to Supabase Auth: answers 200, but the password does NOT change (021)
-   curl -s -X PUT "$URL/auth/v1/user" -H "apikey: $KEY" -H "Authorization: Bearer $TOKEN" \
-     -H 'Content-Type: application/json' -d '{"password":"direct-test-123"}'
-   # c) a new email straight to Supabase Auth: refused (error, "Database error updating user")
-   curl -s -X PUT "$URL/auth/v1/user" -H "apikey: $KEY" -H "Authorization: Bearer $TOKEN" \
-     -H 'Content-Type: application/json' -d '{"email":"direct-test@example.com"}'
+   *Get the token.* In Chrome / Edge log in to the test account on production **with "This is a
+   shared computer" unticked** (then the session is in Local Storage) and wait **more than 15
+   minutes**. Press F12 → **Application** tab → left side **Storage → Local Storage →
+   `https://citizen-science-liart.vercel.app`** → the key **`sb-<project-ref>-auth-token`** (the
+   only key starting with `sb-` and ending with `-auth-token`). Its value is JSON; copy only the
+   value of the field **`access_token`** (a long string starting with `eyJ`, **not**
+   `refresh_token`). Copy it right before running the commands: the page renews it every hour
+   (the renewed one still counts as the same old log-in). If the shared-computer box was ticked,
+   the same key is under **Session Storage** instead.
+
+   *The anon key* is the publishable key = Vercel → Settings → Environment Variables →
+   `VITE_SUPABASE_ANON_KEY` (public, not a secret). The project URL is read from the token itself.
+
+   In **PowerShell** (Windows 10/11 include `curl.exe`; the commands use `curl.exe`, not PowerShell's `curl` alias; JSON bodies go
+   through a temporary file because PowerShell mangles quotes passed to programs):
+
+   ```powershell
+   $Key = '<publishable (anon) key>'
+   # Paste the access_token when asked (Read-Host keeps it out of the PowerShell history file):
+   $Token = Read-Host 'Paste access_token'
+
+   # Project URL from the token's "iss" claim (https://<ref>.supabase.co/auth/v1):
+   $p = $Token.Split('.')[1].Replace('-', '+').Replace('_', '/')
+   switch ($p.Length % 4) { 2 { $p += '==' } 3 { $p += '=' } }
+   $Url = (([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($p))) | ConvertFrom-Json).iss -replace '/auth/v1$', ''
+   $Url   # should print https://<project-ref>.supabase.co
+
+   $Body = Join-Path $env:TEMP 'mitzpe-h6-body.json'
+   function Send($method, $path, $json) {
+     [IO.File]::WriteAllText($Body, $json)
+     curl.exe -s -X $method "$Url$path" -H "apikey: $Key" -H "Authorization: Bearer $Token" `
+       -H 'Content-Type: application/json' --data-binary "@$Body" -w "`nHTTP %{http_code}`n"
+   }
+
+   # a) through our Edge Function: refused
+   Send POST '/functions/v1/account' '{"action":"change-password","password":"direct-test-123"}'
+   #    → {"error":"reauth_required"}  HTTP 200
+
+   # b) straight to Supabase Auth: answers OK (HTTP 200), but the password does NOT change (021)
+   Send PUT '/auth/v1/user' '{"password":"direct-test-123"}'
+
+   # c) a new email straight to Supabase Auth: refused (HTTP 4xx/5xx, e.g. "Database error updating user")
+   Send PUT '/auth/v1/user' '{"email":"direct-test@example.com"}'
+
+   Remove-Item $Body; Remove-Variable Token
    ```
 
-   Then: log in with `direct-test-123` → fails; the old password → works. Dashboard → Logs →
-   Postgres shows `mitzpe: password change without a ticket ignored`. Then in the app, change the
-   password normally (after the re-login box) → works.
+   Expected: a) `reauth_required`; b) HTTP 200; c) an error. Then: log in to the test account
+   with `direct-test-123` → fails; with the old password → works. Dashboard → Logs → Postgres
+   shows `mitzpe: password change without a ticket ignored`. Then in the app, change the password
+   normally (after the re-login box) → works. Close the PowerShell window.
+
+   Note: with 021 on, a password change made **from the Supabase Dashboard** (Authentication →
+   Users → a user → update / reset password) is **silently ignored** too — it goes through the
+   same `auth.users` update without a ticket, the Dashboard says it worked, the old password stays.
+   To make one on purpose, in SQL Editor:
+   `update private.settings set value = 'false' where key = 'require_change_ticket';` → change the
+   password in the Dashboard → **immediately** set it back:
+   `update private.settings set value = 'true' where key = 'require_change_ticket';`
+   (while it is `'false'`, the direct-API protection is off for everyone).
 7. **Production, after 021:** step 3 again (change password old/new session, Google account, log
    out everywhere, delete account). Optional: now turn on *Require current password when updating*
    (step 1) as an extra layer.
