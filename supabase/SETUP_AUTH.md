@@ -339,3 +339,36 @@ so it can run before the merge.
      **Updated on … approved by …**.
    * **Discard changes** on a new revision → the lab stays as it is.
 4. Merge → production deploy.
+
+## 17. Delete my account — migration 014 + Edge Function `account`
+
+Needs 012 (independent of 013). Works with the frontend already on production (it only adds
+functions and role-log actions), so it can run before the merge.
+
+1. SQL Editor → run `supabase/migrations/014_delete_account.sql`. Safe to re-run.
+2. Check (SQL Editor):
+
+   ```sql
+   select public.account_delete_preview();   -- error not_logged_in (the SQL Editor is nobody)
+   select proname from pg_proc where proname like 'account_delete%';   -- 4 functions
+   ```
+
+3. Dashboard → **Edge Functions** → `account` → **Code** → paste the new
+   `supabase/functions/account/index.ts` → **Deploy**. Keep **Verify JWT OFF** (the new `delete`
+   action checks the user's token itself; the other actions are called before login).
+4. Optional secrets (Dashboard → Edge Functions → **Secrets**; defaults in brackets):
+   `REAUTH_MAX_AGE_MINUTES` (15), `DELETE_LIMIT_PER_USER` (10 per hour),
+   `DELETE_LIMIT_PER_IP` (30 per hour). No redeploy needed.
+5. Vercel **preview** of the branch. The database is shared with production — use throwaway
+   accounts only:
+   * username + password account with a measurement → Profile → **Delete account** → keep the
+     measurements, type the username → you land on the home page with "account deleted"; the
+     measurement shows "Unknown participant"; logging in with that name fails; the name can be
+     registered again.
+   * wait more than 15 minutes after logging in (or set `REAUTH_MAX_AGE_MINUTES` to 1) → delete →
+     "sign in again" → password → delete works.
+   * Google-only account → same, "sign in again" goes through Google and back to the panel.
+   * admin A appointed by admin M, A appointed B → delete A → the panel said "1 admin will be moved
+     under M"; in **Administration → Log**: "a deleted account … was deleted", "B moved under M".
+   * the owner has no delete button.
+6. Merge → production deploy → update `public/privacy.html` (all languages + date).
