@@ -12,7 +12,11 @@ alter default privileges in schema public grant all on functions to anon, authen
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 create schema auth; grant usage on schema auth to anon, authenticated, service_role;
 create table auth.users (id uuid primary key default gen_random_uuid(), email varchar, email_confirmed_at timestamptz,
-  raw_user_meta_data jsonb default '{}', is_anonymous boolean default false, created_at timestamptz default now(), last_sign_in_at timestamptz);
+  raw_user_meta_data jsonb default '{}', is_anonymous boolean default false, created_at timestamptz default now(), last_sign_in_at timestamptz,
+  encrypted_password varchar, email_change varchar default '', raw_app_meta_data jsonb default '{}');
+-- Supabase Auth (GoTrue) connects as supabase_auth_admin and owns auth.users on a real project.
+create role supabase_auth_admin nologin; grant usage on schema auth to supabase_auth_admin;
+grant select, insert, update, delete on auth.users to supabase_auth_admin;
 create table auth.audit_log_entries (id uuid default gen_random_uuid(), payload json, created_at timestamptz default now());
 create table auth.sessions (id uuid default gen_random_uuid(), user_id uuid, created_at timestamptz default now());
 -- sub from request.jwt.claim.sub (older PostgREST, the tests) or request.jwt.claims (PostgREST 12).
