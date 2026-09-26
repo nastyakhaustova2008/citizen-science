@@ -1,96 +1,115 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, ArrowDown, ChevronsUpDown, Download, Search, X } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAppData } from '../../context/AppDataContext';
-import { formatDate, formatTime, toISODate } from '../../lib/format';
-import { visibleFields, fieldLabel, formatFieldValue, sortValue, optionLabel } from '../../lib/fields';
+import { USERS } from '../../data/mockData';
+import { formatDate, formatTime, formatNumber } from '../../lib/format';
+import { fieldsWithData, fieldLabel, formatFieldValue } from '../../lib/fields';
 import { exportMeasurements } from '../../lib/export';
-import { VerificationBadge, EmptyState } from '../primitives';
+import { EXPORT_CAP, SORTABLE_TYPES, TABLE_PAGE, fetchLabAll } from '../../lib/measurementsApi';
+import { useLabPage } from '../../hooks/useMeasurements';
+import { VerificationBadge, EmptyState, ErrorBlock, LoadingBlock } from '../primitives';
 
-const PAGE = 12;
+// Schools of the demo authors (mock data; real accounts have no school).
+const SCHOOLS = [...new Set(USERS.map((u) => u.school).filter(Boolean))].sort();
 
-export default function DataTable({ observation, measurements }) {
+/**
+ * Measurements of one lab, TABLE_PAGE rows per page. Filters, search and sort run on the server
+ * (src/lib/measurementsApi.js), so every page and count covers all rows. `stats` (the lab's
+ * aggregate) gives the columns: active fields + archived ones that have data.
+ * Export: the selected rows, or every row matching the filters (page by page, up to EXPORT_CAP).
+ */
+export default function DataTable({ observation, stats }) {
   const { t, locale } = useI18n();
   const { getAuthor } = useAppData();
   // Every active field, plus archived fields that still have data.
-  const fields = useMemo(() => visibleFields(observation, measurements), [observation, measurements]);
+  const fields = useMemo(() => fieldsWithData(observation, stats.keys), [observation, stats.keys]);
 
   const [sort, setSort] = useState({ key: 'timestamp', dir: 'desc' });
   const [school, setSchool] = useState('__all__');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState(() => new Set());
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  // Selected rows (kept across pages): id → row.
+  const [selected, setSelected] = useState(() => new Map());
   const [page, setPage] = useState(0);
 
-  const schools = useMemo(
-    () => [...new Set(measurements.map((m) => getAuthor(m.userId)?.school).filter(Boolean))].sort(),
-    [measurements, getAuthor],
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(query.trim()), 350);
+    return () => clearTimeout(id);
+  }, [query]);
+
+  const filters = useMemo(
+    () => ({
+      fields,
+      locale,
+      sort,
+      from,
+      to,
+      query: debouncedQuery,
+      userIds: school === '__all__' ? null : USERS.filter((u) => u.school === school).map((u) => u.id),
+    }),
+    [fields, locale, sort, from, to, debouncedQuery, school],
   );
+  // New filters → back to the first page.
+  useEffect(() => setPage(0), [filters]);
 
-  const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = measurements.map((m) => {
-      const u = getAuthor(m.userId);
-      return {
-        ...m,
-        _school: u?.school ?? '',
-        _date: toISODate(m.timestamp),
-      };
-    });
-    if (school !== '__all__') list = list.filter((r) => r._school === school);
-    if (from) list = list.filter((r) => r._date >= from);
-    if (to) list = list.filter((r) => r._date <= to);
-    if (q) {
-      const searchable = fields.filter((f) => ['text', 'choice', 'multi_choice'].includes(f.type));
-      const textOf = (r, f) => {
-        const v = r.values[f.key];
-        if (v == null) return '';
-        if (f.type === 'choice') return `${v} ${optionLabel(f, v, locale)}`;
-        if (f.type === 'multi_choice') return v.map((k) => `${k} ${optionLabel(f, k, locale)}`).join(' ');
-        return String(v);
-      };
-      list = list.filter(
-        (r) =>
-          (r.placeLabel || '').toLowerCase().includes(q) ||
-          r._school.toLowerCase().includes(q) ||
-          searchable.some((f) => textOf(r, f).toLowerCase().includes(q)),
-      );
-    }
-
-    const { key, dir } = sort;
-    const mul = dir === 'asc' ? 1 : -1;
-    list.sort((a, b) => {
-      let av;
-      let bv;
-      const field = key.startsWith('f:') ? fields.find((f) => `f:${f.key}` === key) : null;
-      if (field) {
-        av = sortValue(field, a.values[field.key], locale);
-        bv = sortValue(field, b.values[field.key], locale);
-        // Empty cells always last.
-        if (av == null || bv == null) return av == null ? (bv == null ? 0 : 1) : -1;
-      } else if (key === 'timestamp') [av, bv] = [a.timestamp, b.timestamp];
-      else if (key === 'school') [av, bv] = [a._school, b._school];
-      else if (key === 'place') [av, bv] = [a.placeLabel, b.placeLabel];
-      else if (key === 'status') [av, bv] = [a.verification, b.verification];
-      else [av, bv] = [a[key], b[key]];
-      if (av < bv) return -1 * mul;
-      if (av > bv) return 1 * mul;
-      return 0;
-    });
-    return list;
-  }, [measurements, fields, locale, school, from, to, query, sort, getAuthor]);
-
-  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE));
-  const pageRows = rows.slice(page * PAGE, page * PAGE + PAGE);
+  const res = useLabPage(observation, filters, page);
+  const rows = res.data?.rows || [];
+  const total = res.data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / TABLE_PAGE));
+  const pageRows = rows;
 
   const hasFilters = school !== '__all__' || from || to || query.trim();
+
+  // Export of everything matching the filters: progress, cancel, cap.
+  const [exporting, setExporting] = useState(null); // {format, loaded, expected}
+  const [exportNote, setExportNote] = useState(null); // {kind: 'capped' | 'error', shown, total}
+  const abortRef = useRef(null);
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  async function exportAll(format) {
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    setExportNote(null);
+    setExporting({ format, loaded: 0, expected: total });
+    try {
+      const out = await fetchLabAll(observation, filters, {
+        signal: ctrl.signal,
+        onProgress: (loaded, expected) => setExporting({ format, loaded, expected }),
+      });
+      if (ctrl.signal.aborted) return;
+      exportMeasurements(out.rows, format, observation, getAuthor, { total: out.total });
+      if (out.capped) setExportNote({ kind: 'capped', shown: out.rows.length, total: out.total });
+    } catch (err) {
+      if (!ctrl.signal.aborted) {
+        console.error('[export] failed', err);
+        setExportNote({ kind: 'error' });
+      }
+    } finally {
+      if (abortRef.current === ctrl) abortRef.current = null;
+      setExporting(null);
+    }
+  }
+
+  function exportClick(format) {
+    if (selected.size > 0) exportMeasurements([...selected.values()], format, observation, getAuthor);
+    else exportAll(format);
+  }
 
   function toggleSort(key) {
     setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
   }
 
-  function SortHeader({ colKey, label, align = 'start' }) {
+  function SortHeader({ colKey, label, align = 'start', sortable = true }) {
+    if (!sortable) {
+      return (
+        <th scope="col" className={`whitespace-nowrap px-3 py-2 text-${align} font-semibold text-ink-soft dark:text-paper/80`}>
+          {label}
+        </th>
+      );
+    }
     const active = sort.key === colKey;
     const Icon = !active ? ChevronsUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown;
     return (
@@ -109,9 +128,6 @@ export default function DataTable({ observation, measurements }) {
     );
   }
 
-  const selectedRows = rows.filter((r) => selected.has(r.id));
-  const exportSet = selectedRows.length ? selectedRows : rows;
-
   const allOnPageSelected = pageRows.length > 0 && pageRows.every((r) => selected.has(r.id));
 
   return (
@@ -123,13 +139,10 @@ export default function DataTable({ observation, measurements }) {
           <select
             className="input py-2"
             value={school}
-            onChange={(e) => {
-              setSchool(e.target.value);
-              setPage(0);
-            }}
+            onChange={(e) => setSchool(e.target.value)}
           >
             <option value="__all__">{t('common.all')}</option>
-            {schools.map((s) => (
+            {SCHOOLS.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
@@ -153,10 +166,7 @@ export default function DataTable({ observation, measurements }) {
               className="input ps-9"
               placeholder={t('common.searchPlaceholder')}
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setPage(0);
-              }}
+              onChange={(e) => setQuery(e.target.value)}
             />
           </div>
         </label>
@@ -169,7 +179,6 @@ export default function DataTable({ observation, measurements }) {
               setFrom('');
               setTo('');
               setQuery('');
-              setPage(0);
             }}
           >
             <X className="h-4 w-4" aria-hidden="true" />
@@ -181,9 +190,18 @@ export default function DataTable({ observation, measurements }) {
       {/* Export bar */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-ink-faint">
-          {selected.size > 0
-            ? `${selected.size} ${t('common.selected')}`
-            : `${rows.length} ${t('common.rows')}`}
+          {selected.size > 0 ? (
+            <>
+              <span className="tnum">{formatNumber(selected.size, { locale })}</span> {t('common.selected')}
+              <button type="button" className="btn-ghost ms-1 px-2 py-0.5 text-xs" onClick={() => setSelected(new Map())}>
+                {t('data.clearSelection')}
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="tnum">{formatNumber(total, { locale })}</span> {t('common.rows')}
+            </>
+          )}
         </span>
         <div className="ms-auto flex flex-wrap gap-2">
           {['csv', 'json', 'geojson'].map((fmt) => (
@@ -191,21 +209,59 @@ export default function DataTable({ observation, measurements }) {
               key={fmt}
               type="button"
               className="btn-secondary"
-              onClick={() => exportMeasurements(exportSet, fmt, observation, getAuthor)}
+              disabled={Boolean(exporting) || (selected.size === 0 && total === 0)}
+              onClick={() => exportClick(fmt)}
             >
               <Download className="h-4 w-4" aria-hidden="true" />
               {t(`data.export${fmt[0].toUpperCase()}${fmt.slice(1)}`)}
-              {selected.size > 0 && <span className="tnum">({selectedRows.length})</span>}
+              {selected.size > 0 && <span className="tnum">({selected.size})</span>}
             </button>
           ))}
         </div>
       </div>
 
+      {exporting && (
+        <div className="surface flex flex-wrap items-center gap-3 p-3 text-sm" role="status">
+          <span className="text-ink dark:text-paper">
+            {t('data.exportProgress', {
+              loaded: formatNumber(exporting.loaded, { locale }),
+              total: formatNumber(Math.min(exporting.expected, EXPORT_CAP), { locale }),
+            })}
+          </span>
+          <progress
+            className="h-2 min-w-[8rem] flex-1 accent-bark"
+            max={Math.max(1, Math.min(exporting.expected, EXPORT_CAP))}
+            value={exporting.loaded}
+          />
+          <button type="button" className="btn-ghost" onClick={() => abortRef.current?.abort()}>
+            {t('common.cancel')}
+          </button>
+        </div>
+      )}
+      {exportNote?.kind === 'capped' && (
+        <p className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-ink dark:text-paper" role="status">
+          {t('data.exportCapped', {
+            shown: formatNumber(exportNote.shown, { locale }),
+            total: formatNumber(exportNote.total, { locale }),
+          })}
+        </p>
+      )}
+      {exportNote?.kind === 'error' && (
+        <p className="text-sm text-danger" role="alert">
+          {t('data.exportFailed')}
+        </p>
+      )}
+
       {/* Table */}
-      {rows.length === 0 ? (
+      {res.error ? (
+        <ErrorBlock onRetry={res.reload} />
+      ) : !res.data ? (
+        <LoadingBlock />
+      ) : rows.length === 0 ? (
         <EmptyState title={t('data.emptyTitle')} body={t('data.emptyBody')} />
       ) : (
-        <div className="surface overflow-x-auto">
+        // relative: keeps the badges' sr-only labels inside the scroll box (no page-wide scroll at 360 px)
+        <div className={`surface relative overflow-x-auto transition-opacity ${res.loading ? 'opacity-60' : ''}`} aria-busy={res.loading}>
           <table className="w-full text-sm">
             <thead className="border-b border-edge text-xs dark:border-white/10">
               <tr>
@@ -217,8 +273,8 @@ export default function DataTable({ observation, measurements }) {
                     checked={allOnPageSelected}
                     onChange={(e) => {
                       setSelected((prev) => {
-                        const next = new Set(prev);
-                        pageRows.forEach((r) => (e.target.checked ? next.add(r.id) : next.delete(r.id)));
+                        const next = new Map(prev);
+                        pageRows.forEach((r) => (e.target.checked ? next.set(r.id, r) : next.delete(r.id)));
                         return next;
                       });
                     }}
@@ -226,7 +282,7 @@ export default function DataTable({ observation, measurements }) {
                 </th>
                 <SortHeader colKey="timestamp" label={t('data.columns.date')} />
                 <SortHeader colKey="place" label={t('data.columns.place')} />
-                <SortHeader colKey="school" label={t('data.columns.school')} />
+                <SortHeader colKey="school" label={t('data.columns.school')} sortable={false} />
                 {fields.map((f) => (
                   <SortHeader
                     key={f.key}
@@ -235,6 +291,7 @@ export default function DataTable({ observation, measurements }) {
                       f.archived ? `${fieldLabel(f, locale)} (${t('fields.archived')})` : fieldLabel(f, locale)
                     }
                     align={f.type === 'number' ? 'end' : 'start'}
+                    sortable={SORTABLE_TYPES.includes(f.type)}
                   />
                 ))}
                 <SortHeader colKey="status" label={t('data.columns.status')} />
@@ -251,8 +308,8 @@ export default function DataTable({ observation, measurements }) {
                       checked={selected.has(r.id)}
                       onChange={(e) =>
                         setSelected((prev) => {
-                          const next = new Set(prev);
-                          if (e.target.checked) next.add(r.id);
+                          const next = new Map(prev);
+                          if (e.target.checked) next.set(r.id, r);
                           else next.delete(r.id);
                           return next;
                         })
@@ -266,7 +323,7 @@ export default function DataTable({ observation, measurements }) {
                     </span>
                   </td>
                   <td className="px-3 py-2">{r.placeLabel}</td>
-                  <td className="px-3 py-2 text-ink-faint">{r._school}</td>
+                  <td className="px-3 py-2 text-ink-faint">{getAuthor(r.userId)?.school ?? ''}</td>
                   {fields.map((f) => {
                     const text = formatFieldValue(f, r.values[f.key], { locale, t });
                     if (f.type === 'number') {

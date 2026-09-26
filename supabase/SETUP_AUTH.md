@@ -586,3 +586,38 @@ changed.
      measurements in the last minute…", the form keeps the input; after a minute it saves.
    * the same text errors in the other two languages of the interface.
 5. Merge → production deploy.
+
+## 22. Row limits and paging — migration 019
+
+Needs 018. The Data API returns at most 1000 rows per request ("Max rows" in Dashboard → Settings
+→ Data API; leave it at 1000) and cuts the rest silently. The new frontend reads lists page by page
+and gets its numbers and charts from two new read-only functions, so **019 must run before the
+branch's preview is opened** (preview and production share the database). It works with the
+frontend already on production (it only adds an index and three functions). **No Edge Function
+change.**
+
+0. Optional, on a computer with PostgreSQL 16: `supabase/tests/run.sh` → `ALL TESTS PASSED`
+   (with `POSTGREST_BIN` set, also the API tests with the 1000-row limit — see
+   `supabase/tests/README.md`).
+1. SQL Editor → run `supabase/migrations/019_row_limits.sql`. Safe to re-run.
+2. Check (SQL Editor):
+
+   ```sql
+   select public.measurement_summary() -> 'total';        -- = select count(*) from public.measurements
+   select public.measurement_lab_stats('obs-schoolyard-heat', 1) ->> 'n';
+   select proname, prosecdef from pg_proc
+   where proname in ('measurement_summary', 'measurement_lab_stats', 'measurement_participant_counts');
+     -- prosecdef = false for all three (SECURITY INVOKER)
+   ```
+
+3. Vercel **preview** of the branch (logged out, on a phone or at 360 px width, in he / en / ru):
+   * home: the "measurements" counter equals `select count(*) from public.measurements`; each card's
+     points / participants are right;
+   * a lab → Map: points and the time slider; a point opens its panel;
+   * Data: the stats count equals the lab's count in SQL; pages of 50 ("1 of N"); sort by date / a
+     number column; search a place name; the date filters; export CSV / JSON / GeoJSON — the file has
+     all rows (count the lines);
+   * Charts: the daily line and the histogram appear;
+   * a profile with measurements: the count is right.
+   With today's data (~44 rows) no cap notice appears — they were tested locally with 24,000 rows.
+4. Merge → production deploy.

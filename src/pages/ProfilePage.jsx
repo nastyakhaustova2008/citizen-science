@@ -27,6 +27,7 @@ import { loginPath } from '../components/auth/AuthUI';
 import { formatDate } from '../lib/format';
 import { monthlyCounts } from '../lib/stats';
 import { isAdminRole } from '../lib/roles';
+import { useUserPoints } from '../hooks/useMeasurements';
 
 const BADGE_ICON = {
   firstMeasurement: MapPin,
@@ -62,18 +63,16 @@ function ProfileView({ id, isOwn }) {
     campaignsLoading,
     campaignsError,
     reloadCampaigns,
-    measurements,
-    measurementsLoading,
-    measurementsError,
-    reloadMeasurements,
     currentUser,
   } = useAppData();
+  // This user's measurements, page by page (up to PROFILE_CAP; the count is always complete).
+  const pointsRes = useUserPoints(id);
 
-  const loading = campaignsLoading || measurementsLoading;
-  const error = campaignsError || measurementsError;
+  const loading = campaignsLoading || !pointsRes.data;
+  const error = campaignsError || pointsRes.error;
   const retry = () => {
     if (campaignsError) reloadCampaigns();
-    if (measurementsError) reloadMeasurements();
+    if (pointsRes.error) pointsRes.reload();
   };
 
   useEffect(() => {
@@ -82,10 +81,8 @@ function ProfileView({ id, isOwn }) {
 
   const user = getAuthor(id);
   const isDemo = user?.kind === 'demo';
-  const myPoints = useMemo(
-    () => measurements.filter((m) => m.userId === id),
-    [measurements, id],
-  );
+  const myPoints = useMemo(() => pointsRes.data?.rows || [], [pointsRes.data]);
+  const pointTotal = pointsRes.data?.total ?? 0;
   // Demo authors keep their mock history; real users get it from their real measurements.
   const contributions = useMemo(
     () => (isDemo ? monthlyContributions(id) : monthlyCounts(myPoints)),
@@ -112,8 +109,8 @@ function ProfileView({ id, isOwn }) {
     return <EmptyState title={t('observation.notFound')} />;
   }
 
-  if (loading) return <LoadingBlock />;
   if (error) return <ErrorBlock onRetry={retry} />;
+  if (loading) return <LoadingBlock />;
 
   const center = myPoints[0] ? [myPoints[0].lat, myPoints[0].lng] : [31.9, 34.9];
 
@@ -155,7 +152,7 @@ function ProfileView({ id, isOwn }) {
         <dl className="flex gap-6">
           <div className="text-center">
             <dt className="text-xs text-ink-faint">{t('profile.measurements')}</dt>
-            <dd className="tnum text-2xl font-semibold text-ink dark:text-paper">{myPoints.length}</dd>
+            <dd className="tnum text-2xl font-semibold text-ink dark:text-paper">{pointTotal}</dd>
           </div>
           <div className="text-center">
             <dt className="text-xs text-ink-faint">{t('profile.campaignsJoined')}</dt>
@@ -167,6 +164,11 @@ function ProfileView({ id, isOwn }) {
       {/* Map of own points */}
       <section>
         <SectionHeading as="h2" title={t('profile.myPoints')} />
+        {pointsRes.data?.capped && (
+          <p className="mb-2 rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-ink dark:text-paper" role="status">
+            {t('profile.pointsCapped', { shown: myPoints.length, total: pointTotal })}
+          </p>
+        )}
         {myPoints.length === 0 ? (
           <EmptyState icon={MapPin} title={t('profile.myPointsEmpty')} />
         ) : (

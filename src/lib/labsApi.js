@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { labToPayload, revisionFromApi } from './labs';
+import { fetchAllPaged } from './paging';
 
 /**
  * Lab editor API (roadmap steps 5a / 5b / 5c): thin wrappers over the RPCs in
@@ -60,6 +61,24 @@ async function rpc(name, args) {
   return data;
 }
 
+/**
+ * A set-returning RPC read in full, page by page (the Data API cuts at 1000 rows — paging.js).
+ * `order` = [[column, ascending], …], ending with a unique column.
+ */
+async function rpcAll(name, args, order) {
+  if (!supabase) throw new LabError('generic');
+  try {
+    const { rows } = await fetchAllPaged((o) =>
+      order.reduce((q, [col, ascending]) => q.order(col, { ascending }), supabase.rpc(name, args, o)),
+    );
+    return rows;
+  } catch (error) {
+    if (CODES.includes(error?.message)) throw new LabError(error.message, parseDetails(error.details));
+    console.error(`[labs] ${name}`, error);
+    throw new LabError('generic');
+  }
+}
+
 /** Save the whole editor state (new lab when lab.id is null). → { id, slug, editNo, changed } */
 export async function saveLab(lab) {
   const { info, fields } = labToPayload(lab);
@@ -73,7 +92,7 @@ export const canEditLab = (id) => rpc('lab_can_edit', { p_id: id });
 
 /** Every lab with who created it and what I may do (admins). */
 export async function adminLabs() {
-  const rows = await rpc('lab_admin_list', {});
+  const rows = await rpcAll('lab_admin_list', {}, [['updated_at', false], ['id', true]]);
   return (rows || []).map((r) => ({
     id: r.id,
     slug: r.slug,
@@ -220,7 +239,7 @@ export async function labCredits(id) {
 
 /** Creator line of every reviewed published lab: { [campaignId]: { fullName, workplace } }. */
 export async function allCredits() {
-  const rows = await rpc('lab_credits_all', {});
+  const rows = await rpcAll('lab_credits_all', {}, [['campaign_id', true]]);
   return Object.fromEntries(
     (rows || []).map((r) => [r.campaign_id, { fullName: r.creator_full_name, workplace: r.creator_workplace }]),
   );

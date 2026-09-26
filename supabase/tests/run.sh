@@ -66,4 +66,44 @@ echo "018 database: $(grep -c '^PASS' <<<"$RESULT") passed, $FAILED failed"
 MIRROR_OK=1
 node "$WORK/mirror.mjs" "$WORK/mirror-sql.json" || MIRROR_OK=0
 
-[ "$FAILED" = 0 ] && [ "$MIRROR_OK" = 1 ] && echo "ALL TESTS PASSED" || { echo "SOME TESTS FAILED"; exit 1; }
+# ---- 019 ----------------------------------------------------------------------------------
+apply migrations/019_row_limits.sql
+apply migrations/019_row_limits.sql   # safe to re-run
+echo "migration 019: applied twice"
+"${PSQL[@]}" -v big="${BIG_LAB_ROWS:-0}" -f "$HERE/019/bulk.sql" >/dev/null
+echo "019 test data: $("${PSQL[@]}" -At -c 'select count(*) from public.measurements') measurements"
+
+RESULT19="$("${PSQL[@]}" -At -f "$HERE/019/tests.sql" | grep -E '^(PASS|FAIL)')"
+echo "$RESULT19"
+FAILED19=$(grep -c '^FAIL' <<<"$RESULT19" || true)
+echo "019 database: $(grep -c '^PASS' <<<"$RESULT19") passed, $FAILED19 failed"
+
+ESB=("$REPO/node_modules/.bin/esbuild" --bundle --platform=node --format=esm --log-level=warning '--define:import.meta.env={}')
+"${PSQL[@]}" -At -f "$HERE/019/mirror.sql" > "$WORK/mirror19.json"
+"${ESB[@]}" "$HERE/019/mirror.js" --outfile="$WORK/mirror19.mjs"
+node "$WORK/mirror19.mjs" "$WORK/mirror19.json" || MIRROR_OK=0
+
+# API tests need PostgREST (db-max-rows = 1000, like Supabase). Set POSTGREST_BIN or put
+# postgrest on PATH; without it they are skipped (the database tests above still run).
+API_OK=1
+PGRST="${POSTGREST_BIN:-$(command -v postgrest || true)}"
+if [ -n "$PGRST" ] && [ -x "$PGRST" ]; then
+  API_PORT="${PGRST_PORT:-55499}"
+  cat > "$WORK/pgrst.conf" <<CONF
+db-uri = "postgres:///postgres?host=$WORK&port=$PORT&user=authenticator"
+db-schemas = "public"
+db-anon-role = "anon"
+db-max-rows = 1000
+server-port = $API_PORT
+CONF
+  "$PGRST" "$WORK/pgrst.conf" > "$WORK/pgrst.log" 2>&1 &
+  PGRST_PID=$!
+  trap 'kill $PGRST_PID 2>/dev/null || true; cleanup' EXIT
+  for _ in $(seq 50); do curl -s -o /dev/null "http://localhost:$API_PORT/" && break; sleep 0.2; done
+  "${ESB[@]}" "$HERE/019/api.js" --outfile="$WORK/api19.mjs"
+  node "$WORK/api19.mjs" "http://localhost:$API_PORT" || API_OK=0
+else
+  echo "019 API tests: SKIPPED (no postgrest binary; set POSTGREST_BIN)"
+fi
+
+[ "$FAILED" = 0 ] && [ "$FAILED19" = 0 ] && [ "$MIRROR_OK" = 1 ] && [ "$API_OK" = 1 ] && echo "ALL TESTS PASSED" || { echo "SOME TESTS FAILED"; exit 1; }

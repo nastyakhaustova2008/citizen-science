@@ -98,9 +98,12 @@ export function downloadFile(filename, content, kind = 'csv') {
 /**
  * `observation` — the campaign all `measurements` belong to (for title and field columns).
  * `getAuthor` — author lookup from useAppData().
+ * `total` — how many rows matched when the export was cut at its cap (EXPORT_CAP): the file
+ * name then says so, e.g. "lab-first-20000-of-24512-2026-09-26.csv".
  */
-export function exportMeasurements(measurements, format, observation = null, getAuthor) {
-  const baseName = observation?.slug || 'measurements';
+export function exportMeasurements(measurements, format, observation = null, getAuthor, { total = null } = {}) {
+  const partial = total != null && total > measurements.length ? `-first-${measurements.length}-of-${total}` : '';
+  const baseName = `${observation?.slug || 'measurements'}${partial}`;
   const stamp = new Date().toISOString().slice(0, 10);
   if (format === 'csv')
     downloadFile(`${baseName}-${stamp}.csv`, toCSV(measurements, observation, getAuthor), 'csv');
