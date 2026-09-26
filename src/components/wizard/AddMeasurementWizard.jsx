@@ -19,6 +19,11 @@ import {
   validateValue,
   fieldLabel,
   formatFieldValue,
+  errorParams,
+  placeLabelError,
+  measuredAtError,
+  TEXT_CODES,
+  PLACE_MAX,
 } from '../../lib/fields';
 import { uploadPhoto, UploadError } from '../../lib/storage';
 import { roundLatLng, locationLabel } from '../../lib/location';
@@ -53,11 +58,14 @@ function nowLocalInput() {
  * fields that need fixing are highlighted.
  * Photos (016) are uploaded to Storage on submit and the measurement stores their path; an
  * uploaded photo is reused when the same picture is sent again after an error.
+ * Text, the place name and the date follow the database rules of 018 (length, no phone numbers /
+ * emails / outside links, date range); the database's own errors for them come back under the
+ * keys _place / _date / _id, and a rate limit as `rate_limited` (detail: minute | hour | day).
  */
 export default function AddMeasurementWizard({ observation }) {
   const { t, locale } = useI18n();
   const navigate = useNavigate();
-  const { addMeasurement } = useAppData();
+  const { addMeasurement, linkDomains } = useAppData();
 
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
@@ -66,6 +74,9 @@ export default function AddMeasurementWizard({ observation }) {
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState(false);
   const [placeLabel, setPlaceLabel] = useState('');
+  const [placeTouched, setPlaceTouched] = useState(false);
+  const [serverPlaceError, setServerPlaceError] = useState(null);
+  const [serverDateError, setServerDateError] = useState(null);
 
   const [datetime, setDatetime] = useState(nowLocalInput);
   const [inputs, setInputs] = useState({});
@@ -104,14 +115,18 @@ export default function AddMeasurementWizard({ observation }) {
   const clientErrors = useMemo(() => {
     const out = {};
     for (const f of fields) {
-      const e = validateValue(f, values[f.key]);
+      const e = validateValue(f, values[f.key], linkDomains);
       if (e) out[f.key] = e;
     }
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values, observation]);
+  }, [values, observation, linkDomains]);
 
-  const datetimeInvalid = !datetime || Number.isNaN(new Date(datetime).getTime());
+  const datetimeMissing = !datetime || Number.isNaN(new Date(datetime).getTime());
+  // 'required' | 'date_range' | null (the database's answer wins until the date is changed).
+  const dateError = datetimeMissing ? 'required' : serverDateError || measuredAtError(new Date(datetime));
+  const datetimeInvalid = Boolean(dateError);
+  const placeError = serverPlaceError || placeLabelError(placeLabel, linkDomains);
 
   function errorFor(f) {
     if (serverErrors[f.key]) return serverErrors[f.key];
@@ -177,7 +192,8 @@ export default function AddMeasurementWizard({ observation }) {
 
   function goNext() {
     if (step === 0) {
-      if (coords) setStep(1);
+      setPlaceTouched(true);
+      if (coords && !placeError) setStep(1);
       return;
     }
     setTriedValues(true);
@@ -192,6 +208,11 @@ export default function AddMeasurementWizard({ observation }) {
   async function submit() {
     setTriedValues(true);
     setTriedPhotos(true);
+    if (placeError) {
+      setPlaceTouched(true);
+      setStep(0);
+      return;
+    }
     if (valueStepErrors.length || datetimeInvalid) {
       setStep(1);
       if (valueStepErrors.length) focusField(valueStepErrors[0].key);
@@ -229,21 +250,33 @@ export default function AddMeasurementWizard({ observation }) {
       if (err instanceof UploadError) {
         setSaveError(`wizard.photoUpload.${err.code}`);
       } else if (err instanceof InvalidValuesError) {
+        // Built-in columns (018): _place → step 1, _date → step 2, _id → never sent by us.
+        const { _place: placeCode, _date: dateCode, _id: idCode, ...fieldErrors } = err.fieldErrors;
         // An uploaded photo the database no longer accepts (e.g. unused for over a day and
         // deleted) is uploaded again on the next try.
-        for (const [k, code] of Object.entries(err.fieldErrors)) {
+        for (const [k, code] of Object.entries(fieldErrors)) {
           if (code === 'photo_missing' || code === 'photo_taken') delete uploads.current[k];
         }
         // The campaign was re-read; keep every input and highlight what the database refused.
-        setServerErrors(err.fieldErrors);
-        setFormUpdated(true);
-        const keys = Object.keys(err.fieldErrors);
+        setServerErrors(fieldErrors);
+        setServerPlaceError(placeCode || null);
+        setServerDateError(dateCode || null);
+        const keys = Object.keys(fieldErrors);
+        // "The form was updated" only when it may have: not for text that broke a rule.
+        setFormUpdated(keys.some((k) => !TEXT_CODES.includes(fieldErrors[k])));
+        if (idCode) setSaveError('wizard.saveError');
         const onlyPhotos = keys.length > 0 && keys.every((k) => photoFields.some((f) => f.key === k));
-        if (!onlyPhotos) {
+        if (placeCode) {
+          setPlaceTouched(true);
+          setStep(0);
+        } else if (dateCode || (keys.length && !onlyPhotos)) {
           setStep(1);
           const first = valueFields.find((f) => keys.includes(f.key));
           if (first) focusField(first.key);
         }
+      } else if (err?.message === 'rate_limited') {
+        const win = ['minute', 'hour', 'day'].includes(err.details) ? err.details : 'hour';
+        setSaveError(`wizard.rateLimited.${win}`);
       } else {
         console.error('[wizard] save failed', err);
         setSaveError('wizard.saveError');
@@ -258,6 +291,9 @@ export default function AddMeasurementWizard({ observation }) {
     setStep(0);
     setCoords(null);
     setPlaceLabel('');
+    setPlaceTouched(false);
+    setServerPlaceError(null);
+    setServerDateError(null);
     setDatetime(nowLocalInput());
     setInputs({});
     setTouched(new Set());
@@ -380,12 +416,24 @@ export default function AddMeasurementWizard({ observation }) {
             </span>
             <input
               type="text"
-              maxLength={120}
-              className="input"
+              maxLength={PLACE_MAX}
+              className={`input ${placeTouched && placeError ? '!border-danger' : ''}`}
               placeholder={t('wizard.step1.placePlaceholder')}
               value={placeLabel}
-              onChange={(e) => setPlaceLabel(e.target.value)}
+              dir="auto"
+              onChange={(e) => {
+                setPlaceLabel(e.target.value);
+                setServerPlaceError(null);
+              }}
+              onBlur={() => setPlaceTouched(true)}
+              aria-invalid={placeTouched && !!placeError}
+              aria-describedby={placeTouched && placeError ? 'place-label-msg' : undefined}
             />
+            {placeTouched && placeError && (
+              <p id="place-label-msg" className="mt-1 text-sm text-danger" aria-live="polite">
+                {t(`fields.errors.${placeError}`, errorParams(null, linkDomains))}
+              </p>
+            )}
           </label>
         </div>
       )}
@@ -405,11 +453,14 @@ export default function AddMeasurementWizard({ observation }) {
               type="datetime-local"
               className={`input tnum ${triedValues && datetimeInvalid ? '!border-danger' : ''}`}
               value={datetime}
-              onChange={(e) => setDatetime(e.target.value)}
-              aria-invalid={triedValues && datetimeInvalid}
+              onChange={(e) => {
+                setDatetime(e.target.value);
+                setServerDateError(null);
+              }}
+              aria-invalid={(triedValues || !!serverDateError) && datetimeInvalid}
             />
-            {triedValues && datetimeInvalid && (
-              <p className="mt-1 text-sm text-danger">{t('fields.errors.required')}</p>
+            {(triedValues || !!serverDateError) && datetimeInvalid && (
+              <p className="mt-1 text-sm text-danger">{t(`fields.errors.${dateError}`)}</p>
             )}
           </label>
 

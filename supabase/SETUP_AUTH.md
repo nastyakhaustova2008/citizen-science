@@ -496,8 +496,8 @@ a moderator in the browser right away, otherwise by the function's daily `sweep`
    * delete a throwaway account with photos, keeping its measurements → the preview lists the
      photos; afterwards its files are gone from the bucket and the measurements show "Photo deleted".
 6. Merge → production deploy.
-7. Later (after production has run the new code for a while): migration 018 stops accepting the
-   old value `true` for new measurements (a separate small PR).
+7. Later (after production has run the new code for a while): a small migration stops accepting
+   the old value `true` for new measurements (a separate small PR; 018 went to the measurement limits).
 
 ## 20. Profile pictures and admin face photos — migration 017
 
@@ -548,3 +548,41 @@ removes every file a user owns in any bucket, and the daily `sweep` empties the 
       ```
 
       Back off again: the same with `'false'`.
+
+## 21. Measurement text and rate limits — migration 018
+
+Needs 017. Works with the frontend already on production (valid measurements are accepted exactly
+as before; only new violations are refused — the old wizard shows its generic "could not save" line
+for them), so it can run before the merge. **No Edge Function change.** Existing rows are never
+changed.
+
+0. Optional, on a computer with PostgreSQL 16: `supabase/tests/run.sh` → `ALL TESTS PASSED`
+   (a throwaway local database, see `supabase/tests/README.md`).
+1. SQL Editor → run `supabase/migrations/018_measurement_limits.sql`. Safe to re-run.
+2. Check (SQL Editor):
+
+   ```sql
+   select tgname from pg_trigger where tgrelid = 'public.measurements'::regclass and not tgisinternal;
+     -- + measurements_check_update
+   select private.text_safety_error('call 050-1234567', public.comment_domains());
+     -- {"code": "phone_not_allowed"}
+   select public.comment_body_error('see bit.ly/x', public.comment_domains()) ->> 'code';
+     -- link_shortener (comments behave as before)
+   ```
+
+3. SQL Editor → run `supabase/checks/018_existing_violations.sql` (read-only). It lists old
+   measurements that break the new rules (id, lab, date, which field, which rule) without showing
+   the text. Nothing needs to be done about them; open a row in Table Editor if you want to look.
+4. Vercel **preview** of the branch. The database is shared with production — use a throwaway
+   student account and a lab you may test on; delete the test measurements afterwards (SQL Editor,
+   `delete from public.measurements where id = '…'`):
+   * a normal measurement with a place name and notes in Hebrew / English / Russian (numbers, dates,
+     `pH 6.5-7.0`, `1013.25`) → saved; the place name and notes appear as typed (extra spaces removed).
+   * place name `call 050-1234567` → the error shows under the place name at once, "Next" stays on
+     step 1; notes `write me noa@gmail.com` → error under the notes; `https://evil.com` → "links are
+     allowed only to: …"; `https://he.wikipedia.org/wiki/Ozone` → saved.
+   * a place name longer than 120 characters can't be typed; a date two days ahead → error under the date.
+   * 11 measurements within a minute (the "Add another" button) → the 11th says "You added many
+     measurements in the last minute…", the form keeps the input; after a minute it saves.
+   * the same text errors in the other two languages of the interface.
+5. Merge → production deploy.

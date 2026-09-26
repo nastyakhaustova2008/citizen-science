@@ -153,6 +153,16 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
 * Private bucket `avatars`: a 256 px square, JPEG ≤ 100 KB, 10 uploads a day; hidden pictures are
   deleted after 90 days; account deletion deletes the picture.
 
-### Later — migration 018
+### Later — a small migration
 
 * Stop accepting the old photo value `true` for new measurements (after PR 1 is in production).
+  (The number 018 went to the measurement limits below.)
+
+## Audit fixes (September 2026)
+
+* **Measurement text and rate limits — done (migration 018).** Place name ≤ 120 characters, text
+  fields 200 / 2000; the text of measurements is cleaned and checked by the database like comments
+  (no phone numbers, emails or links outside the allowed domains); `id` and `measured_at` are
+  checked; adding measurements is limited to 10 a minute, 60 an hour, 200 a day per student (admins
+  3×). Existing rows are not changed; `supabase/checks/018_existing_violations.sql` lists the ones
+  that break the new rules.

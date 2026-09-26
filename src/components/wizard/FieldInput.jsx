@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { AlertTriangle, ImagePlus, X } from 'lucide-react';
 import { useI18n } from '../../i18n';
+import { useAppData } from '../../context/AppDataContext';
 import { fieldLabel, fieldHelp, optionLabel, errorParams } from '../../lib/fields';
 import { stripImageMetadata } from '../../lib/image';
 
@@ -13,6 +14,7 @@ import { stripImageMetadata } from '../../lib/image';
  */
 export default function FieldInput({ field, value, onChange, onBlur, error, warning, contentLocale, idPrefix = 'field' }) {
   const { t, locale: uiLocale } = useI18n();
+  const { linkDomains } = useAppData();
   const locale = contentLocale || uiLocale;
   const id = `${idPrefix}-${field.key}`;
   const helpId = `${id}-help`;
@@ -54,7 +56,7 @@ export default function FieldInput({ field, value, onChange, onBlur, error, warn
   const message = (error || warning) && (
     <div id={msgId} aria-live="polite" className="mt-1">
       {error ? (
-        <p className="text-sm text-danger">{t(`fields.errors.${error}`, errorParams(field))}</p>
+        <p className="text-sm text-danger">{t(`fields.errors.${error}`, errorParams(field, linkDomains))}</p>
       ) : (
         <p className="flex items-start gap-1.5 rounded-lg border border-warn/40 bg-warn/10 p-2 text-sm text-warn">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

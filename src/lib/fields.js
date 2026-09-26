@@ -1,5 +1,6 @@
 import { METRICS, DEFAULT_COLORS } from '../data/metrics';
 import { formatNumber, formatDate, formatTime } from './format';
+import { cleanComment, textSafetyError } from './comments';
 
 /**
  * Form engine: campaign field definitions (tables campaign_fields / campaign_field_options,
@@ -11,6 +12,59 @@ import { formatNumber, formatDate, formatTime } from './format';
  */
 
 export const TEXT_MAX = { short: 200, long: 2000 };
+
+/* ------------------------------------------------------------------ */
+/* Measurement text, place name, date (018)                            */
+/* ------------------------------------------------------------------ */
+
+/** Place name: one line, ≤ 120 characters (= measurements_validate_values, key _place). */
+export const PLACE_MAX = 120;
+
+/** Earliest / latest measurement date (= private.measurement_date_ok). */
+export const MEASURED_AT_MIN = Date.parse('2000-01-01T00:00:00Z');
+export const MEASURED_AT_AHEAD_MS = 24 * 60 * 60 * 1000;
+
+/** Content codes: the value was read fine, but its text breaks a rule (not a changed form). */
+export const TEXT_CODES = [
+  'too_long',
+  'phone_not_allowed',
+  'email_not_allowed',
+  'link_not_allowed',
+  'link_shortener',
+  'link_domain_not_allowed',
+];
+
+const SPACE_RUN = /[\s\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+/g;
+
+/** Stored form of a text value (= private.measurement_clean): comment rules; '' → ''. */
+export function cleanText(text, singleLine = false) {
+  const c = cleanComment(text);
+  return singleLine ? c.replace(SPACE_RUN, ' ') : c;
+}
+
+/** Characters (code points), as Postgres char_length counts them. */
+const charLength = (text) => [...text].length;
+
+/**
+ * Code for a cleaned text (= private.measurement_text_error): too_long, a safety code
+ * (comments' rules: no phones, emails, links outside the allowed domains) or null.
+ * domains null = not loaded: the domain check is left to the server.
+ */
+export function textError(cleaned, max, domains) {
+  if (!cleaned) return null;
+  if (charLength(cleaned) > max) return 'too_long';
+  return textSafetyError(cleaned, domains)?.code || null;
+}
+
+/** Place name error code, or null. */
+export const placeLabelError = (text, domains) => textError(cleanText(text, true), PLACE_MAX, domains);
+
+/** 'date_range' when the measurement date is before 2000 or more than a day ahead, else null. */
+export function measuredAtError(date, now = Date.now()) {
+  const ms = date instanceof Date ? date.getTime() : Date.parse(date);
+  if (Number.isNaN(ms)) return null;
+  return ms < MEASURED_AT_MIN || ms > now + MEASURED_AT_AHEAD_MS ? 'date_range' : null;
+}
 
 /** DB rows → the field shape the UI uses (camelCase, options sorted). */
 export function fieldFromRow(row) {
@@ -152,8 +206,13 @@ export function inputToValue(field, raw) {
   }
 }
 
-/** Error code for one value, or null. Same codes as the database trigger. */
-export function validateValue(field, value) {
+/**
+ * Error code for one value, or null. Same codes as the database trigger.
+ * domains: the allowed link domains for text values (null / undefined = left to the server).
+ */
+export function validateValue(field, value, domains = null) {
+  // Text counts as it will be stored (cleaned); only invisible characters = not filled.
+  if (field.type === 'text' && typeof value === 'string') value = cleanText(value);
   if (!hasValue(value)) return field.required ? 'required' : null;
   const activeOption = (k) => field.options.some((o) => o.key === k && !o.archived);
   switch (field.type) {
@@ -165,7 +224,7 @@ export function validateValue(field, value) {
       return null;
     case 'text':
       if (typeof value !== 'string') return 'type';
-      return value.length > (field.textLong ? TEXT_MAX.long : TEXT_MAX.short) ? 'too_long' : null;
+      return textError(value, field.textLong ? TEXT_MAX.long : TEXT_MAX.short, domains);
     case 'boolean':
       return typeof value === 'boolean' ? null : 'type';
     case 'choice':
@@ -184,9 +243,20 @@ export function validateValue(field, value) {
   }
 }
 
-/** i18n params for an error message (fields.errors.<code>); `unit` includes its leading space. */
-export function errorParams(field) {
-  return { min: field.min, max: field.max, decimals: field.decimals ?? 0, unit: field.unit ? ` ${field.unit}` : '' };
+/**
+ * i18n params for an error message (fields.errors.<code>); `unit` includes its leading space,
+ * `limit` = the text length limit (a text field, or the place name when field is null),
+ * `domains` = the allowed link domains, comma-separated (link_domain_not_allowed).
+ */
+export function errorParams(field, domains = null) {
+  return {
+    min: field?.min,
+    max: field?.max,
+    limit: !field ? PLACE_MAX : field.textLong ? TEXT_MAX.long : TEXT_MAX.short,
+    decimals: field?.decimals ?? 0,
+    unit: field?.unit ? ` ${field.unit}` : '',
+    domains: (domains || []).join(', '),
+  };
 }
 
 /* ------------------------------------------------------------------ */
