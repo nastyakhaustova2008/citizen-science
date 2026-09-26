@@ -187,6 +187,7 @@
               <li>Admins (teachers and staff) also fill in an admin profile — full name, workplace and position — which is shown on the labs they create or approve.</li>
               <li>We don't sell your data, show ads, or track you (no analytics, no cookies).</li>
               <li>An email address is optional.</li>
+              <li>Comments on measurements are visible only to logged-in users, and admins remove harmful ones.</li>
               <li>You can delete your account yourself in your profile, and you can ask us to see, fix or delete your data at any time.</li>
             </ul>
           </section>
@@ -256,6 +257,33 @@
             We don't track where you are.
           </p>
 
+          <h3>Comments on measurements</h3>
+          <ul>
+            <li>
+              <strong>What you write</strong>, the language the site was in when you wrote it (for automatic translation
+              in the future), when you wrote it and, if you changed it, when (“edited”). A comment can be edited only in
+              the first 15 minutes.
+            </li>
+            <li>
+              <strong>“Problem” reports</strong> about a measurement are stored as comments too (marked in red).
+            </li>
+            <li>
+              <strong>Reports about a comment</strong> — if you report someone's comment, we store that you reported it,
+              the reason you chose and when, so each person can report a comment only once. Nobody on the site sees who
+              reported. A comment with 3 reports is hidden until an admin checks it.
+            </li>
+            <li>
+              <strong>Safety rules, checked by our server:</strong> comments can't contain phone numbers or email
+              addresses, and links are allowed only to a short list of sites approved by the main admins (for example
+              YouTube, Wikipedia and Israeli government and university sites). Short links (like bit.ly) are never allowed.
+              Links open outside Mitzpe.
+            </li>
+            <li>
+              <strong>Moderation</strong> — the admins responsible for a lab can hide or delete comments on it. We record
+              which admin did it, to whose comment and when — <strong>not the text</strong>. Only admins can see this record.
+            </li>
+          </ul>
+
           <h3>Technical information</h3>
           <ul>
             <li>
@@ -265,6 +293,10 @@
             <li>
               A <strong>scrambled (hashed) form of your IP address</strong> — used to block anyone who tries to sign up
               or log in too many times.
+            </li>
+            <li>
+              A short record that <strong>your account</strong> posted a comment or a report — used to stop too many
+              comments in a short time (up to 5 a minute, 30 an hour, 100 a day).
             </li>
             <li>
               <strong>Your browser's local storage</strong> keeps your language, light/dark theme and your login, so you
@@ -284,10 +316,14 @@
             Anyone can also download the measurements as a file. The file doesn't include usernames, but the website
             shows who made each measurement.
           </p>
+          <p>
+            <strong>Comments are not public:</strong> only logged-in users can read them, with the writer's username.
+            A hidden comment is visible only to its writer and to the admins responsible for the lab.
+          </p>
 
           <h2>What we do NOT store (for now)</h2>
           <p>
-            Photos you add to a measurement, comments on map points, “problem” flags and forum posts currently stay
+            Photos you add to a measurement and forum posts currently stay
             <strong>only in your browser</strong> and disappear when you reload the page. They are not sent to our server.
             This may change — if it does, we will update this page before it happens.
           </p>
@@ -345,6 +381,16 @@
               removed from it.
             </li>
             <li>
+              <strong>Comments</strong> — until you delete them, an admin deletes them, or your account is deleted.
+              Hidden comments are deleted automatically <strong>90 days</strong> after they were hidden. Reports about
+              comments — until an admin decides, then 90 more days.
+            </li>
+            <li>
+              <strong>The comment moderation log</strong> (no text) — kept; when an account is deleted, it no longer
+              points to that user.
+            </li>
+            <li><strong>Records used to limit how many comments you post</strong> — deleted after one day.</li>
+            <li>
               <strong>Hosting logs</strong> at Vercel and Supabase — a short time (a few days), under their own rules.
             </li>
           </ul>
@@ -366,9 +412,11 @@
             You can delete your account yourself: Profile → Account → “Delete account”. To confirm, type your username;
             if you signed in more than 15 minutes ago, you will be asked to sign in again (password or Google). Deletion
             permanently removes your profile and username, email address, password and Google sign-in link, admin profile
-            (full name, workplace, position) and the records of your sign-ins, including IP addresses. You choose whether
+            (full name, workplace, position) and the records of your sign-ins, including IP addresses. All your comments
+            and your reports about comments are always deleted. You choose whether
             your measurements are deleted or kept as shared scientific data; kept measurements are shown as “Unknown
-            participant” and get a new random identifier, so they cannot be linked to your account. Labs an admin created
+            participant” and get a new random identifier, so they cannot be linked to your account. If you delete your
+            measurements, other people's comments on them are deleted too. Labs an admin created
             or approved stay online, showing “former staff member” instead of the name; no name or identifier stays in the
             admin logs. Your username becomes available immediately. Technical copies at our hosting provider (server logs
             and backups) are removed according to its retention schedule. You can still ask for deletion by email:
@@ -382,7 +430,8 @@
               <strong>Don't measure at your home.</strong> The map shows the place to within about 100 m — close enough to find a home. Measure at school, in a park or in
               another public place.
             </li>
-            <li><strong>Don't write personal details</strong> (phone number, address, full name) in text fields.</li>
+            <li><strong>Don't write personal details</strong> (phone number, address, full name) in text fields or comments — yours or other students'.</li>
+            <li>Be kind in comments. If a comment hurts or worries you, press “Report” — an admin will check it.</li>
             <li>Don't share your password with anyone, not even friends.</li>
             <li>If something worries you, talk to your teacher or a parent, or write to us.</li>
           </ul>
@@ -415,6 +464,7 @@
               <li>Администраторы (учителя и сотрудники) также заполняют профиль администратора — полное имя, место работы и должность; он показывается на лабораторных, которые они создали или одобрили.</li>
               <li>Мы не продаём данные, не показываем рекламу и не следим за вами (никакой аналитики, никаких cookies).</li>
               <li>Email указывать не обязательно.</li>
+              <li>Комментарии к измерениям видны только вошедшим пользователям, а администраторы убирают вредные.</li>
               <li>Вы можете сами удалить аккаунт в профиле, а также в любой момент попросить нас показать, исправить или удалить ваши данные.</li>
             </ul>
           </section>
@@ -487,6 +537,32 @@
             вы находитесь.
           </p>
 
+          <h3>Комментарии к измерениям</h3>
+          <ul>
+            <li>
+              <strong>Что вы написали</strong>, на каком языке был сайт в этот момент (для автоматического перевода в
+              будущем), когда вы написали и, если вы исправляли текст, когда («изменено»). Комментарий можно изменить
+              только в первые 15 минут.
+            </li>
+            <li><strong>Сообщения о проблеме</strong> с измерением тоже хранятся как комментарии (отмечены красным).</li>
+            <li>
+              <strong>Жалобы на комментарий</strong> — если вы пожаловались на чужой комментарий, мы храним, что вы
+              пожаловались, выбранную причину и время, чтобы каждый мог пожаловаться только один раз. На сайте никто не
+              видит, кто пожаловался. Комментарий с 3 жалобами скрывается, пока его не проверит администратор.
+            </li>
+            <li>
+              <strong>Правила безопасности, их проверяет наш сервер:</strong> в комментариях нельзя писать номера
+              телефонов и адреса e-mail, а ссылки разрешены только на короткий список сайтов, одобренных главными
+              администраторами (например, YouTube, Википедия, израильские государственные и университетские сайты).
+              Короткие ссылки (например, bit.ly) запрещены всегда. Ссылки открываются вне Мицпе.
+            </li>
+            <li>
+              <strong>Модерация</strong> — администраторы, отвечающие за лабораторную, могут скрывать и удалять комментарии
+              к ней. Мы записываем, какой администратор это сделал, с чьим комментарием и когда — <strong>без текста</strong>.
+              Эту запись видят только администраторы.
+            </li>
+          </ul>
+
           <h3>Техническая информация</h3>
           <ul>
             <li>
@@ -496,6 +572,10 @@
             <li>
               <strong>Зашифрованный (хешированный) IP-адрес</strong> — чтобы блокировать тех, кто слишком много раз пытается
               зарегистрироваться или войти.
+            </li>
+            <li>
+              Короткая запись о том, что <strong>ваш аккаунт</strong> написал комментарий или жалобу, — чтобы не давать
+              писать слишком много за короткое время (до 5 в минуту, 30 в час, 100 в день).
             </li>
             <li>
               <strong>Локальное хранилище браузера</strong> хранит язык, светлую/тёмную тему и ваш вход, чтобы не входить
@@ -515,11 +595,14 @@
             Любой может также скачать измерения файлом. В файле нет имён пользователей, но на сайте видно, кто сделал
             каждое измерение.
           </p>
+          <p>
+            <strong>Комментарии не публичны:</strong> их читают только вошедшие пользователи, вместе с именем автора.
+            Скрытый комментарий видят только его автор и администраторы, отвечающие за лабораторную.
+          </p>
 
           <h2>Что мы НЕ храним (пока)</h2>
           <p>
-            Фото, которые вы добавляете к измерению, комментарии к точкам на карте, пометки «проблема» и сообщения на
-            форуме сейчас остаются <strong>только в вашем браузере</strong> и исчезают при перезагрузке страницы. На наш
+            Фото, которые вы добавляете к измерению, и сообщения на форуме сейчас остаются <strong>только в вашем браузере</strong> и исчезают при перезагрузке страницы. На наш
             сервер они не отправляются. Это может измениться — тогда мы заранее обновим эту страницу.
           </p>
 
@@ -573,6 +656,16 @@
               <strong>Журнал изменений лабораторных</strong> — пока существуют лабораторные. При удалении аккаунта ваше имя
               из него убирается.
             </li>
+            <li>
+              <strong>Комментарии</strong> — пока вы их не удалите, их не удалит администратор или не будет удалён ваш
+              аккаунт. Скрытые комментарии удаляются автоматически через <strong>90 дней</strong> после скрытия. Жалобы на
+              комментарии — пока администратор не примет решение, и ещё 90 дней.
+            </li>
+            <li>
+              <strong>Журнал модерации комментариев</strong> (без текста) — хранится; при удалении аккаунта он больше не
+              указывает на этого пользователя.
+            </li>
+            <li><strong>Записи для ограничения числа комментариев</strong> — удаляются через сутки.</li>
             <li><strong>Журналы хостинга</strong> Vercel и Supabase — недолго (несколько дней), по их правилам.</li>
           </ul>
 
@@ -594,9 +687,11 @@
             Аккаунт можно удалить самостоятельно: Профиль → Аккаунт → «Удаление аккаунта». Для подтверждения нужно ввести
             своё имя пользователя, а если с момента входа прошло больше 15 минут, — войти ещё раз (паролем или через
             Google). При удалении навсегда стираются: профиль и имя пользователя, email, пароль и привязка к Google, профиль
-            администратора (полное имя, место работы, должность) и записи о входах в аккаунт, включая IP-адреса. Измерения
+            администратора (полное имя, место работы, должность) и записи о входах в аккаунт, включая IP-адреса. Все ваши
+            комментарии и жалобы на комментарии удаляются всегда. Измерения
             можно удалить или оставить как общие научные данные; оставленные измерения показываются как «Неизвестный
-            участник» и получают новый случайный идентификатор, поэтому связать их с аккаунтом нельзя. Лабораторные,
+            участник» и получают новый случайный идентификатор, поэтому связать их с аккаунтом нельзя. Если вы удаляете
+            измерения, комментарии других людей к ним тоже удаляются. Лабораторные,
             которые администратор создал или одобрил, остаются, вместо имени указано «бывший сотрудник»; в журналах
             администрирования не остаётся ни имени, ни идентификатора. Имя пользователя сразу становится свободным.
             Технические копии у хостинг-провайдера (журналы сервера и резервные копии) удаляются по его графику хранения.
@@ -613,7 +708,8 @@
               <strong>Не делайте измерения у себя дома.</strong> Карта показывает место с точностью около 100 м — этого достаточно, чтобы найти дом. Измеряйте в школе, в парке
               или в другом общественном месте.
             </li>
-            <li><strong>Не пишите личные данные</strong> (телефон, адрес, полное имя) в текстовых полях.</li>
+            <li><strong>Не пишите личные данные</strong> (телефон, адрес, полное имя) в текстовых полях и комментариях — ни свои, ни других учеников.</li>
+            <li>Будьте вежливы в комментариях. Если комментарий обижает или тревожит вас, нажмите «Пожаловаться» — администратор проверит.</li>
             <li>Никому не говорите свой пароль, даже друзьям.</li>
             <li>Если что-то беспокоит — поговорите с учителем или родителями или напишите нам.</li>
           </ul>
@@ -646,6 +742,7 @@
               <li>מנהלים (מורים ואנשי צוות) ממלאים גם פרופיל מנהל — שם מלא, מקום עבודה ותפקיד — שמוצג במעבדות שהם יצרו או אישרו.</li>
               <li>אנחנו לא מוכרים מידע, לא מציגים פרסומות ולא עוקבים אחריכם (אין כלי ניתוח ואין עוגיות).</li>
               <li>אימייל הוא לא חובה.</li>
+              <li>תגובות על מדידות גלויות רק למשתמשים מחוברים, והמנהלים מסירים תגובות פוגעות.</li>
               <li>אפשר למחוק את החשבון בעצמכם בפרופיל, ואפשר לבקש מאיתנו בכל זמן לראות, לתקן או למחוק את המידע שלכם.</li>
             </ul>
           </section>
@@ -711,6 +808,29 @@
             מהטלפון את מיקום ה־GPS <strong>רק כשלוחצים עליו</strong>. אנחנו לא עוקבים אחרי המקום שלכם.
           </p>
 
+          <h3>תגובות על מדידות</h3>
+          <ul>
+            <li>
+              <strong>מה שכתבתם</strong>, באיזו שפה היה האתר באותו רגע (לתרגום אוטומטי בעתיד), מתי כתבתם, ואם תיקנתם —
+              מתי („נערך”). אפשר לערוך תגובה רק ב־15 הדקות הראשונות.
+            </li>
+            <li><strong>דיווחים על בעיה</strong> במדידה נשמרים גם הם כתגובות (מסומנים באדום).</li>
+            <li>
+              <strong>דיווחים על תגובה</strong> — אם דיווחתם על תגובה של מישהו, אנחנו שומרים שדיווחתם, את הסיבה שבחרתם
+              ומתי, כדי שכל אחד יוכל לדווח על תגובה רק פעם אחת. אף אחד באתר לא רואה מי דיווח. תגובה עם 3 דיווחים מוסתרת עד
+              שמנהל/ת בודקים אותה.
+            </li>
+            <li>
+              <strong>כללי בטיחות שהשרת שלנו בודק:</strong> אסור לכתוב בתגובות מספרי טלפון או כתובות אימייל, וקישורים
+              מותרים רק לרשימה קצרה של אתרים שאישרו המנהלים הראשיים (למשל YouTube, ויקיפדיה ואתרי ממשלה ואוניברסיטאות
+              בישראל). קישורים מקוצרים (כמו bit.ly) אסורים תמיד. קישורים נפתחים מחוץ למצפה.
+            </li>
+            <li>
+              <strong>ניהול תגובות</strong> — המנהלים האחראים על מעבדה יכולים להסתיר או למחוק תגובות בה. אנחנו רושמים
+              איזה מנהל/ת עשה זאת, לתגובה של מי ומתי — <strong>בלי הטקסט</strong>. רק מנהלים רואים את הרישום הזה.
+            </li>
+          </ul>
+
           <h3>מידע טכני</h3>
           <ul>
             <li>
@@ -719,6 +839,10 @@
             </li>
             <li>
               <strong>כתובת ה־IP בצורה מוצפנת (hash)</strong> — כדי לחסום מי שמנסה להירשם או להיכנס יותר מדי פעמים.
+            </li>
+            <li>
+              רישום קצר ש<strong>החשבון שלכם</strong> כתב תגובה או דיווח — כדי למנוע יותר מדי תגובות בזמן קצר (עד 5
+              בדקה, 30 בשעה, 100 ביום).
             </li>
             <li>
               <strong>האחסון המקומי בדפדפן</strong> שומר את השפה, את המצב הבהיר/הכהה ואת הכניסה שלכם, כדי שלא תצטרכו
@@ -737,10 +861,14 @@
           <p>
             כל אחד יכול גם להוריד את המדידות כקובץ. בקובץ אין שמות משתמשים, אבל באתר רואים מי עשה כל מדידה.
           </p>
+          <p>
+            <strong>התגובות לא גלויות לכולם:</strong> רק משתמשים מחוברים יכולים לקרוא אותן, יחד עם שם המשתמש של הכותב/ת.
+            תגובה מוסתרת גלויה רק לכותב/ת שלה ולמנהלים האחראים על המעבדה.
+          </p>
 
           <h2>מה אנחנו לא שומרים (כרגע)</h2>
           <p>
-            תמונות שאתם מוסיפים למדידה, תגובות על נקודות במפה, סימוני „בעיה” והודעות בפורום נשארים כרגע
+            תמונות שאתם מוסיפים למדידה והודעות בפורום נשארים כרגע
             <strong>רק בדפדפן שלכם</strong> ונעלמים כשמרעננים את הדף. הם לא נשלחים לשרת שלנו. זה עשוי להשתנות — ואם
             כן, נעדכן את הדף הזה לפני כן.
           </p>
@@ -792,6 +920,14 @@
             <li>
               <strong>יומן השינויים במעבדות</strong> — כל עוד המעבדות קיימות. כשהחשבון נמחק, השם שלכם מוסר ממנו.
             </li>
+            <li>
+              <strong>תגובות</strong> — עד שתמחקו אותן, מנהל/ת ימחקו אותן או שהחשבון שלכם יימחק. תגובות מוסתרות נמחקות
+              אוטומטית <strong>90 יום</strong> אחרי שהוסתרו. דיווחים על תגובות — עד שמנהל/ת מחליטים, ועוד 90 יום.
+            </li>
+            <li>
+              <strong>יומן ניהול התגובות</strong> (בלי טקסט) — נשמר; כשחשבון נמחק, היומן כבר לא מצביע על המשתמש.
+            </li>
+            <li><strong>רישומים להגבלת מספר התגובות</strong> — נמחקים אחרי יום.</li>
             <li><strong>יומני האחסון</strong> של Vercel ו־Supabase — זמן קצר (כמה ימים), לפי הכללים שלהן.</li>
           </ul>
 
@@ -812,8 +948,8 @@
             אפשר למחוק את החשבון בעצמכם: פרופיל ← חשבון ← „מחיקת החשבון”. לאישור יש להקליד את שם המשתמש, ואם עברו יותר
             מ־15 דקות מאז הכניסה – להיכנס שוב (בסיסמה או דרך Google). במחיקה נמחקים לצמיתות: הפרופיל ושם המשתמש, כתובת
             האימייל, הסיסמה והחיבור ל־Google, פרופיל המנהל (שם מלא, מקום עבודה, תפקיד) ורישומי הכניסה לחשבון, כולל כתובות
-            IP. את המדידות אפשר למחוק או להשאיר כנתונים מדעיים משותפים; מדידות שנשארות מוצגות כ„משתתף/ת לא ידוע/ה”
-            ומקבלות מזהה אקראי חדש, כך שאי אפשר לקשר אותן לחשבון. מעבדות שיצר/ה או אישר/ה מנהל/ת נשארות, ובמקום השם מופיע
+            IP. כל התגובות שלכם והדיווחים שלכם על תגובות נמחקים תמיד. את המדידות אפשר למחוק או להשאיר כנתונים מדעיים משותפים; מדידות שנשארות מוצגות כ„משתתף/ת לא ידוע/ה”
+            ומקבלות מזהה אקראי חדש, כך שאי אפשר לקשר אותן לחשבון. אם מוחקים את המדידות, נמחקות גם התגובות של אחרים עליהן. מעבדות שיצר/ה או אישר/ה מנהל/ת נשארות, ובמקום השם מופיע
             „איש/אשת צוות לשעבר”; ביומני הניהול לא נשארים שם או מזהה. שם המשתמש מתפנה מיד. עותקים טכניים אצל ספק האחסון
             (יומני שרת וגיבויים) נמחקים לפי מדיניות השמירה שלו. עדיין אפשר לבקש מחיקה גם באימייל: <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
@@ -826,7 +962,8 @@
             <li>
               <strong>אל תמדדו בבית שלכם.</strong> המפה מציגה את המקום בדיוק של כ־100 מטר — מספיק כדי למצוא בית. מדדו בבית הספר, בפארק או במקום ציבורי אחר.
             </li>
-            <li><strong>אל תכתבו פרטים אישיים</strong> (טלפון, כתובת, שם מלא) בשדות הטקסט.</li>
+            <li><strong>אל תכתבו פרטים אישיים</strong> (טלפון, כתובת, שם מלא) בשדות הטקסט ובתגובות — לא שלכם ולא של תלמידים אחרים.</li>
+            <li>כתבו תגובות בכבוד. אם תגובה פוגעת בכם או מדאיגה אתכם, לחצו „דיווח” — מנהל/ת יבדקו אותה.</li>
             <li>אל תגלו את הסיסמה שלכם לאף אחד, גם לא לחברים.</li>
             <li>אם משהו מדאיג אתכם — דברו עם המורה או עם ההורים, או כתבו לנו.</li>
           </ul>

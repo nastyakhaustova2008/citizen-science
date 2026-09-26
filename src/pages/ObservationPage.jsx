@@ -202,7 +202,7 @@ export default function ObservationPage() {
       ) : (
         <>
           <TabPanel id="map" active={tab} idBase="obs">
-            <ObservationMap observation={observation} measurements={measurements} />
+            <ObservationMap observation={observation} measurements={measurements} initialPointId={params.get('point')} />
           </TabPanel>
 
           <TabPanel id="data" active={tab} idBase="obs">

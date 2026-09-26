@@ -215,6 +215,9 @@ export function AuthProvider({ children }) {
       labsCreated: data.labs_created,
       drafts: data.drafts,
       openRevisions: data.open_revisions,
+      // 015 (0 until the migration runs)
+      comments: data.comments ?? 0,
+      commentsOnMeasurements: data.comments_on_measurements ?? 0,
     };
   }, []);
 

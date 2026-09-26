@@ -12,9 +12,9 @@ function ReviewBadge({ count }) {
   const { t } = useI18n();
   if (!count) return null;
   return (
-    <span className="tnum rounded-full bg-bark px-1.5 text-xs font-semibold text-paper-raised" title={t('labs.queue.badge', { count })}>
+    <span className="tnum rounded-full bg-bark px-1.5 text-xs font-semibold text-paper-raised" title={t('admin.todoBadge', { count })}>
       {count}
-      <span className="sr-only"> {t('labs.queue.badge', { count })}</span>
+      <span className="sr-only"> {t('admin.todoBadge', { count })}</span>
     </span>
   );
 }
@@ -93,7 +93,8 @@ export default function Header() {
   const { t } = useI18n();
   const { currentUser, session, authLoading, logOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { reviewCount } = useAppData();
+  // Labs to review + reported comments + link domain proposals waiting for this admin.
+  const { adminTodoCount } = useAppData();
   const location = useLocation();
   const loggedIn = Boolean(session);
   const onAuthPage = ['/login', '/signup'].includes(location.pathname);
@@ -102,7 +103,7 @@ export default function Header() {
 
   const links = [
     { to: '/', label: t('nav.home'), end: true },
-    ...(loggedIn ? [{ to: '/profile', label: t('nav.profile'), badge: reviewCount }] : []),
+    ...(loggedIn ? [{ to: '/profile', label: t('nav.profile'), badge: adminTodoCount }] : []),
   ];
 
   return (
@@ -140,7 +141,7 @@ export default function Header() {
               <span className="max-w-[12rem] truncate" dir="auto">
                 {currentUser.displayName}
               </span>
-              <ReviewBadge count={reviewCount} />
+              <ReviewBadge count={adminTodoCount} />
             </Link>
           )}
           {!authLoading && !loggedIn && (
@@ -157,12 +158,12 @@ export default function Header() {
           <button
             type="button"
             className="btn-ghost relative px-2 md:hidden"
-            aria-label={reviewCount ? `${t('nav.menu')} — ${t('labs.queue.badge', { count: reviewCount })}` : t('nav.menu')}
+            aria-label={adminTodoCount ? `${t('nav.menu')} — ${t('admin.todoBadge', { count: adminTodoCount })}` : t('nav.menu')}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((o) => !o)}
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            {!mobileOpen && reviewCount > 0 && (
+            {!mobileOpen && adminTodoCount > 0 && (
               <span className="absolute end-1 top-1 h-2 w-2 rounded-full bg-bark" aria-hidden="true" />
             )}
           </button>

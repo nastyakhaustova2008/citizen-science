@@ -6,15 +6,14 @@ Each goal is one task = one branch = one PR. Before each one: plan first, code a
 
 ## Suggested order
 
-Done: goal 1 (coordinate rounding) and goal 2 (delete my account).
+Done: goal 1 (coordinate rounding), goal 2 (delete my account) and goal 6 (comments in the database).
+Dropped: goal 4 (date and time of a measurement).
 
 3. Privacy policy details + Brevo emails
-4. Date and time of a measurement
 5. Six languages
-6. Save comments to the database
 7. Automatic translation of comments and user data
 
-Goal 3 should be done before real schools use the platform (goals 1 and 2, also needed before that, are done). Goal 5 comes before goal 7, because translation depends on the final list of languages. Goal 6 comes before goal 7, because there must be stored comments to translate.
+Goal 3 should be done before real schools use the platform (goals 1 and 2, also needed before that, are done). Goal 5 comes before goal 7, because translation depends on the final list of languages. Goal 6 (done) came before goal 7, because there must be stored comments to translate — each comment stores the language it was written in.
 
 ## 1. Coordinate rounding (~100 m) — done
 
@@ -55,17 +54,11 @@ Future: once photo Storage exists, photos are **always** deleted on account dele
 * Test: password reset and email confirmation actually arrive (check spam).
 * Update the policy: Brevo moves from "planned" to a current service.
 
-## 4. Date and time of a measurement
+## 4. Date and time of a measurement — dropped
 
-**Goal:** when adding a measurement, the student can set the day and time it was taken (not only "now").
-
-Notes:
-
-* First check whether the wizard already has a date/time input (the step-3 plan mentioned one).
-* Default: now. Not in the future. Propose a limit for the past (e.g. up to 30 days back).
-* Validate in the database too.
-* Charts, filters and the time slider use this time, not the time of saving.
-* Keep `created_at` (when it was saved) separately.
+Not needed: the form engine's `datetime` field type already lets a lab ask for the day and time of
+a measurement (validated in the database like every field). A lab that needs it adds such a field
+in the lab editor.
 
 ## 5. Six languages
 
@@ -80,18 +73,30 @@ Notes:
 * Privacy policy in 6 languages.
 * Check layout: all new languages are left-to-right.
 
-## 6. Save comments to the database
+## 6. Save comments to the database — done
 
-**Goal:** comments on measurement points (and the forum, if in scope) are stored and survive a reload.
+**Built (migration 015):** comments on measurement points are stored in Supabase. Details in CLAUDE.md ("Comments").
 
-Notes:
+Decisions:
 
-* Only logged-in users can comment (already so in the UI).
-* Users are minors: decide on moderation — who can hide or delete comments (admins? the author of the comment?), and a "report" button.
-* Decide: can a user edit or delete their own comment?
-* Include "flags" (problem reports on measurements) — they are also in-memory only today.
-* Deleted accounts: comments stay as "unknown participant" or are deleted — decide.
-* Update the privacy policy (comments are now stored).
+* Only measurements are commented on (lab-level talk stays in the Discussion tab / forum, still in memory).
+* Reading: logged-in users only. Writing: logged-in users with a username.
+* Post-moderation with safeguards: the database rejects phone numbers, email addresses and links
+  outside an allowlist of domains; a "Report" button (reason only, one per user); 3 reports from
+  different users hide the comment until an admin decides; a reported-comments list with a badge.
+* Moderators: the lab's author (admin), main admins and the owner — hide / show / delete; logged
+  without the text.
+* Links: only to allowed domains (subdomains match). Start list: youtube.com, youtu.be,
+  wikipedia.org, gov.il, ac.il. Main admins / owner add and remove; other admins propose with a
+  reason; every change is logged. Shorteners, IPs, punycode and user:pass@ are always rejected.
+* Edit: own comment, 15 minutes, "edited" shown. Delete: own comment any time.
+* "Problem" flags are stored as comments of kind `issue` (shown red, mark the point as flagged).
+* Limits: 1000 characters; 5 comments a minute / 30 an hour / 100 a day; 20 reports a day.
+* Language of each comment is stored (UI language at the time) for goal 7.
+* Account deletion: the user's comments and reports are always deleted.
+* Hidden comments are deleted 90 days after hiding; resolved reports 90 days after resolving.
+
+Not done here: forum posts are still in memory only.
 
 ## 7. Automatic translation
 

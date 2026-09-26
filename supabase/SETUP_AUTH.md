@@ -372,3 +372,47 @@ functions and role-log actions), so it can run before the merge.
      under M"; in **Administration → Log**: "a deleted account … was deleted", "B moved under M".
    * the owner has no delete button.
 6. Merge → production deploy → update `public/privacy.html` (all languages + date).
+
+## 18. Comments on measurements — migration 015
+
+Needs 014 (and 008: the cleanup job uses pg_cron). Works with the frontend already on production
+(it only adds tables and functions; the three account-deletion functions keep their arguments and
+only return extra keys), so it can run before the merge. **No Edge Function change.**
+
+1. SQL Editor → run `supabase/migrations/015_comments.sql`. Safe to re-run.
+2. Check (SQL Editor):
+
+   ```sql
+   select * from public.allowed_link_domains;          -- youtube.com, youtu.be, wikipedia.org, gov.il, ac.il
+   select public.comment_body_error(public.comment_clean('call 050-1234567'), public.comment_domains());
+                                                        -- {"code": "phone_not_allowed"}
+   select public.comment_body_error(public.comment_clean('bit.ly/x'), public.comment_domains());
+                                                        -- {"code": "link_shortener", ...}
+   select private.comments_cleanup();                   -- {"hidden_comments": 0, "resolved_reports": 0}
+   select jobname, schedule from cron.job;              -- + 'mitzpe-comments-cleanup' at 03:27 UTC
+   ```
+
+3. Vercel **preview** of the branch. The database is shared with production — use throwaway
+   accounts, and delete the test comments afterwards (moderator "Delete", or SQL Editor
+   `delete from public.comments where …`):
+   * logged out → a point's panel says "log in to read and write comments"; the old production site
+     still works (it doesn't read comments).
+   * student → post a comment in each language (he/en/ru), reload: they stay. Mixed Hebrew/English
+     text reads correctly in both RTL and LTR interface languages.
+   * limits (instant message, then the same through the server): 1001 characters, a phone number
+     (050-1234567, +972 50 123 4567), an email, `evil.com/x`, `bit.ly/x`, `https://user:pass@youtube.com`,
+     `http://127.0.0.1`; the 6th comment within a minute → "writing too fast".
+   * `https://www.youtube.com/watch?v=…` → clickable, shows `youtube.com`, opens a new tab.
+   * edit within 15 minutes → "edited"; after 15 minutes the Edit button is gone.
+   * "Report a data issue" → red comment; the point shows "flagged" (for logged-in users).
+   * 3 different students report the same comment → it disappears for them; its author sees
+     "hidden after reports"; the lab's admin (or a main admin) sees it in **Administration →
+     Comments** with a badge, and in the header badge. "Show again" / "Hide" / "Delete" work; an
+     admin who didn't create the lab can't moderate it; **Log → Comments** shows the actions
+     without the text.
+   * regular admin → **Administration → Comments** → propose a domain with a reason; main admin →
+     badge → approve / reject with a comment; the proposer sees the decision; **Log → Link
+     domains** shows every step. Removing a domain turns existing links to it into plain text.
+   * delete a throwaway account that has comments → the preview counts them; after deletion
+     they're gone.
+4. Merge → production deploy.
