@@ -53,7 +53,7 @@
 * Карта: leaflet + react-leaflet + react-leaflet-cluster, тайлы OpenStreetMap
 * Графики: recharts
 * Иконки: lucide-react
-* Линтеров и тестов нет
+* Линтеров нет; тесты базы — `supabase/tests/run.sh` (локальный PostgreSQL 16, см. `supabase/tests/README.md`)
 
 ## Команды
 
@@ -61,6 +61,7 @@
 * `npm run dev` — dev-сервер, http://localhost:5173
 * `npm run build` — сборка в `dist/`
 * `npm run preview` — просмотр сборки
+* `supabase/tests/run.sh` — миграции на временной локальной базе + тесты (нужен PostgreSQL 16; с Supabase не связано)
 
 ## Переменные окружения
 
@@ -157,6 +158,8 @@ supabase/
 │                       018_measurement_limits.sql (текст измерений как у комментариев, длины, id/дата, лимит добавления;
 │                       private.text_safety_error — общая с комментариями; новая account_delete_finish)
 ├── checks/           — запросы только для чтения: 018_existing_violations.sql (старые строки, нарушающие правила 018)
+├── tests/            — локальные тесты миграций: run.sh (временный PostgreSQL + заглушки Supabase), 018/ (тесты 018 и
+│                       сверка SQL ↔ fields.js); новая миграция → свои тесты там же (README.md)
 ├── functions/account/ — Edge Function: регистрация, вход по имени, сброс пароля, удаление аккаунта (+ его файлов),
 │                       `sweep` — удаление файлов из очереди (деплой через Dashboard → Via Editor)
 ├── SETUP_AUTH.md     — ручные настройки Brevo / Supabase / Google Cloud для аккаунтов, по порядку

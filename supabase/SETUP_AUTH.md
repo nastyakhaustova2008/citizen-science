@@ -556,6 +556,8 @@ as before; only new violations are refused — the old wizard shows its generic 
 for them), so it can run before the merge. **No Edge Function change.** Existing rows are never
 changed.
 
+0. Optional, on a computer with PostgreSQL 16: `supabase/tests/run.sh` → `ALL TESTS PASSED`
+   (a throwaway local database, see `supabase/tests/README.md`).
 1. SQL Editor → run `supabase/migrations/018_measurement_limits.sql`. Safe to re-run.
 2. Check (SQL Editor):
 
