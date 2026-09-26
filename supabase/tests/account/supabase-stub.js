@@ -6,6 +6,8 @@ export const state = {
   revoked: new Set(), // access tokens whose session was signed out
   buckets: new Map(), // rate_limit_take: bucket → hits
   ticketMissing: false, // simulate "before migration 021" (PGRST202)
+  taken: new Set(), // username_available → 'taken' for these
+  signupUsername: 'ok', // answer of account_signup_username, or 'missing' (before 022)
 };
 
 function decode(token) {
@@ -37,6 +39,15 @@ export function createClient() {
         const u = [...state.users.values()].find((x) => x.username === args.p_username);
         return { data: u ? [{ user_id: u.id, email: u.email, email_confirmed: true }] : [], error: null };
       }
+      if (name === 'username_available') {
+        return { data: state.taken.has(args.p_username.toLowerCase()) ? 'taken' : 'available', error: null };
+      }
+      if (name === 'account_signup_username') {
+        if (state.signupUsername === 'missing') {
+          return { data: null, error: { code: 'PGRST202', message: 'Could not find the function public.account_signup_username' } };
+        }
+        return { data: state.signupUsername, error: null };
+      }
       if (name === 'account_delete_prepare') return { data: { anon_id: 'anon' }, error: null };
       if (name === 'account_storage_objects') return { data: [], error: null };
       if (name === 'account_delete_finish') return { data: {}, error: null };
@@ -62,7 +73,10 @@ export function createClient() {
           state.calls.push({ what: 'deleteUser', id });
           return { data: null, error: null };
         },
-        createUser: async () => ({ data: null, error: { code: 'unexpected' } }),
+        createUser: async (attrs) => {
+          state.calls.push({ what: 'createUser', attrs });
+          return { data: { user: { id: 'new-user-1', app_metadata: attrs.app_metadata } }, error: null };
+        },
       },
     },
     storage: { from: () => ({ remove: async () => ({ error: null }) }) },

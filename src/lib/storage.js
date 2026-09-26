@@ -22,8 +22,9 @@ export class UploadError extends Error {
 }
 
 /**
- * Uploads a JPEG data URL → its path. code: 'not_allowed' (the upload rules refused: daily
- * limit, storage full, no username), 'too_large', 'network' / 'generic'.
+ * Uploads a JPEG data URL → its path. code: 'rate_limited' (30 photos / 10 pictures in 24 h),
+ * 'storage_full', 'not_allowed' (the upload rules refused for another reason, e.g. no username),
+ * 'too_large', 'network' / 'generic'.
  */
 export async function uploadPhoto(dataUrl, bucket = PHOTO_BUCKET) {
   if (!supabase) throw new UploadError('generic');
@@ -41,11 +42,24 @@ export async function uploadPhoto(dataUrl, bucket = PHOTO_BUCKET) {
     const status = Number(error.status) || Number(error.statusCode) || 0;
     console.error('[storage] upload failed', error);
     if (status === 413 || /size/i.test(error.message || '')) throw new UploadError('too_large');
-    if (status === 403 || /row-level security|unauthorized/i.test(error.message || '')) throw new UploadError('not_allowed');
+    if (status === 403 || /row-level security|unauthorized/i.test(error.message || '')) {
+      throw new UploadError(await refusedReason(bucket));
+    }
     if (error.name === 'StorageUnknownError') throw new UploadError('network');
     throw new UploadError('generic');
   }
   return path;
+}
+
+/** Why the upload rules refused (migration 022, upload_quota) → an UploadError code. */
+async function refusedReason(bucket) {
+  try {
+    const { data, error } = await supabase.rpc('upload_quota', { p_bucket: bucket });
+    if (!error && (data === 'rate_limited' || data === 'storage_full')) return data;
+  } catch {
+    // before 022, or offline: the general message
+  }
+  return 'not_allowed';
 }
 
 // Requests made in the same tick are sent together (a list of avatars → one request per bucket).

@@ -363,11 +363,14 @@ export function AuthProvider({ children }) {
     await callAccount({ action: 'recover', username: normalizeUsername(value), redirectTo: authRedirectBase() });
   }, []);
 
-  /** 'available' | 'taken' | a username validation code. */
+  /**
+   * 'available' | 'taken' | a username validation code | 'unknown' (too many checks from this
+   * network right now — sign-up itself still checks). Through the Edge Function, which limits
+   * checks per IP (022: the browser can't call username_available directly).
+   */
   const checkUsername = useCallback(async (name) => {
-    const { data, error } = await supabase.rpc('username_available', { p_username: name });
-    if (error) throw new AuthError('generic');
-    return data;
+    const data = await callAccount({ action: 'username-check', username: name });
+    return typeof data.status === 'string' ? data.status : 'unknown';
   }, []);
 
   const chooseUsername = useCallback(

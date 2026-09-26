@@ -145,9 +145,14 @@ export function GoogleButton({ next, shared }) {
   );
 }
 
+/** The name may be sent: known to be free, or not checkable right now (the server decides). */
+export const usernameUsable = (status) => status === 'available' || status === 'unchecked';
+
 /**
  * Username input with the local rules and a (debounced) availability check.
- * onStatus(status): 'available' | 'taken' | a validation code | 'checking' | null.
+ * onStatus(status): 'available' | 'taken' | a validation code | 'checking' | 'unchecked' | null.
+ * 'unchecked': the server didn't answer now (limit / network) — the form may still be sent, the
+ * server checks the name again. usernameUsable(status) says whether the form may be sent.
  */
 export function UsernameField({ id, value, onChange, status, onStatus }) {
   const { t } = useI18n();
@@ -169,9 +174,12 @@ export function UsernameField({ id, value, onChange, status, onStatus }) {
     const timer = setTimeout(async () => {
       try {
         const result = await checkUsername(name);
-        if (alive) onStatus(result === 'taken' ? 'username_taken' : result);
+        if (!alive) return;
+        if (result === 'taken') onStatus('username_taken');
+        else if (result === 'unknown') onStatus('unchecked');
+        else onStatus(result);
       } catch {
-        if (alive) onStatus(null);
+        if (alive) onStatus('unchecked');
       }
     }, 400);
     return () => {
@@ -180,7 +188,7 @@ export function UsernameField({ id, value, onChange, status, onStatus }) {
     };
   }, [name, checkUsername, onStatus]);
 
-  const isError = status && !['available', 'checking'].includes(status);
+  const isError = status && !['available', 'checking', 'unchecked'].includes(status);
   let hint = t('auth.usernameHint');
   if (status === 'checking') hint = t('auth.checking');
   if (status === 'available') hint = t('auth.usernameAvailable');

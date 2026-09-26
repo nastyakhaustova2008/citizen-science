@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Local database tests: a throwaway PostgreSQL cluster with Supabase stand-ins, all migrations in
-# the documented order, then the tests of each migration that has a folder here (018/ … 021/) and of
+# the documented order, then the tests of each migration that has a folder here (018/ … 022/) and of
 # the Edge Function `account` (account/).
 # See README.md. Usage: supabase/tests/run.sh   (from anywhere; exit code 1 = a test failed)
 set -euo pipefail
@@ -92,6 +92,9 @@ echo "migration 020: applied twice"
 apply migrations/021_session_security.sql
 apply migrations/021_session_security.sql   # safe to re-run
 echo "migration 021: applied twice"
+apply migrations/022_hardening.sql
+apply migrations/022_hardening.sql   # safe to re-run
+echo "migration 022: applied twice"
 RESULT20="$("${PSQL[@]}" -At -f "$HERE/020/tests.sql" | grep -E '^(PASS|FAIL)')"
 echo "$RESULT20"
 FAILED20=$(grep -c '^FAIL' <<<"$RESULT20" || true)
@@ -103,6 +106,10 @@ FAILED21=$(grep -c '^FAIL' <<<"$RESULT21" || true)
 # On a failure: the errors of the statements the checks ran (expected ones included).
 [ "$FAILED21" = 0 ] || grep '^LOG' <<<"$OUT21" || true
 echo "021 database: $(grep -c '^PASS' <<<"$RESULT21") passed, $FAILED21 failed"
+RESULT22="$("${PSQL[@]}" -At -f "$HERE/022/tests.sql" 2>/dev/null | grep -E '^(PASS|FAIL)')"
+echo "$RESULT22"
+FAILED22=$(grep -c '^FAIL' <<<"$RESULT22" || true)
+echo "022 database: $(grep -c '^PASS' <<<"$RESULT22") passed, $FAILED22 failed"
 # Every user id, username and anonymised id: no anon API response may contain one (020/api.js).
 "${PSQL[@]}" -At -c "select json_build_object(
   'ids', (select json_agg(x) from (select id::text x from auth.users union select id::text from public.profiles
@@ -155,6 +162,12 @@ RESULTRB21="$("${PSQL[@]}" -At -f "$HERE/021/rollback.sql" 2>/dev/null | grep -E
 echo "$RESULTRB21"
 FAILEDRB21=$(grep -c '^FAIL' <<<"$RESULTRB21" || true)
 echo "021 rollback: $(grep -c '^PASS' <<<"$RESULTRB21") passed, $FAILEDRB21 failed"
+# 021 re-applied its own privacy_cleanup: 022 on top again, then the 022 rollback file.
+apply migrations/022_hardening.sql
+RESULTRB22="$("${PSQL[@]}" -At -f "$HERE/022/rollback.sql" 2>/dev/null | grep -E '^(PASS|FAIL)')"
+echo "$RESULTRB22"
+FAILEDRB22=$(grep -c '^FAIL' <<<"$RESULTRB22" || true)
+echo "022 rollback: $(grep -c '^PASS' <<<"$RESULTRB22") passed, $FAILEDRB22 failed"
 
 # Edge Function `account` (Node, with Deno / Supabase stand-ins): account/test.js.
 ACCOUNT_OK=1
@@ -169,5 +182,5 @@ FAILEDRB=$(grep -c '^FAIL' <<<"$RESULTRB" || true)
 echo "020 rollback: $(grep -c '^PASS' <<<"$RESULTRB") passed, $FAILEDRB failed"
 
 [ "$FAILED" = 0 ] && [ "$FAILED19" = 0 ] && [ "$FAILED20" = 0 ] && [ "$FAILEDRB" = 0 ] \
-  && [ "$FAILED21" = 0 ] && [ "$FAILEDRB21" = 0 ] && [ "$ACCOUNT_OK" = 1 ] && [ "$MIRROR_OK" = 1 ] && [ "$API_OK" = 1 ] \
+  && [ "$FAILED21" = 0 ] && [ "$FAILEDRB21" = 0 ] && [ "$FAILED22" = 0 ] && [ "$FAILEDRB22" = 0 ] && [ "$ACCOUNT_OK" = 1 ] && [ "$MIRROR_OK" = 1 ] && [ "$API_OK" = 1 ] \
   && echo "ALL TESTS PASSED" || { echo "SOME TESTS FAILED"; exit 1; }

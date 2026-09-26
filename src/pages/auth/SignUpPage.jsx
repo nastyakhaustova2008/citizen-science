@@ -15,6 +15,7 @@ import {
   isolate,
   UsernameField,
   safeNext,
+  usernameUsable,
 } from '../../components/auth/AuthUI';
 import { sharedPreference } from '../../lib/session';
 import { EMAIL_FLOWS_ENABLED } from '../../lib/authConfig';
@@ -62,7 +63,7 @@ export default function SignUpPage() {
   const mismatch = touched && password2 && password !== password2;
   const emailError = EMAIL_FLOWS_ENABLED && touched && email.trim() && !EMAIL_RE.test(email.trim());
   const canSubmit =
-    usernameStatus === 'available' && !passwordError(password) && password === password2 && !emailError;
+    usernameUsable(usernameStatus) && !passwordError(password) && password === password2 && !emailError;
 
   async function onSubmit(e) {
     e.preventDefault();

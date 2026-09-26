@@ -11,12 +11,22 @@
 // Actions (POST JSON { action, ... }), every reply is HTTP 200 JSON unless the function crashes:
 //   signup    { username, password }      → { session } | { error }
 //             Creates the user with an internal placeholder email (never receives mail),
-//             confirmed, so no email is sent. A real email is added afterwards by the browser
-//             (updateUser → confirmation link), exactly like "add email" in the profile.
+//             confirmed, so no email is sent. A real email is added afterwards (change-email).
+//             The account carries app_metadata.mitzpe_signup = true: since migration 022 the
+//             database takes the username only from accounts with this mark (the public sign-up
+//             API can't set app_metadata). If the name still isn't set after createUser, the
+//             safety net account_signup_username sets it — or says it was taken meanwhile, and
+//             then only the account created by this very call is deleted.
 //   login     { username, password }      → { session } | { error: 'invalid_credentials' | 'too_many_attempts' }
+//   username-check { username }           → { status: 'available' | 'taken' | <validation code> | 'unknown' }
+//             For the sign-up / choose-a-name forms (022: the browser can't call
+//             username_available itself any more). 'unknown' = the per-IP / global limit is
+//             reached: the form shows no hint and sign-up itself still checks the name.
 //   recover   { username, redirectTo }    → { ok: true } always, immediately; the reset email
 //             (only for a real, confirmed email) is sent in the background, so neither the
 //             answer nor its timing tells whether the account has an email.
+//             redirectTo (here and in change-email) is used only if it is on REDIRECT_ORIGINS
+//             (production + localhost); anything else is dropped → Supabase uses the Site URL.
 //   client-ip {}                          → which client IP this function sees (to verify that it
 //             cannot be spoofed — see CLAUDE.md → «Аккаунты» → «Проверка IP»).
 //   delete    { username, deleteMeasurements } + header Authorization: Bearer <user's access token>
@@ -52,8 +62,14 @@
 //   signup: SIGNUP_LIMIT_PER_IP per hour per IP (default 30 — a whole class behind one school
 //           NAT must fit) and SIGNUP_LIMIT_GLOBAL per hour in total (default 150; the IP cannot
 //           help an attacker past this one even if it were spoofed).
-//   login:  10 failed attempts per username per 15 min (IP-independent) + Supabase Auth's own
-//           per-IP limit (the client IP is forwarded with Sb-Forwarded-For).
+//   login:  wrong passwords only: LOGIN_FAIL_LIMIT_PER_USER (default 10) per username AND client
+//           IP per 15 min, plus LOGIN_FAIL_LIMIT_PER_USER_ALL (default 100) per username per hour
+//           from all IPs together (audit M3: someone else's wrong guesses from another network no
+//           longer lock a student out). Plus Supabase Auth's own per-IP limit (the client IP is
+//           forwarded with Sb-Forwarded-For). Without a client IP (CLIENT_IP_HEADER=none) all
+//           attempts share one "unknown" IP, i.e. 10 per username per 15 min as before.
+//   username-check: USERNAME_CHECK_LIMIT_PER_IP (default 300) per IP and
+//           USERNAME_CHECK_LIMIT_GLOBAL (default 5000) in total per 10 min.
 //   recover: 20 per IP and 3 per username per hour.
 //   change-password / change-email: CHANGE_LIMIT_PER_USER (default 10) per account per hour.
 //   delete:  DELETE_LIMIT_PER_USER (default 10) per account and DELETE_LIMIT_PER_IP (default 30)
@@ -75,11 +91,22 @@ const PLACEHOLDER_DOMAIN = Deno.env.get('PLACEHOLDER_EMAIL_DOMAIN') || 'noemail.
 // 'x-real-ip', 'x-forwarded-for-last' or 'none'. Never the left-most X-Forwarded-For entry —
 // the browser can put anything there.
 const CLIENT_IP_HEADER = (Deno.env.get('CLIENT_IP_HEADER') || 'auto').toLowerCase();
+// Where email links may send the user back to (origins, comma-separated). Only production and
+// local development — never a wildcard such as *.vercel.app: any Vercel project matching it would
+// receive password-reset and email-confirmation links. Anything else → no redirect_to, so
+// Supabase Auth uses the Site URL.
+const REDIRECT_ORIGINS = (Deno.env.get('REDIRECT_ORIGINS') || 'https://citizen-science-liart.vercel.app,http://localhost:5173')
+  .split(',')
+  .map((s) => s.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 
 const LIMITS = {
   signupPerIp: envInt('SIGNUP_LIMIT_PER_IP', 30),
   signupGlobal: envInt('SIGNUP_LIMIT_GLOBAL', 150),
-  loginFailsPerUser: envInt('LOGIN_FAIL_LIMIT_PER_USER', 10),
+  loginFailsPerUser: envInt('LOGIN_FAIL_LIMIT_PER_USER', 10), // per username + IP, 15 min
+  loginFailsPerUserAll: envInt('LOGIN_FAIL_LIMIT_PER_USER_ALL', 100), // per username, 1 hour
+  usernameCheckPerIp: envInt('USERNAME_CHECK_LIMIT_PER_IP', 300),
+  usernameCheckGlobal: envInt('USERNAME_CHECK_LIMIT_GLOBAL', 5000),
   recoverPerIp: envInt('RECOVER_LIMIT_PER_IP', 20),
   recoverPerUser: envInt('RECOVER_LIMIT_PER_USER', 3),
   deletePerUser: envInt('DELETE_LIMIT_PER_USER', 10),
@@ -93,6 +120,7 @@ const LIMITS = {
 const CRON_SECRET = Deno.env.get('CRON_SECRET') || '';
 const HOUR = 3600;
 const LOGIN_WINDOW = 15 * 60;
+const CHECK_WINDOW = 10 * 60;
 
 const admin = createClient(SUPABASE_URL, SECRET_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -123,6 +151,22 @@ function json(body, status = 200) {
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' },
   });
+}
+
+/** redirectTo from the browser → the same URL if its origin is allowed, else null (Site URL). */
+function safeRedirect(value) {
+  if (typeof value !== 'string' || value.length > 500) return null;
+  let url;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+  // The email templates append #/auth/confirm…; credentials in a URL are never ours.
+  if (url.username || url.password || url.hash) return null;
+  if (!REDIRECT_ORIGINS.includes(url.origin)) return null;
+  return `${url.origin}${url.pathname}`;
 }
 
 /* ------------------------------------------------------------ username rules */
@@ -294,11 +338,13 @@ async function signup(req, body) {
   if (before !== 'available') return json({ error: 'invalid_username', detail: before });
 
   const email = `${crypto.randomUUID()}@${PLACEHOLDER_DOMAIN}`;
-  const { error: createError } = await admin.auth.admin.createUser({
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
     email,
     password: body.password,
     email_confirm: true,
     user_metadata: { mitzpe_username: username },
+    // Migration 022: the database takes the username only from accounts with this mark.
+    app_metadata: { mitzpe_signup: true },
   });
   if (createError) {
     if ((await available()) === 'taken') return json({ error: 'username_taken' });
@@ -306,10 +352,50 @@ async function signup(req, body) {
     console.error('[account] createUser failed', createError.code, createError.message);
     return json({ error: 'signup_failed' });
   }
+  const outcome = await finishSignupUsername(created?.user?.id, username);
+  if (outcome === 'taken') return json({ error: 'username_taken' });
 
   const result = await passwordGrant(email, body.password, ip);
   if (!result.session) return json({ error: 'signup_login_failed' });
   return json({ session: result.session });
+}
+
+/**
+ * Safety net (022): the account exists; make sure it has its username. 'ok' | 'taken'.
+ * 'taken' → the account created by THIS call is deleted (the database says 'taken' only for an
+ * account minutes old, with our mark and this name, without a username and without any data).
+ */
+async function finishSignupUsername(userId, username) {
+  if (!userId) return 'ok';
+  const { data, error } = await admin.rpc('account_signup_username', { p_user: userId, p_username: username });
+  if (error) {
+    // Before migration 022 the function doesn't exist; the trigger has set the name already.
+    if (error.code === 'PGRST202' || /could not find the function/i.test(error.message || '')) return 'ok';
+    throw error;
+  }
+  if (data === 'taken') {
+    const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
+    if (deleteError) console.error('[account] delete after taken name failed', deleteError.message);
+    return 'taken';
+  }
+  if (data !== 'ok') console.warn('[account] account_signup_username', data);
+  return 'ok';
+}
+
+async function usernameCheck(req, body) {
+  const username = normalizeUsername(body.username);
+  const uErr = usernameError(username);
+  if (uErr) return json({ status: uErr });
+  const { ip } = clientIp(req);
+  if (!(await take(await ipBucket('ucheck', ip), LIMITS.usernameCheckPerIp, CHECK_WINDOW))) {
+    return json({ status: 'unknown' });
+  }
+  if (!(await take('ucheck:global', LIMITS.usernameCheckGlobal, CHECK_WINDOW))) {
+    return json({ status: 'unknown' });
+  }
+  const { data, error } = await admin.rpc('username_available', { p_username: username });
+  if (error) throw error;
+  return json({ status: typeof data === 'string' ? data : 'unknown' });
 }
 
 async function login(req, body) {
@@ -317,19 +403,25 @@ async function login(req, body) {
   if (usernameError(username) || typeof body.password !== 'string' || !body.password) {
     return json({ error: 'invalid_credentials' });
   }
-  const bucket = `login:user:${usernameKey(username)}`;
-  if (!(await take(bucket, LIMITS.loginFailsPerUser, LOGIN_WINDOW, false))) {
+  // Audit M3: wrong passwords are counted per username AND client IP (someone guessing from
+  // another network can't lock a student out), plus a much higher cap per username from all IPs.
+  const { ip } = clientIp(req);
+  const key = usernameKey(username);
+  const pairBucket = `login:user:${key}:${await ipBucket('from', ip)}`;
+  const userBucket = `login:user:${key}`;
+  if (!(await take(pairBucket, LIMITS.loginFailsPerUser, LOGIN_WINDOW, false))
+      || !(await take(userBucket, LIMITS.loginFailsPerUserAll, HOUR, false))) {
     return json({ error: 'too_many_attempts' });
   }
 
-  const { ip } = clientIp(req);
   const account = await lookup(username);
   // Unknown user and wrong password look the same. Google-only accounts have no password.
   const result = account?.email ? await passwordGrant(account.email, body.password, ip) : { status: 400 };
   if (result.session) return json({ session: result.session });
 
   if (result.status === 429) return json({ error: 'too_many_attempts' });
-  await take(bucket, LIMITS.loginFailsPerUser, LOGIN_WINDOW, true);
+  await take(pairBucket, LIMITS.loginFailsPerUser, LOGIN_WINDOW, true);
+  await take(userBucket, LIMITS.loginFailsPerUserAll, HOUR, true);
   return json({ error: 'invalid_credentials' });
 }
 
@@ -352,8 +444,7 @@ async function sendReset(req, username, redirectTo) {
 
 function recover(req, body) {
   const username = normalizeUsername(body.username);
-  const redirectTo =
-    typeof body.redirectTo === 'string' && /^https?:\/\//.test(body.redirectTo) ? body.redirectTo : null;
+  const redirectTo = safeRedirect(body.redirectTo);
   if (!usernameError(username)) {
     const work = sendReset(req, username, redirectTo).catch((err) =>
       console.error('[account] recover error', err?.message),
@@ -455,8 +546,7 @@ async function changePassword(req, body) {
 async function changeEmail(req, body) {
   const email = typeof body.email === 'string' ? body.email.trim() : '';
   if (!EMAIL_RE.test(email) || email.length > 254 || isPlaceholder(email)) return json({ error: 'email_invalid' });
-  const redirectTo =
-    typeof body.redirectTo === 'string' && /^https?:\/\//.test(body.redirectTo) ? body.redirectTo : null;
+  const redirectTo = safeRedirect(body.redirectTo);
   const who = await changeGate(req);
   if (who.response) return who.response;
 
@@ -609,6 +699,8 @@ Deno.serve(async (req) => {
         return await signup(req, body);
       case 'login':
         return await login(req, body);
+      case 'username-check':
+        return await usernameCheck(req, body);
       case 'recover':
         return recover(req, body);
       case 'client-ip':
