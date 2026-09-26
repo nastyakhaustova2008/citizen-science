@@ -10,10 +10,10 @@ import { StatusBadge, DifficultyBadge } from './primitives';
 
 export default function ObservationCard({ observation }) {
   const { t, locale } = useI18n();
-  const { measurementsFor, isJoined, toggleJoin, credits } = useAppData();
+  const { labSummary, isJoined, toggleJoin, credits } = useAppData();
   const credit = credits[observation.id]; // reviewed labs only (step 5b)
-  const points = measurementsFor(observation.id);
-  const participants = new Set(points.map((p) => p.userId)).size;
+  // Counts of ALL measurements + the mini-map as ~1 km cells (measurement_summary, 019).
+  const { n: pointCount, participants, cells, cellsTotal } = labSummary(observation.id);
   const joined = isJoined(observation.id);
 
   return (
@@ -51,15 +51,20 @@ export default function ObservationCard({ observation }) {
       <div className="px-4">
         <MiniMap
           center={observation.center}
-          points={points}
+          points={cells}
           scale={observation.scale}
         />
+        {cellsTotal > cells.length && (
+          <p className="mt-1 text-xs text-ink-faint">
+            {t('card.mapPreviewPartial', { shown: cells.length, total: cellsTotal })}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 text-sm text-ink-faint">
         <span className="inline-flex items-center gap-1.5">
           <MapPin className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
-          <span className="tnum">{points.length}</span> {t('units.points')}
+          <span className="tnum">{pointCount}</span> {t('units.points')}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <Users className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />

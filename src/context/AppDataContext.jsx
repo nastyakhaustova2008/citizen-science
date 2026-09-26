@@ -12,6 +12,8 @@ import {
 } from '../lib/commentsApi';
 import { photoQueue as fetchPhotoQueue } from '../lib/photosApi';
 import { avatarPaths as fetchAvatarPaths, avatarQueue as fetchAvatarQueue } from '../lib/avatarsApi';
+import { fetchSummary, fromRow, MEASUREMENT_COLUMNS } from '../lib/measurementsApi';
+import { fetchAllPaged } from '../lib/paging';
 import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
 
 /**
@@ -20,8 +22,12 @@ import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
  * (`campaigns`, `campaign_fields`, `campaign_field_options`). Admins also receive drafts (RLS);
  * `campaigns` is the published list for the public pages, getObservation() finds drafts too.
  * Labs are written only through the editor RPCs (src/lib/labsApi.js).
- * Measurements are read from / inserted into Supabase (`measurements` table);
- * their values live in `field_values` (jsonb keyed by field key), validated by the database.
+ * Measurements are inserted here (`measurements` table; values in `field_values`, jsonb keyed by
+ * field key, validated by the database). They are NOT all loaded here (the Data API cuts every
+ * response at 1000 rows, audit H5): each screen reads what it needs page by page or aggregated
+ * (src/hooks/useMeasurements.js, src/lib/measurementsApi.js). Here: the home page numbers
+ * (`summary`, RPC measurement_summary) and `measurementsVersion`, bumped after an insert so
+ * open screens re-read.
  * The current user comes from AuthContext (Supabase Auth + profiles); adding measurements
  * requires login and stores the real user id.
  * Authors: real users → profiles (loaded for the ids on screen); seeded demo rows keep mock ids
@@ -85,38 +91,20 @@ function campaignFromRow(row) {
 
 async function fetchCampaigns() {
   if (!supabase) throw new Error('Supabase is not configured');
-  const { data, error } = await supabase
-    .from('campaigns')
-    .select(CAMPAIGN_COLUMNS)
-    .order('sort_order', { ascending: true })
-    .order('id', { ascending: true });
-  if (error) throw error;
-  return data.map((row) => {
+  // Every lab, page by page (never one unbounded select — src/lib/paging.js).
+  const { rows } = await fetchAllPaged((o) =>
+    supabase
+      .from('campaigns')
+      .select(CAMPAIGN_COLUMNS, o)
+      .order('sort_order', { ascending: true })
+      .order('id', { ascending: true }),
+  );
+  return rows.map((row) => {
     if (row.metric && !METRICS[row.metric]) {
       console.warn(`[campaigns] "${row.id}": unknown metric preset "${row.metric}", using default colours`);
     }
     return campaignFromRow(row);
   });
-}
-
-const MEASUREMENT_COLUMNS =
-  'id, observation_id, user_id, place_label, lat, lng, measured_at, verification, photo_seed, field_values, form_version';
-
-/** DB row (snake_case) → the Measurement shape the UI uses (see mockData.js). */
-function fromRow(row) {
-  return {
-    id: row.id,
-    observationId: row.observation_id,
-    userId: row.user_id,
-    placeLabel: row.place_label || '',
-    lat: row.lat,
-    lng: row.lng,
-    timestamp: row.measured_at,
-    values: row.field_values || {},
-    formVersion: row.form_version,
-    verification: row.verification,
-    photoSeed: row.photo_seed,
-  };
 }
 
 /**
@@ -148,10 +136,11 @@ export function AppDataProvider({ children }) {
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [campaignsError, setCampaignsError] = useState(false);
   const [campaignsNonce, setCampaignsNonce] = useState(0);
-  const [measurements, setMeasurements] = useState([]);
-  const [measurementsLoading, setMeasurementsLoading] = useState(true);
-  const [measurementsError, setMeasurementsError] = useState(false);
-  const [measurementsNonce, setMeasurementsNonce] = useState(0);
+  // Home page numbers per lab (measurement_summary, 019) and the "re-read measurements" counter.
+  const [summary, setSummary] = useState({ total: 0, labs: {} });
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryError, setSummaryError] = useState(false);
+  const [measurementsVersion, setMeasurementsVersion] = useState(0);
   const [topics, setTopics] = useState(TOPICS);
   const [joined, setJoined] = useState(() => new Set(['obs-schoolyard-heat', 'obs-dark-skies']));
 
@@ -410,32 +399,23 @@ export function AppDataProvider({ children }) {
 
   useEffect(() => {
     let alive = true;
-    setMeasurementsLoading(true);
-    setMeasurementsError(false);
-    (async () => {
-      try {
-        if (!supabase) throw new Error('Supabase is not configured');
-        const { data, error } = await supabase
-          .from('measurements')
-          .select(MEASUREMENT_COLUMNS)
-          .order('measured_at', { ascending: false });
-        if (error) throw error;
+    setSummaryLoading(true);
+    setSummaryError(false);
+    fetchSummary()
+      .then((data) => alive && setSummary(data))
+      .catch((err) => {
         if (!alive) return;
-        setMeasurements(data.map(fromRow));
-      } catch (err) {
-        if (!alive) return;
-        console.error('[measurements] load failed', err);
-        setMeasurementsError(true);
-      } finally {
-        if (alive) setMeasurementsLoading(false);
-      }
-    })();
+        console.error('[measurements] summary failed', err);
+        setSummaryError(true);
+      })
+      .finally(() => alive && setSummaryLoading(false));
     return () => {
       alive = false;
     };
-  }, [measurementsNonce]);
+  }, [measurementsVersion]);
 
-  const reloadMeasurements = useCallback(() => setMeasurementsNonce((n) => n + 1), []);
+  /** Re-read everything measurement-related (home numbers + the open screens' hooks). */
+  const reloadMeasurements = useCallback(() => setMeasurementsVersion((n) => n + 1), []);
 
   /**
    * Insert into Supabase; resolves with the saved record.
@@ -470,7 +450,7 @@ export function AppDataProvider({ children }) {
         throw error;
       }
       const record = fromRow(data);
-      setMeasurements((prev) => [record, ...prev]);
+      setMeasurementsVersion((n) => n + 1);
       return record;
     },
     [refreshCampaigns, currentUserId],
@@ -569,38 +549,31 @@ export function AppDataProvider({ children }) {
     });
   }, []);
 
-  useEffect(() => {
-    loadAuthors(measurements.map((m) => m.userId));
-  }, [measurements, loadAuthors]);
-
   /**
-   * Measurements as the UI sees them: `value` = the campaign's primary field value
-   * (map colours, charts, stats), null when missing.
+   * A measurement as the UI sees it: `value` = the campaign's primary field value (map colours,
+   * charts, stats; null when missing) and "flagged" when it has a visible "problem" comment.
    */
-  const measurementsView = useMemo(() => {
-    const primaryKey = new Map(campaigns.map((c) => [c.id, c.primaryField?.key]));
-    return measurements.map((m) => {
-      const v = m.values[primaryKey.get(m.observationId)];
+  const viewMeasurement = useCallback(
+    (m) => {
+      const key = campaigns.find((c) => c.id === m.observationId)?.primaryField?.key;
+      const v = key ? m.values?.[key] : undefined;
       return {
         ...m,
         value: typeof v === 'number' ? v : null,
-        // A visible "problem" comment marks the point as flagged (logged-in users).
         verification: issueIds.has(m.id) ? 'flagged' : m.verification,
       };
-    });
-  }, [measurements, campaigns, issueIds]);
+    },
+    [campaigns, issueIds],
+  );
 
-  /** Campaigns with their colour scale (needs the data when the field has no min/max). */
+  /** Campaigns with their colour scale (min/max of the data when the field has none). */
   const campaignsView = useMemo(
     () =>
-      campaigns.map((c) => ({
-        ...c,
-        scale: buildScale(
-          c,
-          measurementsView.filter((m) => m.observationId === c.id).map((m) => m.value),
-        ),
-      })),
-    [campaigns, measurementsView],
+      campaigns.map((c) => {
+        const l = summary.labs[c.id];
+        return { ...c, scale: buildScale(c, l ? [l.min, l.max] : []) };
+      }),
+    [campaigns, summary],
   );
 
   /** Published labs only: home page, counters, filters. */
@@ -649,17 +622,19 @@ export function AppDataProvider({ children }) {
       campaignsError,
       reloadCampaigns,
       refreshCampaigns,
-      measurements: measurementsView,
-      measurementsLoading,
-      measurementsError,
+      summary,
+      summaryLoading,
+      summaryError,
+      labSummary: (id) => summary.labs[id] || { n: 0, participants: 0, min: null, max: null, cells: [], cellsTotal: 0 },
+      measurementsVersion,
       reloadMeasurements,
+      viewMeasurement,
+      issueIds,
       topics,
       joined,
       isJoined: (id) => joined.has(id),
-      measurementsFor: (obsId) => measurementsView.filter((m) => m.observationId === obsId),
       topicsFor: (obsId) => topics.filter((t) => t.observationId === obsId),
       getTopic: (id) => topics.find((t) => t.id === id) || null,
-      getMeasurement: (id) => measurementsView.find((m) => m.id === id) || null,
       getObservation,
       addMeasurement,
       addTopic,
@@ -700,10 +675,13 @@ export function AppDataProvider({ children }) {
       reloadCampaigns,
       refreshCampaigns,
       getObservation,
-      measurementsView,
-      measurementsLoading,
-      measurementsError,
+      summary,
+      summaryLoading,
+      summaryError,
+      measurementsVersion,
       reloadMeasurements,
+      viewMeasurement,
+      issueIds,
       topics,
       joined,
       addMeasurement,

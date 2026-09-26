@@ -105,6 +105,7 @@ const he = {
     activityAt: 'ב{place}',
   },
   card: {
+    mapPreviewPartial: 'תצוגה מקדימה: {shown} מתוך {total} אזורים',
     points: '{count} נקודות',
     participants: '{count} משתתפים',
     difficulty: 'רמת קושי',
@@ -151,6 +152,7 @@ const he = {
     backToList: 'חזרה לרשימת הקמפיינים',
   },
   map: {
+    capped: 'המפה מציגה את {shown} המדידות האחרונות מתוך {total}. כל המדידות נמצאות בלשונית הנתונים ובייצוא.',
     legendTitle: 'מקרא — {metric}',
     low: 'נמוך',
     high: 'גבוה',
@@ -191,6 +193,10 @@ const he = {
     exportCsv: 'ייצוא CSV',
     exportJson: 'ייצוא JSON',
     exportGeojson: 'ייצוא GeoJSON',
+    exportProgress: 'טוען מדידות לייצוא: {loaded} מתוך {total}…',
+    exportCapped: 'הקובץ כולל רק את {shown} המדידות הראשונות מתוך {total} (מגבלת ייצוא). צמצמו בעזרת סינון תאריכים כדי לייצא את השאר.',
+    exportFailed: 'הייצוא נכשל. נסו שוב.',
+    clearSelection: 'ניקוי הבחירה',
     exportSelected: 'ייצוא הנבחרים ({count})',
     exportAll: 'ייצוא הכל',
     selectAll: 'בחירת כל השורות',
@@ -213,8 +219,6 @@ const he = {
   },
   charts: {
     noPrimary: 'לקמפיין הזה אין שדה מספרי ראשי, לכן אין מפת צבעים וגרפים.',
-    scopeMine: 'בית הספר שלי',
-    scopeAll: 'כל בתי הספר',
     overTime: {
       title: 'ערך לאורך זמן',
       subtitle: 'ממוצע יומי של כלל המדידות.',
@@ -227,14 +231,7 @@ const he = {
       x: 'טווח ערכים',
       y: 'מספר מדידות',
     },
-    bySchool: {
-      title: 'השוואה בין בתי ספר',
-      subtitle: 'ערך ממוצע לכל בית ספר.',
-      x: 'בית ספר',
-      y: 'ממוצע',
-    },
     noData: 'אין מספיק נתונים לגרף.',
-    mySchoolNoData: 'לבית הספר שלך אין עדיין מדידות בקמפיין הזה.',
   },
   discussion: {
     title: 'דיון',
@@ -366,6 +363,7 @@ const he = {
     leaveConfirm: 'לצאת מבלי לשמור את המדידה?',
   },
   profile: {
+    pointsCapped: 'מוצגות {shown} המדידות האחרונות מתוך {total}.',
     measurements: 'מדידות',
     schools: 'בתי ספר',
     activeSince: 'פעיל/ה מאז {date}',
@@ -1398,6 +1396,7 @@ const en = {
     activityAt: 'at {place}',
   },
   card: {
+    mapPreviewPartial: 'Preview: {shown} of {total} areas',
     points: '{count} points',
     participants: '{count} participants',
     difficulty: 'Difficulty',
@@ -1431,6 +1430,7 @@ const en = {
     backToList: 'Back to campaigns',
   },
   map: {
+    capped: 'The map shows the latest {shown} of {total} measurements. All of them are in the Data tab and in the export.',
     legendTitle: 'Legend — {metric}',
     low: 'Low',
     high: 'High',
@@ -1471,6 +1471,10 @@ const en = {
     exportCsv: 'Export CSV',
     exportJson: 'Export JSON',
     exportGeojson: 'Export GeoJSON',
+    exportProgress: 'Loading measurements for export: {loaded} of {total}…',
+    exportCapped: 'The file has only the first {shown} of {total} measurements (export limit). Narrow it down with the date filter to export the rest.',
+    exportFailed: 'Export failed. Please try again.',
+    clearSelection: 'Clear selection',
     exportSelected: 'Export selected ({count})',
     exportAll: 'Export all',
     selectAll: 'Select all rows',
@@ -1493,8 +1497,6 @@ const en = {
   },
   charts: {
     noPrimary: 'This campaign has no primary numeric field, so there are no colours or charts.',
-    scopeMine: 'My school',
-    scopeAll: 'All schools',
     overTime: {
       title: 'Value over time',
       subtitle: 'Daily mean across all measurements.',
@@ -1507,14 +1509,7 @@ const en = {
       x: 'Value range',
       y: 'Measurements',
     },
-    bySchool: {
-      title: 'School comparison',
-      subtitle: 'Mean value per school.',
-      x: 'School',
-      y: 'Mean',
-    },
     noData: 'Not enough data to plot.',
-    mySchoolNoData: 'Your school has no measurements in this campaign yet.',
   },
   discussion: {
     title: 'Discussion',
@@ -1641,6 +1636,7 @@ const en = {
     leaveConfirm: 'Leave without saving this measurement?',
   },
   profile: {
+    pointsCapped: 'Showing the latest {shown} of {total} measurements.',
     measurements: 'Measurements',
     schools: 'Schools',
     activeSince: 'Active since {date}',
@@ -2669,6 +2665,7 @@ const ru = {
     activityAt: '— {place}',
   },
   card: {
+    mapPreviewPartial: 'Превью: {shown} из {total} участков',
     points: '{count} точек',
     participants: '{count} участников',
     difficulty: 'Сложность',
@@ -2702,6 +2699,7 @@ const ru = {
     backToList: 'К списку кампаний',
   },
   map: {
+    capped: 'На карте — последние {shown} из {total} измерений. Все измерения есть во вкладке «Данные» и в экспорте.',
     legendTitle: 'Легенда — {metric}',
     low: 'Низкое',
     high: 'Высокое',
@@ -2742,6 +2740,10 @@ const ru = {
     exportCsv: 'Экспорт CSV',
     exportJson: 'Экспорт JSON',
     exportGeojson: 'Экспорт GeoJSON',
+    exportProgress: 'Загружаем измерения для экспорта: {loaded} из {total}…',
+    exportCapped: 'В файле только первые {shown} из {total} измерений (лимит экспорта). Сузьте выборку фильтром по датам, чтобы выгрузить остальное.',
+    exportFailed: 'Экспорт не удался. Попробуйте ещё раз.',
+    clearSelection: 'Снять выделение',
     exportSelected: 'Экспорт выбранных ({count})',
     exportAll: 'Экспорт всех',
     selectAll: 'Выбрать все строки',
@@ -2764,8 +2766,6 @@ const ru = {
   },
   charts: {
     noPrimary: 'У этой кампании нет основного числового поля, поэтому нет цветов и графиков.',
-    scopeMine: 'Моя школа',
-    scopeAll: 'Все школы',
     overTime: {
       title: 'Значение во времени',
       subtitle: 'Среднесуточное по всем измерениям.',
@@ -2778,14 +2778,7 @@ const ru = {
       x: 'Диапазон значений',
       y: 'Измерений',
     },
-    bySchool: {
-      title: 'Сравнение школ',
-      subtitle: 'Среднее значение по каждой школе.',
-      x: 'Школа',
-      y: 'Среднее',
-    },
     noData: 'Недостаточно данных для графика.',
-    mySchoolNoData: 'У вашей школы пока нет измерений в этой кампании.',
   },
   discussion: {
     title: 'Обсуждение',
@@ -2912,6 +2905,7 @@ const ru = {
     leaveConfirm: 'Выйти, не сохранив измерение?',
   },
   profile: {
+    pointsCapped: 'Показаны последние {shown} из {total} измерений.',
     measurements: 'Измерения',
     schools: 'Школы',
     activeSince: 'В проекте с {date}',

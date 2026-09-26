@@ -29,17 +29,17 @@ export default function HomePage() {
     campaignsLoading,
     campaignsError,
     reloadCampaigns,
-    measurements,
-    measurementsLoading,
-    measurementsError,
+    summary,
+    summaryLoading,
+    summaryError,
     reloadMeasurements,
   } = useAppData();
 
-  const loading = campaignsLoading || measurementsLoading;
-  const error = campaignsError || measurementsError;
+  const loading = campaignsLoading || summaryLoading;
+  const error = campaignsError || summaryError;
   const retry = () => {
     if (campaignsError) reloadCampaigns();
-    if (measurementsError) reloadMeasurements();
+    if (summaryError) reloadMeasurements();
   };
 
   const [query, setQuery] = useState('');
@@ -49,11 +49,11 @@ export default function HomePage() {
 
   const liveStats = useMemo(
     () => ({
-      measurements: measurements.length,
+      measurements: summary.total,
       schools: NETWORK_STATS.schools,
       activeObservations: campaigns.filter((o) => o.status === 'collecting').length,
     }),
-    [measurements.length, campaigns],
+    [summary.total, campaigns],
   );
 
   const regions = useMemo(

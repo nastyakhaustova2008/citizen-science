@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { Plus, FileText, Map as MapIcon, Table2, BarChart3, MessagesSquare, ArrowLeft, ArrowRight, PencilLine, EyeOff, ClipboardCheck } from 'lucide-react';
 
@@ -25,9 +25,32 @@ import {
   EmptyState,
   ErrorBlock,
   LoadingBlock,
-  Skeleton,
 } from '../components/primitives';
 import ObsIcon from '../components/ObsIcon';
+import { useLabStats } from '../hooks/useMeasurements';
+
+/** Data tab: stats of ALL measurements (server aggregate) + the paged table. */
+function LabData({ observation }) {
+  const stats = useLabStats(observation);
+  if (stats.error) return <ErrorBlock onRetry={stats.reload} />;
+  if (!stats.data) return <LoadingBlock />;
+  return (
+    <div className="space-y-4">
+      <StatsSummary stats={stats.data} scale={observation.scale} />
+      <DataTable observation={observation} stats={stats.data} />
+    </div>
+  );
+}
+
+/** Charts tab: built from the server aggregate, so always from every measurement of the lab. */
+function LabCharts({ observation }) {
+  const { t } = useI18n();
+  const stats = useLabStats(observation);
+  if (stats.error) return <ErrorBlock onRetry={stats.reload} />;
+  if (!stats.data) return <LoadingBlock />;
+  if (stats.data.valueN === 0) return <EmptyState title={t('charts.noData')} />;
+  return <ObservationCharts observation={observation} stats={stats.data} />;
+}
 
 export default function ObservationPage() {
   const { slug } = useParams();
@@ -38,10 +61,7 @@ export default function ObservationPage() {
     campaignsLoading,
     campaignsError,
     reloadCampaigns,
-    measurementsFor,
-    measurementsLoading: loading,
-    measurementsError: error,
-    reloadMeasurements: retry,
+    labSummary,
     topicsFor,
     isJoined,
     toggleJoin,
@@ -67,10 +87,6 @@ export default function ObservationPage() {
     };
   }, [isAdmin, obsId]);
 
-  const measurements = useMemo(
-    () => (observation ? measurementsFor(observation.id) : []),
-    [observation, measurementsFor],
-  );
   const topicCount = observation ? topicsFor(observation.id).length : 0;
 
   const [params, setParams] = useSearchParams();
@@ -101,7 +117,7 @@ export default function ObservationPage() {
 
   const tabs = [
     { id: 'map', label: t('observation.tabs.map'), icon: MapIcon },
-    { id: 'data', label: t('observation.tabs.data'), icon: Table2, count: measurements.length },
+    { id: 'data', label: t('observation.tabs.data'), icon: Table2, count: labSummary(observation.id).n },
     { id: 'charts', label: t('observation.tabs.charts'), icon: BarChart3 },
     { id: 'discussion', label: t('observation.tabs.discussion'), icon: MessagesSquare, count: topicCount },
   ];
@@ -191,42 +207,26 @@ export default function ObservationPage() {
 
       <Tabs tabs={tabs} active={tab} onChange={setTab} idBase="obs" />
 
-      {error ? (
-        <ErrorBlock onRetry={retry} />
-      ) : loading ? (
-        tab === 'map' ? (
-          <Skeleton className="h-[520px] rounded-xl" />
+      {/* Each tab reads its own data (page by page or aggregated on the server — audit H5). */}
+      <TabPanel id="map" active={tab} idBase="obs">
+        <ObservationMap key={observation.id} observation={observation} initialPointId={params.get('point')} />
+      </TabPanel>
+
+      <TabPanel id="data" active={tab} idBase="obs">
+        <LabData key={observation.id} observation={observation} />
+      </TabPanel>
+
+      <TabPanel id="charts" active={tab} idBase="obs">
+        {!observation.scale ? (
+          <EmptyState title={t('charts.noPrimary')} />
         ) : (
-          <LoadingBlock />
-        )
-      ) : (
-        <>
-          <TabPanel id="map" active={tab} idBase="obs">
-            <ObservationMap observation={observation} measurements={measurements} initialPointId={params.get('point')} />
-          </TabPanel>
+          <LabCharts observation={observation} />
+        )}
+      </TabPanel>
 
-          <TabPanel id="data" active={tab} idBase="obs">
-            <div className="space-y-4">
-              <StatsSummary measurements={measurements} scale={observation.scale} />
-              <DataTable observation={observation} measurements={measurements} />
-            </div>
-          </TabPanel>
-
-          <TabPanel id="charts" active={tab} idBase="obs">
-            {!observation.scale ? (
-              <EmptyState title={t('charts.noPrimary')} />
-            ) : measurements.length === 0 ? (
-              <EmptyState title={t('charts.noData')} />
-            ) : (
-              <ObservationCharts observation={observation} measurements={measurements} />
-            )}
-          </TabPanel>
-
-          <TabPanel id="discussion" active={tab} idBase="obs">
-            <Discussion observationId={observation.id} />
-          </TabPanel>
-        </>
-      )}
+      <TabPanel id="discussion" active={tab} idBase="obs">
+        <Discussion observationId={observation.id} />
+      </TabPanel>
     </div>
   );
 }

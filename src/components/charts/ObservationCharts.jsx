@@ -1,4 +1,3 @@
-import { useMemo, useState } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -13,10 +12,8 @@ import {
 } from 'recharts';
 import { useI18n } from '../../i18n';
 import { useTheme } from '../../context/ThemeContext';
-import { useAppData } from '../../context/AppDataContext';
 import { colorForValue } from '../../data/metrics';
 import { fieldLabel } from '../../lib/fields';
-import { dailyMeanSeries, histogram, meanByGroup } from '../../lib/stats';
 import { formatDate } from '../../lib/format';
 import { EmptyState, SectionHeading } from '../primitives';
 
@@ -29,33 +26,23 @@ function ChartCard({ title, subtitle, children }) {
   );
 }
 
-export default function ObservationCharts({ observation, measurements }) {
+/**
+ * Charts of the primary field over ALL measurements of the lab: `stats` comes from the server
+ * aggregate measurement_lab_stats (019), so nothing is cut by the API's row limit.
+ */
+export default function ObservationCharts({ observation, stats }) {
   const { t, locale } = useI18n();
   const { isDark } = useTheme();
-  const { currentUser, getAuthor } = useAppData();
   // Charts use the primary field (the page shows an empty state when there is none).
   const scale = observation.scale;
   const m = scale;
-  const [scopeChoice, setScope] = useState('all');
-  // "My school" needs a school; real accounts have none (we do not collect it), so only 'all'.
-  const mySchool = currentUser?.school ?? null;
-  const scope = mySchool ? scopeChoice : 'all';
 
   const axis = isDark ? '#8a8f86' : '#5C6B60';
   const grid = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(31,58,46,0.10)';
   const lineColor = '#8B6F47';
 
-  const scoped = useMemo(() => {
-    if (scope === 'all') return measurements;
-    return measurements.filter((x) => getAuthor(x.userId)?.school === mySchool);
-  }, [measurements, scope, mySchool, getAuthor]);
-
-  const series = useMemo(() => dailyMeanSeries(scoped), [scoped]);
-  const bins = useMemo(() => histogram(scoped, m.histogramStep), [scoped, m.histogramStep]);
-  const bySchool = useMemo(
-    () => meanByGroup(measurements, (x) => getAuthor(x.userId)?.school ?? '—'),
-    [measurements, getAuthor],
-  );
+  const series = stats.daily;
+  const bins = stats.histogram;
 
   const tooltipStyle = {
     background: isDark ? '#232622' : '#FFFDF8',
@@ -65,37 +52,8 @@ export default function ObservationCharts({ observation, measurements }) {
     color: isDark ? '#F7F4ED' : '#1F3A2E',
   };
 
-  const noScopedData = scoped.length === 0;
-
   return (
     <div className="space-y-4">
-      {mySchool && (
-        <div className="flex items-center gap-1 self-start rounded-lg border border-edge p-1 text-sm dark:border-white/10">
-          {[
-            { id: 'mine', label: t('charts.scopeMine') },
-            { id: 'all', label: t('charts.scopeAll') },
-          ].map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setScope(opt.id)}
-              aria-pressed={scope === opt.id}
-              className={`rounded-md px-3 py-1.5 font-semibold transition ${
-                scope === opt.id
-                  ? 'bg-paper-sunk text-ink dark:bg-white/10 dark:text-paper'
-                  : 'text-ink-faint'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {noScopedData && scope === 'mine' && (
-        <EmptyState title={t('charts.mySchoolNoData')} />
-      )}
-
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title={t('charts.overTime.title')} subtitle={t('charts.overTime.subtitle')}>
           {series.length < 2 ? (
@@ -159,46 +117,6 @@ export default function ObservationCharts({ observation, measurements }) {
             </ResponsiveContainer>
           )}
         </ChartCard>
-
-        <div className="lg:col-span-2">
-          <ChartCard title={t('charts.bySchool.title')} subtitle={t('charts.bySchool.subtitle')}>
-            {bySchool.length === 0 ? (
-              <EmptyState title={t('charts.noData')} />
-            ) : (
-              <ResponsiveContainer>
-                <BarChart
-                  data={bySchool}
-                  layout="vertical"
-                  margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
-                >
-                  <CartesianGrid stroke={grid} horizontal={false} />
-                  <XAxis type="number" tick={{ fill: axis, fontSize: 11 }} stroke={axis} unit={` ${m.unit}`} />
-                  <YAxis
-                    type="category"
-                    dataKey="key"
-                    tick={{ fill: axis, fontSize: 11 }}
-                    width={140}
-                    stroke={axis}
-                  />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(v) => [`${v} ${m.unit}`, t('charts.bySchool.y')]}
-                  />
-                  <Bar dataKey="value" radius={[0, 3, 3, 0]}>
-                    {bySchool.map((row, i) => (
-                      <Cell
-                        key={i}
-                        fill={
-                          row.key === mySchool ? '#8B6F47' : isDark ? '#5A7A5F' : '#7C9880'
-                        }
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </ChartCard>
-        </div>
       </div>
     </div>
   );

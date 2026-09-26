@@ -9,8 +9,11 @@ import { toISODate } from '../../lib/format';
 import Legend from './Legend';
 import TimeSlider from './TimeSlider';
 import PointPanel from './PointPanel';
-import { EmptyState } from '../primitives';
+import { EmptyState, ErrorBlock, Skeleton } from '../primitives';
 import { MapPinOff } from 'lucide-react';
+import { useLabPoints, useMeasurement } from '../../hooks/useMeasurements';
+import { useAppData } from '../../context/AppDataContext';
+import { formatNumber } from '../../lib/format';
 
 function markerIcon(color, selected) {
   return L.divIcon({
@@ -46,7 +49,48 @@ function InvalidateOnMount() {
   return null;
 }
 
-export default function ObservationMap({ observation, measurements, height = 520, initialPointId = null }) {
+/**
+ * Map of a lab. Points are read page by page (lean rows, up to MAP_CAP — src/lib/measurementsApi.js);
+ * above the cap a notice says how many are shown. The panel loads the full row of the chosen point.
+ */
+export default function ObservationMap({ observation, height = 520, initialPointId = null }) {
+  const { t, locale } = useI18n();
+  const res = useLabPoints(observation);
+  if (res.error) return <ErrorBlock onRetry={res.reload} />;
+  if (!res.data) return <Skeleton className="rounded-xl" style={{ height }} />;
+  return (
+    <div className="space-y-2">
+      {res.data.capped && (
+        <p className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-ink dark:text-paper" role="status">
+          {t('map.capped', {
+            shown: formatNumber(res.data.points.length, { locale }),
+            total: formatNumber(res.data.total, { locale }),
+          })}
+        </p>
+      )}
+      <PointsMap
+        observation={observation}
+        measurements={res.data.points}
+        height={height}
+        initialPointId={initialPointId}
+      />
+    </div>
+  );
+}
+
+/** Full row of the chosen point for the panel (it may be beyond the map's cap: ?point=<id>). */
+function SelectedPanel({ id, observation, onClose }) {
+  const { data } = useMeasurement(id);
+  const { loadAuthors } = useAppData();
+  const authorId = data?.userId;
+  useEffect(() => {
+    if (authorId) loadAuthors([authorId]);
+  }, [authorId, loadAuthors]);
+  if (!data || data.observationId !== observation.id) return null;
+  return <PointPanel measurement={data} observation={observation} onClose={onClose} />;
+}
+
+function PointsMap({ observation, measurements, height, initialPointId }) {
   const { t } = useI18n();
   const scale = observation.scale;
 
@@ -66,7 +110,6 @@ export default function ObservationMap({ observation, measurements, height = 520
     return measurements.filter((m) => toISODate(m.timestamp) <= cutoff);
   }, [measurements, cutoff, dateIdx, sortedDates.length]);
 
-  const selected = measurements.find((m) => m.id === selectedId) || null;
   const handleSlider = useCallback((next) => setDateIdx(next), []);
 
   if (!measurements.length) {
@@ -104,7 +147,7 @@ export default function ObservationMap({ observation, measurements, height = 520
               icon={markerIcon(colorForValue(scale, m.value), m.id === selectedId)}
               eventHandlers={{ click: () => setSelectedId(m.id) }}
               keyboard
-              alt={m.value != null ? `${m.value} ${scale?.unit ?? ''}` : m.placeLabel || m.id}
+              alt={m.value != null ? `${m.value} ${scale?.unit ?? ''}` : m.id}
             />
           ))}
         </MarkerClusterGroup>
@@ -126,8 +169,8 @@ export default function ObservationMap({ observation, measurements, height = 520
         />
       </div>
 
-      {selected && (
-        <PointPanel measurement={selected} observation={observation} onClose={() => setSelectedId(null)} />
+      {selectedId && (
+        <SelectedPanel id={selectedId} observation={observation} onClose={() => setSelectedId(null)} />
       )}
     </div>
   );

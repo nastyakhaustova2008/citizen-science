@@ -166,3 +166,12 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
   checked; adding measurements is limited to 10 a minute, 60 an hour, 200 a day per student (admins
   3×). Existing rows are not changed; `supabase/checks/018_existing_violations.sql` lists the ones
   that break the new rules.
+* **Row limits and paging (H5) — done (migration 019).** The Data API returns at most 1000 rows
+  per request and cuts the rest silently, so the app no longer reads all measurements at once.
+  Lists are read page by page (`src/lib/paging.js`); the home numbers, lab statistics and charts
+  come from two aggregate functions in the database (every row, one response). Table: 50 rows per
+  page with filters, search and sort on the server. Limits that are shown on screen when reached:
+  map 5000 newest points, export 20,000 rows (also in the file name), profile 2000 points. The
+  demo "by school" chart was removed. Details in CLAUDE.md ("Лимит строк и постраничное чтение").
+  For H2 (hide usernames / user ids from logged-out visitors): only `measurement_participant_counts()`
+  needs `measurements.user_id`; H2 switches just that function to SECURITY DEFINER.

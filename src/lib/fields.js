@@ -137,6 +137,11 @@ export function visibleFields(campaign, measurements) {
   );
 }
 
+/** Same, when only the set of field keys that have data is known (measurement_lab_stats → keys). */
+export function fieldsWithData(campaign, keys) {
+  return (campaign?.fields || []).filter((f) => !f.archived || keys.has(f.key));
+}
+
 /* ------------------------------------------------------------------ */
 /* Photo values (016)                                                  */
 /* ------------------------------------------------------------------ */

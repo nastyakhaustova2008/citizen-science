@@ -1,16 +1,17 @@
 import { useI18n } from '../../i18n';
-import { summarize } from '../../lib/stats';
 import { formatNumber } from '../../lib/format';
 
-/** Summary of the primary field (`scale` from buildScale; null → count and coverage only). */
-export default function StatsSummary({ measurements, scale }) {
+/**
+ * Summary of the primary field over ALL measurements of the lab (`stats` from
+ * measurement_lab_stats; `scale` from buildScale; null → count and coverage only).
+ */
+export default function StatsSummary({ stats: s, scale }) {
   const { t, locale } = useI18n();
-  const s = summarize(measurements);
   const d = scale?.decimals ?? 1;
   const unit = scale?.unit ? ` ${scale.unit}` : '';
 
   const cells = [
-    { label: t('data.stats.count'), value: formatNumber(measurements.length, { locale }) },
+    { label: t('data.stats.count'), value: formatNumber(s.n, { locale }) },
     {
       label: t('data.stats.mean'),
       value: s.mean != null ? `${formatNumber(s.mean, { locale, decimals: d })}${unit}` : '—',
@@ -31,7 +32,7 @@ export default function StatsSummary({ measurements, scale }) {
     },
     {
       label: t('data.stats.coverage'),
-      value: t('data.stats.coverageValue', { days: s.coverageDays }),
+      value: t('data.stats.coverageValue', { days: s.days }),
     },
   ];
 

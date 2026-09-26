@@ -28,6 +28,8 @@ The script:
    001 → seed 001 → 002 → seed 002 → 003 → 004 → seed 003 → 005 → 006 → 007 → 008 → 009 →
    010 → seed 004 → 011 → 012 → 013 → 013b → 014 → 015 → 016 → 017. Then, for 018:
    `018/before.sql` → 018 → 018 again (it must be safe to re-run) → `018/tests.sql` → the mirror check;
+   then 019 twice → `019/bulk.sql` (3000+ measurements, above the API's 1000-row limit) →
+   `019/tests.sql` → `019/mirror.*` → `019/api.js` (needs PostgREST, see below);
 4. runs the tests of each migration that has a folder here. The last line says
    `ALL TESTS PASSED`; if any test failed, the exit code is 1.
 
@@ -38,6 +40,7 @@ It takes a few seconds. If you run it as root, the database server runs as the `
 | Folder | Migration | Tests |
 |---|---|---|
 | `018/` | `018_measurement_limits.sql` | see below |
+| `019/` | `019_row_limits.sql` | see below |
 
 **`018/`** runs its files in this order:
 
@@ -58,6 +61,28 @@ It takes a few seconds. If you run it as root, the database server runs as the `
 - **`mirror.sql` + `mirror.js`** run every string in `strings.json` through the database checks and
   through `src/lib/fields.js`, and require identical results. They also print each string's
   verdict, so false positives are easy to spot.
+
+**`019/`** (row limits, audit H5):
+
+- **`bulk.sql`** adds 30 test users and 3000 measurements over 4 labs, some without a primary
+  value, plus rows with tricky place names for the search tests. Psql variable `big` (env
+  `BIG_LAB_ROWS` in `run.sh`, default 0) adds that many rows to one more lab — 21000 hits the
+  export cap in UI tests.
+- **`tests.sql`**: `measurement_summary` and `measurement_lab_stats` called as anon equal the same
+  numbers computed directly in SQL; no user ids / names in the output; drafts invisible to anon;
+  `p_step` / `p_campaign` validation (`bad_step`, `bad_campaign`) and widening (≤ 200 bins);
+  all three functions are SECURITY INVOKER; an **H2 simulation** (anon loses `measurements.user_id`
+  → the summary fails loudly; switching only `measurement_participant_counts()` to SECURITY DEFINER
+  gives the same numbers; rolled back); the new index.
+- **`mirror.sql` + `mirror.js`**: the stats as the client reads them (`labStatsFromRpc`) equal the
+  same numbers computed in JS from the raw rows.
+- **`api.js`** — only when a PostgREST binary is available (`POSTGREST_BIN=/path/to/postgrest`
+  or `postgrest` on PATH; download from github.com/PostgREST/postgrest/releases, the
+  `linux-static-x64` build needs nothing else). `run.sh` starts it with `db-max-rows = 1000` like
+  Supabase. It reproduces the bug (one select is cut at 1000 rows), checks `fetchAllPaged` /
+  `fetchPage` (`src/lib/paging.js`), and runs the table search (`searchFilter`) with needles like
+  `a,b`, `a)b`, `"x"`, `50%`, `a_b`, `\`, `.or(id.neq.0)`, Hebrew and Russian text: each must
+  return exactly the rows a plain JS "contains" finds. Without PostgREST it prints `SKIPPED`.
 
 ## Adding tests for a new migration
 
