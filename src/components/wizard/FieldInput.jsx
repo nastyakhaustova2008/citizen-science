@@ -1,6 +1,8 @@
+import { useRef, useState } from 'react';
 import { AlertTriangle, ImagePlus, X } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { fieldLabel, fieldHelp, optionLabel, errorParams } from '../../lib/fields';
+import { stripImageMetadata } from '../../lib/image';
 
 /**
  * One form field rendered from its definition (see src/lib/fields.js).
@@ -18,7 +20,10 @@ export default function FieldInput({ field, value, onChange, onBlur, error, warn
   const label = fieldLabel(field, locale);
   const help = fieldHelp(field, locale);
   const invalid = !!error;
-  const describedBy = [help && helpId, (error || warning) && msgId].filter(Boolean).join(' ') || undefined;
+  // Photo fields: the file is redrawn without EXIF (GPS) before it becomes the value.
+  const [photoUnsupported, setPhotoUnsupported] = useState(false);
+  const photoPick = useRef(0);
+  const describedBy = [help && helpId, (error || warning || photoUnsupported) && msgId].filter(Boolean).join(' ') || undefined;
 
   const labelText = (
     <>
@@ -135,18 +140,32 @@ export default function FieldInput({ field, value, onChange, onBlur, error, warn
                 type="file"
                 accept="image/png,image/jpeg"
                 className="sr-only"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
+                  e.target.value = ''; // picking the same file again fires onChange again
                   if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = () => onChange(reader.result);
-                  reader.readAsDataURL(file);
+                  const pick = ++photoPick.current;
+                  setPhotoUnsupported(false);
+                  try {
+                    const clean = await stripImageMetadata(file);
+                    if (pick === photoPick.current) onChange(clean);
+                  } catch {
+                    // Never fall back to the original file: it may carry the GPS position.
+                    if (pick === photoPick.current) setPhotoUnsupported(true);
+                  }
                 }}
               />
             </label>
           )}
         </div>
-        {message}
+        {photoUnsupported && !value ? (
+          <p id={msgId} role="alert" className="mt-1 flex items-start gap-1.5 text-sm text-danger">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            {t('wizard.step3.photoUnsupported')}
+          </p>
+        ) : (
+          message
+        )}
       </div>
     );
   }

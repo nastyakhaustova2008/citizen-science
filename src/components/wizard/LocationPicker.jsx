@@ -1,10 +1,12 @@
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import { useEffect } from 'react';
+import { roundLatLng } from '../../lib/location';
 
 function ClickCapture({ onPick }) {
   useMapEvents({
     click(e) {
-      onPick([Number(e.latlng.lat.toFixed(5)), Number(e.latlng.lng.toFixed(5))]);
+      // Rounded right away (~100 m): the exact point never enters the wizard's state.
+      onPick(roundLatLng(e.latlng.lat, e.latlng.lng));
     },
   });
   return null;

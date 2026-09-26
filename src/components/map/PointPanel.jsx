@@ -4,7 +4,8 @@ import { X, Flag, Send } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAppData } from '../../context/AppDataContext';
 import { colorForValue } from '../../data/metrics';
-import { formatDate, formatTime, formatNumber, relativeTime, coordLabel } from '../../lib/format';
+import { formatDate, formatTime, formatNumber, relativeTime } from '../../lib/format';
+import { locationLabel } from '../../lib/location';
 import { fieldLabel, formatFieldValue, hasValue, visibleFields } from '../../lib/fields';
 import { photoDataUri } from '../../lib/media';
 import { Avatar, AuthorName, LoginPrompt, VerificationBadge } from '../primitives';
@@ -139,7 +140,7 @@ export default function PointPanel({ measurement, observation, onClose }) {
           <div className="col-span-2">
             <dt className="text-xs text-ink-faint">GPS</dt>
             <dd dir="ltr" className="tnum text-xs">
-              {coordLabel(measurement.lat)}, {coordLabel(measurement.lng)}
+              {locationLabel(measurement.lat)}, {locationLabel(measurement.lng)}
             </dd>
           </div>
         </dl>
