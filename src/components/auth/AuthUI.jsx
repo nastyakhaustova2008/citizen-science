@@ -238,7 +238,7 @@ export function PrivacyConsent() {
         href={privacyUrl(locale)}
         target="_blank"
         rel="noopener"
-        className="underline underline-offset-2 hover:text-ink dark:hover:text-paper"
+        className="tap-link underline underline-offset-2 hover:text-ink dark:hover:text-paper"
       >
         {t('auth.privacyLink')}
       </a>

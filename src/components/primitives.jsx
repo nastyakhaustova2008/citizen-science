@@ -73,6 +73,17 @@ export function EmptyState({ title, body, icon: Icon = Inbox, action }) {
   );
 }
 
+/**
+ * Body of an admin queue (audit M5): error → error + retry (never "nothing waiting"), first
+ * load → skeleton, empty → the empty state, else the list. status = useAppData().queueStatus.<name>.
+ */
+export function QueueState({ status, isEmpty, onRetry, emptyTitle, empty, children }) {
+  if (status?.error) return <ErrorBlock onRetry={onRetry} />;
+  if (status?.loading && isEmpty) return <SkeletonText lines={3} className="py-2" />;
+  if (isEmpty) return empty || <EmptyState title={emptyTitle} />;
+  return children;
+}
+
 export function ErrorBlock({ onRetry }) {
   const { t } = useI18n();
   return (
@@ -139,7 +150,7 @@ export function LoginPrompt({ message, className = '' }) {
   return (
     <p className={`text-sm text-ink-faint ${className}`}>
       {message}{' '}
-      <Link to={`/login?next=${next}`} className="font-semibold text-ink underline dark:text-paper">
+      <Link to={`/login?next=${next}`} className="tap-link font-semibold text-ink underline dark:text-paper">
         {t('auth.login')}
       </Link>
     </p>

@@ -10,7 +10,7 @@ import CommentBody from './CommentBody';
 import CommentForm from './CommentForm';
 import CommentErrorText from './CommentErrorText';
 
-const action = 'rounded px-1.5 py-0.5 text-[11px] font-semibold text-ink-faint hover:bg-paper-sunk hover:text-ink dark:hover:bg-white/5 dark:hover:text-paper';
+const action = 'tap-target rounded px-1.5 py-0.5 text-[11px] font-semibold text-ink-faint hover:bg-paper-sunk hover:text-ink dark:hover:bg-white/5 dark:hover:text-paper';
 
 // Real comments: relative to now (not the demo data's reference date).
 function relText(t, iso) {

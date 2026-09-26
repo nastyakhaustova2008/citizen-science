@@ -7,10 +7,11 @@ import { observationTitle } from '../../data/mockData';
 import { formatDate, formatTime } from '../../lib/format';
 import { moderatePhoto, REMOVE_REASONS } from '../../lib/photosApi';
 import { forgetSignedUrl, removeFile } from '../../lib/storage';
-import { AuthorName, EmptyState, SectionHeading } from '../primitives';
+import { AuthorName, QueueState, SectionHeading } from '../primitives';
 import PhotoImage from './PhotoImage';
 import ReasonPicker from './ReasonPicker';
 import PhotoErrorText from './PhotoErrorText';
+import { FileCheckNotice, useFileCheck } from './FileCheck';
 
 /**
  * Admin panel → Comments & photos: measurement photos waiting for approval, reported or hidden by
@@ -19,7 +20,7 @@ import PhotoErrorText from './PhotoErrorText';
  */
 export default function PhotoQueue() {
   const { t } = useI18n();
-  const { photoQueue, reloadPhotoQueue, loadAuthors } = useAppData();
+  const { photoQueue, reloadPhotoQueue, loadAuthors, queueStatus } = useAppData();
 
   useEffect(() => {
     reloadPhotoQueue();
@@ -31,15 +32,18 @@ export default function PhotoQueue() {
   return (
     <section className="space-y-3">
       <SectionHeading as="h3" title={t('photos.queue.title')} subtitle={t('photos.queue.subtitle')} />
-      {photoQueue.length === 0 ? (
-        <EmptyState title={t('photos.queue.empty')} />
-      ) : (
+      <QueueState
+        status={queueStatus.photos}
+        isEmpty={photoQueue.length === 0}
+        onRetry={reloadPhotoQueue}
+        emptyTitle={t('photos.queue.empty')}
+      >
         <ul className="grid gap-3 sm:grid-cols-2">
           {photoQueue.map((p) => (
             <QueuedPhoto key={p.path} photo={p} />
           ))}
         </ul>
-      )}
+      </QueueState>
     </section>
   );
 }
@@ -51,6 +55,8 @@ function QueuedPhoto({ photo: p }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const title = observationTitle(p, locale) || p.titleHe || '—';
+  // Audit M1: look for hidden data (location…) in the stored file before approving.
+  const check = useFileCheck(p.path);
 
   async function act(action, reason) {
     setBusy(true);
@@ -94,6 +100,16 @@ function QueuedPhoto({ photo: p }) {
         </p>
       )}
       <PhotoImage path={p.path} alt={t('photos.alt')} />
+      <FileCheckNotice check={check}>
+        <button
+          type="button"
+          className="btn-primary !bg-danger !px-2.5 !py-1.5 text-xs hover:!bg-danger/90"
+          disabled={busy}
+          onClick={() => act('remove', 'personal_info')}
+        >
+          {t('photos.fileCheck.removeForData')}
+        </button>
+      </FileCheckNotice>
       {p.reports > 0 && (
         <p className="flex flex-wrap gap-1.5 text-[11px]">
           <span className="font-semibold text-danger">{t('comments.reportsCount', { count: p.reports })}</span>
@@ -124,7 +140,12 @@ function QueuedPhoto({ photo: p }) {
         />
       ) : (
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn-secondary !px-2.5 !py-1.5 text-xs" disabled={busy} onClick={() => act('approve')}>
+          <button
+            type="button"
+            className="btn-secondary !px-2.5 !py-1.5 text-xs"
+            disabled={busy || check === 'checking'}
+            onClick={() => act('approve')}
+          >
             {t(p.status === 'pending' ? 'photos.approve' : p.status === 'hidden' ? 'comments.unhide' : 'comments.keep')}
           </button>
           {p.status === 'approved' && (

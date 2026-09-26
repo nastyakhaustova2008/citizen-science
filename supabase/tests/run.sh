@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Local database tests: a throwaway PostgreSQL cluster with Supabase stand-ins, all migrations in
-# the documented order, then the tests of each migration that has a folder here (018/ … 022/) and of
+# the documented order, then the tests of each migration that has a folder here (018/ … 023/) and of
 # the Edge Function `account` (account/).
 # See README.md. Usage: supabase/tests/run.sh   (from anywhere; exit code 1 = a test failed)
 set -euo pipefail
@@ -95,6 +95,9 @@ echo "migration 021: applied twice"
 apply migrations/022_hardening.sql
 apply migrations/022_hardening.sql   # safe to re-run
 echo "migration 022: applied twice"
+apply migrations/023_home_participants.sql
+apply migrations/023_home_participants.sql   # safe to re-run
+echo "migration 023: applied twice"
 RESULT20="$("${PSQL[@]}" -At -f "$HERE/020/tests.sql" | grep -E '^(PASS|FAIL)')"
 echo "$RESULT20"
 FAILED20=$(grep -c '^FAIL' <<<"$RESULT20" || true)
@@ -110,6 +113,10 @@ RESULT22="$("${PSQL[@]}" -At -f "$HERE/022/tests.sql" 2>/dev/null | grep -E '^(P
 echo "$RESULT22"
 FAILED22=$(grep -c '^FAIL' <<<"$RESULT22" || true)
 echo "022 database: $(grep -c '^PASS' <<<"$RESULT22") passed, $FAILED22 failed"
+RESULT23="$("${PSQL[@]}" -At -f "$HERE/023/tests.sql" 2>/dev/null | grep -E '^(PASS|FAIL)')"
+echo "$RESULT23"
+FAILED23=$(grep -c '^FAIL' <<<"$RESULT23" || true)
+echo "023 database: $(grep -c '^PASS' <<<"$RESULT23") passed, $FAILED23 failed"
 # Every user id, username and anonymised id: no anon API response may contain one (020/api.js).
 "${PSQL[@]}" -At -c "select json_build_object(
   'ids', (select json_agg(x) from (select id::text x from auth.users union select id::text from public.profiles
@@ -174,6 +181,10 @@ ACCOUNT_OK=1
 "$REPO/node_modules/.bin/esbuild" "$HERE/account/test.js" --bundle --platform=node --format=esm --log-level=warning \
   "--alias:npm:@supabase/supabase-js@2=$HERE/account/supabase-stub.js" --outfile="$WORK/account-test.mjs"
 node "$WORK/account-test.mjs" || ACCOUNT_OK=0
+# Client-side checks without a browser (client/): the moderator's JPEG metadata check (M1).
+"$REPO/node_modules/.bin/esbuild" "$HERE/client/jpegCheck.test.js" --bundle --platform=node --format=esm --log-level=warning \
+  --outfile="$WORK/jpeg-test.mjs"
+node "$WORK/jpeg-test.mjs" || ACCOUNT_OK=0
 
 # 020 rollback file: back to the 019 state, then 020 again (runs last: it changes grants).
 RESULTRB="$("${PSQL[@]}" -At -f "$HERE/020/rollback.sql" | grep -E '^(PASS|FAIL)')"
@@ -182,5 +193,5 @@ FAILEDRB=$(grep -c '^FAIL' <<<"$RESULTRB" || true)
 echo "020 rollback: $(grep -c '^PASS' <<<"$RESULTRB") passed, $FAILEDRB failed"
 
 [ "$FAILED" = 0 ] && [ "$FAILED19" = 0 ] && [ "$FAILED20" = 0 ] && [ "$FAILEDRB" = 0 ] \
-  && [ "$FAILED21" = 0 ] && [ "$FAILEDRB21" = 0 ] && [ "$FAILED22" = 0 ] && [ "$FAILEDRB22" = 0 ] && [ "$ACCOUNT_OK" = 1 ] && [ "$MIRROR_OK" = 1 ] && [ "$API_OK" = 1 ] \
+  && [ "$FAILED21" = 0 ] && [ "$FAILEDRB21" = 0 ] && [ "$FAILED22" = 0 ] && [ "$FAILEDRB22" = 0 ] && [ "$FAILED23" = 0 ] && [ "$ACCOUNT_OK" = 1 ] && [ "$MIRROR_OK" = 1 ] && [ "$API_OK" = 1 ] \
   && echo "ALL TESTS PASSED" || { echo "SOME TESTS FAILED"; exit 1; }

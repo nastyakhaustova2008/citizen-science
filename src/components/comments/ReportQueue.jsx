@@ -6,7 +6,7 @@ import { useAppData } from '../../context/AppDataContext';
 import { observationTitle } from '../../data/mockData';
 import { formatDate, formatTime } from '../../lib/format';
 import { moderateComment } from '../../lib/commentsApi';
-import { AuthorName, EmptyState, SectionHeading } from '../primitives';
+import { AuthorName, QueueState, SectionHeading } from '../primitives';
 import CommentBody from './CommentBody';
 import CommentErrorText from './CommentErrorText';
 
@@ -16,7 +16,7 @@ import CommentErrorText from './CommentErrorText';
  */
 export default function ReportQueue() {
   const { t } = useI18n();
-  const { commentReports, reloadCommentReports, loadAuthors } = useAppData();
+  const { commentReports, reloadCommentReports, loadAuthors, queueStatus } = useAppData();
 
   useEffect(() => {
     reloadCommentReports();
@@ -28,15 +28,18 @@ export default function ReportQueue() {
   return (
     <section className="space-y-3">
       <SectionHeading as="h3" title={t('comments.queue.title')} subtitle={t('comments.queue.subtitle')} />
-      {commentReports.length === 0 ? (
-        <EmptyState title={t('comments.queue.empty')} />
-      ) : (
+      <QueueState
+        status={queueStatus.commentReports}
+        isEmpty={commentReports.length === 0}
+        onRetry={reloadCommentReports}
+        emptyTitle={t('comments.queue.empty')}
+      >
         <ul className="space-y-3">
           {commentReports.map((c) => (
             <ReportedComment key={c.id} comment={c} />
           ))}
         </ul>
-      )}
+      </QueueState>
     </section>
   );
 }

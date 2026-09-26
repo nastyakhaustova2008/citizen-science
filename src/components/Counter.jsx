@@ -28,10 +28,11 @@ function useCountUp(target, duration = 900) {
   return value;
 }
 
-/** One "living counter" tile. */
+/** One "living counter" tile. value null = not known (shows "—"). */
 export default function Counter({ label, value, icon: Icon }) {
   const { locale } = useI18n();
-  const shown = useCountUp(value);
+  const known = value != null;
+  const shown = useCountUp(known ? value : 0);
   return (
     <div className="surface flex items-center gap-3 px-4 py-3.5">
       {Icon && (
@@ -44,11 +45,11 @@ export default function Counter({ label, value, icon: Icon }) {
           className="tnum text-2xl font-semibold leading-none text-ink dark:text-paper"
           aria-hidden="true"
         >
-          {formatNumber(shown, { locale })}
+          {known ? formatNumber(shown, { locale }) : '—'}
         </div>
         <div className="mt-1 text-xs font-medium text-ink-faint">{label}</div>
         <span className="sr-only">
-          {formatNumber(value, { locale })} {label}
+          {known ? formatNumber(value, { locale }) : '—'} {label}
         </span>
       </div>
     </div>

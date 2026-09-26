@@ -29,10 +29,10 @@ The script:
    010 → seed 004 → 011 → 012 → 013 → 013b → 014 → 015 → 016 → 017. Then, for 018:
    `018/before.sql` → 018 → 018 again (it must be safe to re-run) → `018/tests.sql` → the mirror check;
    then 019 twice → `019/bulk.sql` (3000+ measurements, above the API's 1000-row limit) →
-   `019/tests.sql` → `019/mirror.*`; then 020 twice → 021 twice → 022 twice → `020/tests.sql` (its
-   allow-lists must still hold with 021 and 022) → `021/tests.sql` → `022/tests.sql`; then (needs
+   `019/tests.sql` → `019/mirror.*`; then 020 twice → 021 twice → 022 twice → 023 twice → `020/tests.sql` (its
+   allow-lists must still hold with 021 and 022) → `021/tests.sql` → `022/tests.sql` → `023/tests.sql`; then (needs
    PostgREST, see below) `019/api.js` → `020/api.js`; then `021/rollback.sql` → 022 again →
-   `022/rollback.sql` → `account/test.js` (the Edge Function, no database); last `020/rollback.sql`;
+   `022/rollback.sql` → `account/test.js` (the Edge Function, no database) → `client/jpegCheck.test.js`; last `020/rollback.sql`;
 4. runs the tests of each migration that has a folder here. The last line says
    `ALL TESTS PASSED`; if any test failed, the exit code is 1.
 
@@ -47,6 +47,8 @@ It takes a few seconds. If you run it as root, the database server runs as the `
 | `020/` | `020_hide_identities.sql` | see below |
 | `021/` | `021_session_security.sql` | guard on `auth.users`, tickets, kill switch, rollback |
 | `022/` | `022_hardening.sql` | every part of 022 (see the header of `022/tests.sql`) + rollback |
+| `023/` | `023_home_participants.sql` | participants total (anon / student / admin, drafts), a retry with the same measurement id (L3), rollback |
+| `client/` | `src/lib/jpegCheck.js` | which JPEG files the moderator's browser flags (EXIF, XMP, IPTC, comments, trailing data), stripping our own output |
 | `account/` | Edge Function `account` | re-auth, change password / email, log-in limit per username + IP, redirect allow-list, sign-up mark + safety net, username-check limit |
 
 **`018/`** runs its files in this order:

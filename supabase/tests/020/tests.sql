@@ -124,7 +124,7 @@ select public.t20('allow-list: anon executes no function outside the list',
     'lab_check_info(jsonb,boolean)', 'lab_credits(text)', 'lab_credits_all()', 'lab_diff(jsonb,jsonb)',
     'lab_line(text)', 'lab_may_delete(text,uuid,uuid)', 'lab_may_edit(text,uuid,uuid)',
     'lab_revision_missing(jsonb)', 'measurement_lab_stats(text,double precision)',
-    'measurement_participant_counts()', 'measurement_summary()', 'my_role()', 'role_rank(text)',
+    'measurement_participant_counts()', 'measurement_participants_total()', 'measurement_summary()', 'my_role()', 'role_rank(text)',
     -- username_available: Edge Function only since 022 (it rate-limits per IP).
     'username_error(text)', 'username_key(text)', 'username_normalize(text)')),
   (select string_agg(fn, ', ') from t20_fns));

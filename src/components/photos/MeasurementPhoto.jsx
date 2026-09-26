@@ -8,8 +8,9 @@ import { LoginPrompt, Skeleton } from '../primitives';
 import PhotoImage from './PhotoImage';
 import ReasonPicker from './ReasonPicker';
 import PhotoErrorText from './PhotoErrorText';
+import { FileCheckNotice, useFileCheck } from './FileCheck';
 
-const action = 'rounded px-1.5 py-0.5 text-[11px] font-semibold text-ink-faint hover:bg-paper-sunk hover:text-ink dark:hover:bg-white/5 dark:hover:text-paper';
+const action = 'tap-target rounded px-1.5 py-0.5 text-[11px] font-semibold text-ink-faint hover:bg-paper-sunk hover:text-ink dark:hover:bg-white/5 dark:hover:text-paper';
 
 /**
  * One photo field of a measurement in the point panel (016).
@@ -27,6 +28,10 @@ export default function MeasurementPhoto({ field, label, value, alt, photos }) {
   const state = photoState(value);
   const p = state === 'stored' && photos.ready ? photos.byPath(value) : null;
   const mod = photos.canModerate;
+  // Audit M1: moderators see whether the stored file still has hidden data (location…).
+  // Only when there is a decision to make (waiting, hidden, reported) — each check downloads the file.
+  const decide = Boolean(p && (p.status === 'pending' || p.status === 'hidden' || (p.status === 'approved' && p.reports > 0)));
+  const check = useFileCheck(p?.path, undefined, Boolean(mod) && decide);
 
   async function run(fn, after) {
     setBusy(true);
@@ -78,6 +83,16 @@ export default function MeasurementPhoto({ field, label, value, alt, photos }) {
           </Note>
         )}
         <PhotoImage path={p.path} alt={alt} dim={p.status !== 'approved'} className="mt-1" />
+        <FileCheckNotice check={check}>
+          <button
+            type="button"
+            className="btn-primary !bg-danger !px-2.5 !py-1 text-xs hover:!bg-danger/90"
+            disabled={busy}
+            onClick={() => run(() => photos.moderate(p, 'remove', 'personal_info'))}
+          >
+            {t('photos.fileCheck.removeForData')}
+          </button>
+        </FileCheckNotice>
         {mod && p.reports > 0 && (
           <p className="mt-0.5 text-[11px] font-semibold text-danger">{t('comments.reportsCount', { count: p.reports })}</p>
         )}
@@ -127,7 +142,12 @@ export default function MeasurementPhoto({ field, label, value, alt, photos }) {
         ) : (
           <div className="mt-0.5 flex flex-wrap gap-x-1">
             {mod && p.status === 'pending' && (
-              <button type="button" className={action} disabled={busy} onClick={() => run(() => photos.moderate(p, 'approve'))}>
+              <button
+                type="button"
+                className={action}
+                disabled={busy || check === 'checking'}
+                onClick={() => run(() => photos.moderate(p, 'approve'))}
+              >
                 {t('photos.approve')}
               </button>
             )}

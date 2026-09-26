@@ -66,6 +66,27 @@
  * Components
  * ------------------------------------------------------------------ */
 @layer components {
+  /* Tap targets (audit L10): at least 24 × 24 px, 44 px high on touch screens. For small
+     buttons and short standalone links; inline links inside a sentence don't need it. */
+  .tap-target {
+    @apply inline-flex items-center justify-center;
+    min-height: 24px;
+    min-width: 24px;
+  }
+  @media (pointer: coarse) {
+    .tap-target {
+      min-height: 44px;
+    }
+  }
+  /* Checkboxes in lists / tables: 24 px (the browser default is 13 px). */
+  .tap-check {
+    width: 24px;
+    height: 24px;
+  }
+  /* Short standalone text links (card titles, footer, "log in"): taller hit area, same look. */
+  .tap-link {
+    @apply inline-block py-1;
+  }
   .surface {
     @apply bg-paper-raised border border-edge rounded-lg;
   }

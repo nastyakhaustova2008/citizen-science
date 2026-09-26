@@ -124,7 +124,7 @@ export default function DataTable({ observation, stats }) {
         <button
           type="button"
           onClick={() => toggleSort(colKey)}
-          className="inline-flex items-center gap-1 font-semibold text-ink-soft hover:text-ink dark:text-paper/80 dark:hover:text-paper"
+          className="tap-target gap-1 font-semibold text-ink-soft hover:text-ink dark:text-paper/80 dark:hover:text-paper"
           aria-label={t('a11y.sortBy', { column: label })}
           aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
         >
@@ -277,7 +277,7 @@ export default function DataTable({ observation, stats }) {
                 <th scope="col" className="w-10 px-3 py-2">
                   <input
                     type="checkbox"
-                    className="accent-bark"
+                    className="tap-check accent-bark"
                     aria-label={t('data.selectAll')}
                     checked={allOnPageSelected}
                     onChange={(e) => {
@@ -312,7 +312,7 @@ export default function DataTable({ observation, stats }) {
                   <td className="px-3 py-2">
                     <input
                       type="checkbox"
-                      className="accent-bark"
+                      className="tap-check accent-bark"
                       aria-label={t('data.selectRow')}
                       checked={selected.has(r.id)}
                       onChange={(e) =>

@@ -50,12 +50,12 @@ export default function LoginPage() {
         <>
           <p>
             {t('auth.noAccount')}{' '}
-            <Link to={withNext('/signup')} className="font-semibold text-ink underline dark:text-paper">
+            <Link to={withNext('/signup')} className="tap-link font-semibold text-ink underline dark:text-paper">
               {t('auth.signup')}
             </Link>
           </p>
           <p>
-            <Link to="/forgot-password" className="underline">
+            <Link to="/forgot-password" className="tap-link underline">
               {t('auth.forgot')}
             </Link>
           </p>

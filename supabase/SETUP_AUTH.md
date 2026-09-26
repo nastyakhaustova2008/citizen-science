@@ -972,3 +972,57 @@ itself would still work).
 **Emergency stop for the cleanup of unconfirmed sign-ups** (if the preview in step 1 was wrong):
 the cleanup runs daily at 03:17 UTC. To stop it at once, re-run the 021 version of the cleanup from
 `supabase/rollback/022_hardening_rollback.sql` (only the `private.privacy_cleanup` part), and tell me.
+
+## 26. Final hardening, part B (moderation and UI) — migration 023
+
+What changes:
+* **Moderation queues (M5):** a queue that fails to load shows an error with "Try again" (and "!"
+  on the admin tab) instead of "nothing waiting".
+* **Hidden data in photos (M1):** before "Approve", the moderator's browser reads the stored photo
+  and looks for hidden data (EXIF / GPS, XMP, IPTC, extra data). Found → a red box and "Delete —
+  personal information". The same for profile pictures when a moderator or the confirmer looks at
+  them (queue and profile page). Our own upload also checks its result before sending.
+* **Home page without mock data (M7):** the activity feed shows the 10 newest real measurements
+  (logged out: "A participant", no names), "Participants" instead of "Schools" (migration 023),
+  "x minutes ago" from the real clock. "Join" buttons and the lab's "Discussion" tab (demo forum)
+  are hidden. Works with the demo rows in the database and after you delete them.
+* **No duplicate after a lost answer (L3):** each measurement gets its id once; pressing "Send"
+  again after a network hiccup finds the saved one instead of saving it twice.
+* **Texts / RTL (L9):** "GPS" → "Coordinates (approx.)"; "too many reports" has its own message;
+  place names keep their direction. **Tap targets (L10):** small buttons, checkboxes and short links
+  are at least 24 px (44 px high on touch screens).
+
+**Order: 023 → preview → merge → production deploy.** 023 only adds one function (the old
+frontend doesn't call it), so it goes **first**; without it the new home page shows "—" for
+participants.
+
+0. Optional, on a computer with PostgreSQL 16: `supabase/tests/run.sh` → `ALL TESTS PASSED`
+   (023 database tests + rollback, `client/`: the JPEG check).
+1. SQL Editor → paste and run `supabase/migrations/023_home_participants.sql`. Safe to re-run.
+   Check: `select public.measurement_participants_total();` → one number (no names, no ids).
+2. **Preview of the branch** (360 px, he / en / ru; logged out, as a student, as an admin):
+   * Home: three counters (measurements, **participants**, active campaigns); "Recent activity"
+     lists real measurements with "x minutes ago"; logged out — "A participant", no avatars; logged
+     in — names. Cards: one "Open" button, no "Join". A lab page: no "Join" button, no
+     "Discussion" tab (an old link with `?tab=discussion` opens the map).
+   * Point panel: "Coordinates (approx.)" instead of "GPS"; a Hebrew place name in an English
+     page (and the other way round) reads correctly.
+   * Add a measurement; in DevTools → Network set "Offline" right after pressing "Send", then
+     "Online" and press "Send" again → one measurement in the table, not two.
+   * Admin → Comments & photos: waiting photos show "Checking the file…", then "No hidden data
+     found" (every photo uploaded through the site is clean); "Approve" works after the check.
+     The red warning can't easily be produced on purpose (the site cleans every upload) — it is
+     covered by the automated tests (`client/`) and a browser test with a real EXIF photo.
+   * Profile pictures in the queue / on a profile (as a main admin): the same line.
+   * Queues offline: DevTools → Network → "Offline" → reload the profile → the admin tabs show
+     "!" and the queues "Failed to load data" + "Try again" (not "nothing waiting"); back online →
+     "Try again" works.
+   * Report too often (21st report today, or the 6th about the same person) → "You sent a lot of
+     reports today…", not "You're writing too fast".
+   * On a phone: small buttons (comment actions, photo actions, sort headers, row checkboxes) are
+     easy to tap.
+3. Merge → wait for the production deploy → step 2 quickly on production (home logged out and in,
+   one measurement with a photo, the admin queues).
+4. **If something breaks:** revert the merge in GitHub (Vercel redeploys the old frontend). 023
+   can stay (the old frontend doesn't use it); rollback only if needed:
+   `supabase/rollback/023_home_participants_rollback.sql`.

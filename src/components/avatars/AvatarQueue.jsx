@@ -6,9 +6,10 @@ import { useAppData } from '../../context/AppDataContext';
 import { formatDate, formatTime } from '../../lib/format';
 import { confirmAvatar, moderateAvatar } from '../../lib/avatarsApi';
 import { AVATAR_BUCKET, forgetSignedUrl, removeFile } from '../../lib/storage';
-import { Avatar, EmptyState, SectionHeading } from '../primitives';
+import { Avatar, QueueState, SectionHeading } from '../primitives';
 import AvatarErrorText from './AvatarErrorText';
 import RejectForm from './RejectForm';
+import { FileCheckNotice, useFileCheck } from '../photos/FileCheck';
 
 /**
  * Admin panel → Comments & photos: profile pictures waiting for me (017) — admin face photos I
@@ -17,7 +18,7 @@ import RejectForm from './RejectForm';
  */
 export default function AvatarQueue() {
   const { t } = useI18n();
-  const { avatarQueue, reloadAvatarQueue } = useAppData();
+  const { avatarQueue, reloadAvatarQueue, queueStatus } = useAppData();
 
   useEffect(() => {
     reloadAvatarQueue();
@@ -26,15 +27,18 @@ export default function AvatarQueue() {
   return (
     <section className="space-y-3">
       <SectionHeading as="h3" title={t('avatars.queue.title')} subtitle={t('avatars.queue.subtitle')} />
-      {avatarQueue.length === 0 ? (
-        <EmptyState title={t('avatars.queue.empty')} />
-      ) : (
+      <QueueState
+        status={queueStatus.avatars}
+        isEmpty={avatarQueue.length === 0}
+        onRetry={reloadAvatarQueue}
+        emptyTitle={t('avatars.queue.empty')}
+      >
         <ul className="grid gap-3 sm:grid-cols-2">
           {avatarQueue.map((a) => (
             <QueuedAvatar key={a.path} item={a} />
           ))}
         </ul>
-      )}
+      </QueueState>
     </section>
   );
 }
@@ -46,6 +50,8 @@ function QueuedAvatar({ item: a }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const person = { displayName: a.username || '—', avatarSeed: a.userId };
+  // Audit M1: hidden data (location…) in the stored picture — checked before confirming / keeping.
+  const check = useFileCheck(a.path, AVATAR_BUCKET);
 
   async function act(fn, removes = false) {
     setBusy(true);
@@ -110,6 +116,20 @@ function QueuedAvatar({ item: a }) {
         </p>
       )}
 
+      <FileCheckNotice check={check}>
+        <button
+          type="button"
+          className="btn-primary !bg-danger !px-2.5 !py-1.5 text-xs hover:!bg-danger/90"
+          disabled={busy}
+          onClick={() =>
+            a.queue === 'confirm'
+              ? act(() => confirmAvatar(a.userId, false, t('avatars.fileCheck.rejectReason')), true)
+              : act(() => moderateAvatar(a.userId, 'delete'), true)
+          }
+        >
+          {t(a.queue === 'confirm' ? 'avatars.fileCheck.rejectForData' : 'avatars.fileCheck.deleteForData')}
+        </button>
+      </FileCheckNotice>
       {mode === 'reject' ? (
         <RejectForm
           busy={busy}
@@ -133,7 +153,12 @@ function QueuedAvatar({ item: a }) {
         </div>
       ) : a.queue === 'confirm' ? (
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn-secondary !px-2.5 !py-1.5 text-xs" disabled={busy} onClick={() => act(() => confirmAvatar(a.userId, true))}>
+          <button
+            type="button"
+            className="btn-secondary !px-2.5 !py-1.5 text-xs"
+            disabled={busy || check === 'checking'}
+            onClick={() => act(() => confirmAvatar(a.userId, true))}
+          >
             {t('avatars.confirm')}
           </button>
           <button type="button" className="btn-secondary !px-2.5 !py-1.5 text-xs text-danger" disabled={busy} onClick={() => setMode('reject')}>

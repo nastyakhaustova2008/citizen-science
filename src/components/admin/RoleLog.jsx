@@ -128,11 +128,15 @@ function LogRow({ event: e }) {
     <li className={`py-2.5 text-sm ${cascade ? 'ps-5' : ''}`}>
       <p className="flex flex-wrap items-baseline gap-x-1.5">
         {e.action === 'sql_change' ? (
+          // "Changed directly in the database:" + the person; the change itself is in the detail line
+          // (admin.log.actions.sql_change is empty on purpose — audit L9, confirmed).
           <span className="text-ink-faint">{t('admin.log.sql')}</span>
         ) : (
-          <PersonLink id={e.actorId} username={e.actorUsername} />
+          <>
+            <PersonLink id={e.actorId} username={e.actorUsername} />
+            <span className="text-ink-soft dark:text-paper/80">{t(`admin.log.actions.${e.action}`)}</span>
+          </>
         )}
-        <span className="text-ink-soft dark:text-paper/80">{t(`admin.log.actions.${e.action}`)}</span>
         <PersonLink id={e.targetId} username={e.targetUsername} />
       </p>
       <p className="mt-0.5 text-xs text-ink-faint">

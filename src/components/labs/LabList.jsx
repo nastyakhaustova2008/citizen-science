@@ -7,7 +7,7 @@ import { useAppData } from '../../context/AppDataContext';
 import { observationTitle } from '../../data/mockData';
 import { formatDate } from '../../lib/format';
 import { adminLabs, deleteLab } from '../../lib/labsApi';
-import { EmptyState, ErrorBlock, SkeletonText } from '../primitives';
+import { EmptyState, ErrorBlock, QueueState, SkeletonText } from '../primitives';
 import { isolate } from '../auth/AuthUI';
 import ObsIcon from '../ObsIcon';
 import { AdminPhotoRequired, AdminProfileRequired, LabErrorText } from './LabErrorText';
@@ -21,7 +21,7 @@ export default function LabList() {
   const { profile, adminProfile, myAvatar, adminPhotoConfirmed } = useAuth();
   // 017: with the owner's switch on, lab work needs a confirmed face photo.
   const photoMissing = Boolean(myAvatar?.required) && !adminPhotoConfirmed;
-  const { reviewQueue, reloadReviewQueue } = useAppData();
+  const { reviewQueue, reloadReviewQueue, queueStatus } = useAppData();
   const [labs, setLabs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -82,7 +82,7 @@ export default function LabList() {
         />
       </div>
 
-      <ReviewQueue queue={reviewQueue} locale={locale} />
+      <ReviewQueue queue={reviewQueue} status={queueStatus.review} onRetry={reloadReviewQueue} locale={locale} />
 
       {loading ? (
         <SkeletonText lines={4} />
@@ -209,7 +209,7 @@ function LabRow({ lab, locale, onChanged }) {
 }
 
 /** "Waiting for review": labs in review, approvals so far, and whether I can review each one. */
-function ReviewQueue({ queue, locale }) {
+function ReviewQueue({ queue, status, onRetry, locale }) {
   const { t } = useI18n();
   const mine = queue.filter((q) => q.myState === 'can_review').length;
   return (
@@ -219,9 +219,12 @@ function ReviewQueue({ queue, locale }) {
         {t('labs.queue.title')}
         {mine > 0 && <span className="tnum rounded-full bg-bark px-1.5 text-xs text-paper-raised">{mine}</span>}
       </h3>
-      {queue.length === 0 ? (
-        <p className="text-sm text-ink-faint">{t('labs.queue.empty')}</p>
-      ) : (
+      <QueueState
+        status={status}
+        isEmpty={queue.length === 0}
+        onRetry={onRetry}
+        empty={<p className="text-sm text-ink-faint">{t('labs.queue.empty')}</p>}
+      >
         <ul className="space-y-2">
           {queue.map((q) => (
             <li key={`${q.kind}-${q.id}`} className={`surface flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between ${q.myState === 'can_review' ? '!border-moss' : ''}`}>
@@ -252,7 +255,7 @@ function ReviewQueue({ queue, locale }) {
             </li>
           ))}
         </ul>
-      )}
+      </QueueState>
     </section>
   );
 }

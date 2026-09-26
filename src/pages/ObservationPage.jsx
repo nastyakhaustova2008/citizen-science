@@ -28,6 +28,7 @@ import {
 } from '../components/primitives';
 import ObsIcon from '../components/ObsIcon';
 import { useLabStats } from '../hooks/useMeasurements';
+import { FEATURES } from '../lib/features';
 
 /** Data tab: stats of ALL measurements (server aggregate) + the paged table. */
 function LabData({ observation }) {
@@ -90,7 +91,9 @@ export default function ObservationPage() {
   const topicCount = observation ? topicsFor(observation.id).length : 0;
 
   const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') || 'map';
+  const asked = params.get('tab') || 'map';
+  // The Discussion tab is a demo (mock topics) — hidden until the forum is real (audit M7).
+  const tab = asked === 'discussion' && !FEATURES.forum ? 'map' : asked;
   const setTab = (id) => setParams({ tab: id }, { replace: true });
 
   if (campaignsError) return <ErrorBlock onRetry={reloadCampaigns} />;
@@ -119,7 +122,9 @@ export default function ObservationPage() {
     { id: 'map', label: t('observation.tabs.map'), icon: MapIcon },
     { id: 'data', label: t('observation.tabs.data'), icon: Table2, count: labSummary(observation.id).n },
     { id: 'charts', label: t('observation.tabs.charts'), icon: BarChart3 },
-    { id: 'discussion', label: t('observation.tabs.discussion'), icon: MessagesSquare, count: topicCount },
+    ...(FEATURES.forum
+      ? [{ id: 'discussion', label: t('observation.tabs.discussion'), icon: MessagesSquare, count: topicCount }]
+      : []),
   ];
 
   return (
@@ -166,14 +171,16 @@ export default function ObservationPage() {
               {t('observation.addMeasurement')}
             </Link>
           )}
-          <button
-            type="button"
-            className={joined ? 'btn-secondary' : 'btn-secondary'}
-            onClick={() => toggleJoin(observation.id)}
-            aria-pressed={joined}
-          >
-            {joined ? t('common.joined') : t('common.join')}
-          </button>
+          {FEATURES.join && (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => toggleJoin(observation.id)}
+              aria-pressed={joined}
+            >
+              {joined ? t('common.joined') : t('common.join')}
+            </button>
+          )}
           <Link to={`/protocol/${observation.slug}`} className="btn-ghost">
             <FileText className="h-4 w-4" aria-hidden="true" />
             {t('observation.viewProtocol')}
@@ -224,9 +231,11 @@ export default function ObservationPage() {
         )}
       </TabPanel>
 
-      <TabPanel id="discussion" active={tab} idBase="obs">
-        <Discussion observationId={observation.id} />
-      </TabPanel>
+      {FEATURES.forum && (
+        <TabPanel id="discussion" active={tab} idBase="obs">
+          <Discussion observationId={observation.id} />
+        </TabPanel>
+      )}
     </div>
   );
 }
