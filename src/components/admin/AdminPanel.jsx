@@ -13,26 +13,28 @@ import CommentLog from '../comments/CommentLog';
 import LinkDomainLog from '../comments/LinkDomainLog';
 import PhotoQueue from '../photos/PhotoQueue';
 import PhotoLog from '../photos/PhotoLog';
+import AvatarQueue from '../avatars/AvatarQueue';
+import AvatarLog from '../avatars/AvatarLog';
 import { useAppData } from '../../context/AppDataContext';
 
 /**
  * Own profile of an admin → "Administration": users (roles, renames), labs (editor, step 5a),
  * comments & photos (reported comments, allowed link domains — 015; measurement photos waiting
- * for approval or reported — 016) and the change logs.
+ * for approval or reported — 016; profile pictures to confirm or reported — 017) and the change logs.
  */
 export default function AdminPanel() {
   const { t } = useI18n();
   const [tab, setTab] = useState('labs');
   const [logKind, setLogKind] = useState('labs');
   // Badges: labs I can review now; photos, reported comments + link domain proposals waiting for me.
-  const { reviewCount, commentReportCount, photoQueueCount, linkProposalCount } = useAppData();
+  const { reviewCount, commentReportCount, photoQueueCount, avatarQueueCount, linkProposalCount } = useAppData();
   const tabs = [
     { id: 'labs', label: t('admin.tabs.labs'), icon: FlaskConical, count: reviewCount || null },
     {
       id: 'comments',
       label: t('admin.tabs.comments'),
       icon: MessageSquareWarning,
-      count: photoQueueCount + commentReportCount + linkProposalCount || null,
+      count: avatarQueueCount + photoQueueCount + commentReportCount + linkProposalCount || null,
     },
     { id: 'users', label: t('admin.tabs.users'), icon: Users },
     { id: 'log', label: t('admin.tabs.log'), icon: History },
@@ -45,6 +47,7 @@ export default function AdminPanel() {
         {tab === 'labs' && <LabList />}
         {tab === 'comments' && (
           <div className="space-y-8">
+            <AvatarQueue />
             <PhotoQueue />
             <ReportQueue />
             <LinkDomains />
@@ -54,7 +57,7 @@ export default function AdminPanel() {
         {tab === 'log' && (
           <div className="space-y-3">
             <div className="flex flex-wrap gap-2" role="group" aria-label={t('admin.tabs.log')}>
-              {['labs', 'roles', 'comments', 'photos', 'links'].map((k) => (
+              {['labs', 'roles', 'comments', 'photos', 'avatars', 'links'].map((k) => (
                 <button
                   key={k}
                   type="button"
@@ -70,6 +73,7 @@ export default function AdminPanel() {
             {logKind === 'roles' && <RoleLog />}
             {logKind === 'comments' && <CommentLog />}
             {logKind === 'photos' && <PhotoLog />}
+            {logKind === 'avatars' && <AvatarLog />}
             {logKind === 'links' && <LinkDomainLog />}
           </div>
         )}

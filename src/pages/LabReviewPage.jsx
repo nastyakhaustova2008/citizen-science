@@ -16,7 +16,7 @@ import ReviewHistory, { reviewerName } from '../components/labs/ReviewHistory';
 import { APPROVALS_NEEDED } from '../components/labs/SubmitPanel';
 import { ChangeList } from '../components/labs/RevisionPanel';
 import Markdown from '../components/Markdown';
-import { AdminProfileRequired, LabErrorText } from '../components/labs/LabErrorText';
+import { AdminPhotoRequired, AdminProfileRequired, LabErrorText } from '../components/labs/LabErrorText';
 
 /**
  * /labs/:id/review — admins review a lab that is in review (step 5b), or the revision of a
@@ -28,7 +28,9 @@ import { AdminProfileRequired, LabErrorText } from '../components/labs/LabErrorT
 export default function LabReviewPage() {
   const { id } = useParams();
   const { t, locale } = useI18n();
-  const { profile, adminProfile } = useAuth();
+  const { profile, adminProfile, myAvatar, adminPhotoConfirmed } = useAuth();
+  // 017: with the owner's switch on, lab work needs a confirmed face photo.
+  const photoMissing = Boolean(myAvatar?.required) && !adminPhotoConfirmed;
   const { getObservation, campaignsLoading, campaignsError, reloadCampaigns, refreshCampaigns, reviewQueue, reloadReviewQueue } =
     useAppData();
   const campaign = getObservation(id);
@@ -189,6 +191,8 @@ export default function LabReviewPage() {
           </h2>
           {adminProfile === null ? (
             <AdminProfileRequired />
+          ) : photoMissing ? (
+            <AdminPhotoRequired />
           ) : blocked ? (
             <p className="flex items-start gap-2 text-sm text-ink-soft dark:text-paper/80">
               <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />

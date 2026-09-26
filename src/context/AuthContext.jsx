@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { supabase, supabaseUrl, supabaseKey, authRedirectBase } from '../lib/supabase';
 import { isPlaceholderEmail, normalizeUsername } from '../lib/username';
 import { myAdminProfile, saveAdminProfile as saveAdminProfileRpc } from '../lib/labsApi';
+import { myAvatar as fetchMyAvatar } from '../lib/avatarsApi';
 
 /**
  * Accounts (roadmap step 4a).
@@ -12,6 +13,8 @@ import { myAdminProfile, saveAdminProfile as saveAdminProfileRpc } from '../lib/
  * - profiles (id, username, role, created_at) are public; role fields are read-only for users.
  * - Admins also have an admin profile (step 5a: full name, workplace, position) — loaded here;
  *   until it is filled the database refuses every lab action (admin_profile_required).
+ * - My profile picture (017): { avatar, rejected, confirmerUsername, required } — admins need a
+ *   confirmed face photo for lab work once the owner turns the switch on (admin_photo_required).
  * Error codes → strings.js auth.errors.<code>.
  */
 
@@ -159,6 +162,26 @@ export function AuthProvider({ children }) {
 
   const reloadAdminProfile = useCallback(() => setAdminProfileNonce((n) => n + 1), []);
 
+  // My profile picture: undefined = not loaded, else the avatar_me result.
+  const hasUsername = Boolean(profile?.id === userId && profile?.username);
+  const [myAvatar, setMyAvatar] = useState(undefined);
+  const [myAvatarNonce, setMyAvatarNonce] = useState(0);
+  useEffect(() => {
+    if (!userId || !hasUsername) {
+      setMyAvatar(undefined);
+      return undefined;
+    }
+    let alive = true;
+    fetchMyAvatar()
+      .then((a) => alive && setMyAvatar(a))
+      .catch(() => alive && setMyAvatar(undefined));
+    return () => {
+      alive = false;
+    };
+    // The role matters too: a role change deletes the picture (017).
+  }, [userId, hasUsername, profile?.role, myAvatarNonce]);
+  const reloadMyAvatar = useCallback(() => setMyAvatarNonce((n) => n + 1), []);
+
   /** Save my admin profile; throws LabError (invalid_admin_profile with details {field: code}). */
   const saveAdminProfile = useCallback(async (values) => {
     const saved = await saveAdminProfileRpc(values);
@@ -220,6 +243,8 @@ export function AuthProvider({ children }) {
       commentsOnMeasurements: data.comments_on_measurements ?? 0,
       // 016: stored measurement photos (always deleted)
       photos: data.photos ?? 0,
+      // 017: a profile picture (always deleted)
+      avatar: Boolean(data.avatar),
     };
   }, []);
 
@@ -308,9 +333,10 @@ export function AuthProvider({ children }) {
   );
   const profileReady = !userId || profileError || profile?.id === userId;
 
+  const myAvatarPath = myAvatar?.avatar && myAvatar.avatar.status !== 'hidden' ? myAvatar.avatar.path : null;
   const currentUser = useMemo(
-    () => (profile && profile.id === userId ? authorFromProfile(profile) : null),
-    [profile, userId],
+    () => (profile && profile.id === userId ? { ...authorFromProfile(profile), avatarPath: myAvatarPath } : null),
+    [profile, userId, myAvatarPath],
   );
 
   const value = useMemo(
@@ -345,6 +371,11 @@ export function AuthProvider({ children }) {
       adminProfileComplete: Boolean(adminProfile),
       reloadAdminProfile,
       saveAdminProfile,
+      myAvatar,
+      setMyAvatar,
+      reloadMyAvatar,
+      // Admin with a confirmed face photo (needed for lab work when myAvatar.required).
+      adminPhotoConfirmed: myAvatar?.avatar?.kind === 'admin' && myAvatar.avatar.status === 'confirmed',
     }),
     [
       session,
@@ -375,6 +406,8 @@ export function AuthProvider({ children }) {
       adminProfile,
       reloadAdminProfile,
       saveAdminProfile,
+      myAvatar,
+      reloadMyAvatar,
     ],
   );
 

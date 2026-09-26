@@ -11,6 +11,7 @@ import {
   reportQueue as fetchCommentReports,
 } from '../lib/commentsApi';
 import { photoQueue as fetchPhotoQueue } from '../lib/photosApi';
+import { avatarPaths as fetchAvatarPaths, avatarQueue as fetchAvatarQueue } from '../lib/avatarsApi';
 import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
 
 /**
@@ -30,6 +31,8 @@ import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
  * admins' counts (reported comments, link domain proposals).
  * Measurement photos are files in Supabase Storage (016): the measurement stores the path, the
  * point panel reads who may see what (photosApi.listPhotos); here: the admins' photo queue.
+ * Profile pictures (017): for logged-in users, getAuthor() adds `avatarPath` (only pictures this
+ * user may see); here also the admins' picture queue (confirmations, reports).
  * Everything else (topics, posts, joins)
  * still lives in memory over the mock dataset for the session only.
  */
@@ -193,15 +196,64 @@ export function AppDataProvider({ children }) {
   );
 
   /** Author of a measurement / comment / post: real profile, demo (mock) user, or null (unknown). */
+  // Profile pictures of the authors on screen (logged-in users only): id → path | null.
+  const [avatarPaths, setAvatarPaths] = useState({});
+  const requestedAvatars = useRef(new Set());
+  const loadAvatars = useCallback(
+    async (ids) => {
+      if (!supabase || !currentUserId) return;
+      const todo = [...new Set(ids)].filter((id) => UUID_RE.test(id) && !requestedAvatars.current.has(id));
+      if (todo.length === 0) return;
+      todo.forEach((id) => requestedAvatars.current.add(id));
+      for (let i = 0; i < todo.length; i += 200) {
+        const chunk = todo.slice(i, i + 200);
+        try {
+          const paths = await fetchAvatarPaths(chunk);
+          setAvatarPaths((prev) => {
+            const next = { ...prev };
+            for (const id of chunk) next[id] = paths[id] || null;
+            return next;
+          });
+        } catch {
+          chunk.forEach((id) => requestedAvatars.current.delete(id));
+        }
+      }
+    },
+    [currentUserId],
+  );
+  /** Re-read these users' pictures (after moderation / confirmation). */
+  const refreshAvatars = useCallback(
+    (ids) => {
+      ids.forEach((id) => requestedAvatars.current.delete(id));
+      return loadAvatars(ids);
+    },
+    [loadAvatars],
+  );
+  // Login / logout: what may be seen changes — start over, then load the authors already known.
+  useEffect(() => {
+    requestedAvatars.current = new Set();
+    setAvatarPaths({});
+    if (currentUserId) loadAvatars(Object.keys(authors));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId, loadAvatars]);
+  useEffect(() => {
+    loadAvatars(Object.keys(authors));
+  }, [authors, loadAvatars]);
+  const authorsWithAvatars = useMemo(() => {
+    const out = {};
+    for (const [id, a] of Object.entries(authors)) out[id] = a ? { ...a, avatarPath: avatarPaths[id] || null } : a;
+    return out;
+  }, [authors, avatarPaths]);
+
   const getAuthor = useCallback(
     (id) => {
       if (!id) return null;
       if (currentUser && id === currentUser.id) return currentUser;
-      if (authors[id]) return authors[id];
+      if (authorsWithAvatars[id]) return authorsWithAvatars[id];
       const mock = getUser(id);
       return mock ? { ...mock, kind: 'demo' } : null;
     },
-    [authors, currentUser],
+    [authorsWithAvatars, currentUser],
   );
 
   /** false while a real user's profile is still being looked up. */
@@ -339,8 +391,22 @@ export function AppDataProvider({ children }) {
   }, [seesDrafts, currentUserId, reloadCommentReports, reloadPhotoQueue, reloadLinkProposals]);
   const commentReportCount = commentReports.length;
   const photoQueueCount = photoQueue.length;
+  // Admins: pictures waiting for me (admin photos to confirm; reports for main admins / owner).
+  const [avatarQueue, setAvatarQueue] = useState([]);
+  const reloadAvatarQueue = useCallback(async () => {
+    try {
+      setAvatarQueue(await fetchAvatarQueue());
+    } catch {
+      setAvatarQueue([]);
+    }
+  }, []);
+  useEffect(() => {
+    if (seesDrafts) reloadAvatarQueue();
+    else setAvatarQueue([]);
+  }, [seesDrafts, currentUserId, reloadAvatarQueue]);
+  const avatarQueueCount = avatarQueue.length;
   // Everything waiting for this admin (header badge).
-  const adminTodoCount = reviewCount + commentReportCount + photoQueueCount + linkProposalCount;
+  const adminTodoCount = reviewCount + commentReportCount + photoQueueCount + avatarQueueCount + linkProposalCount;
 
   useEffect(() => {
     let alive = true;
@@ -557,6 +623,7 @@ export function AppDataProvider({ children }) {
       isAuthorResolved,
       loadAuthors,
       refreshAuthors,
+      refreshAvatars,
       campaigns: publishedView,
       allCampaigns: campaignsView,
       credits,
@@ -572,6 +639,9 @@ export function AppDataProvider({ children }) {
       photoQueue,
       photoQueueCount,
       reloadPhotoQueue,
+      avatarQueue,
+      avatarQueueCount,
+      reloadAvatarQueue,
       linkProposalCount,
       reloadLinkProposals,
       adminTodoCount,
@@ -603,6 +673,7 @@ export function AppDataProvider({ children }) {
       isAuthorResolved,
       loadAuthors,
       refreshAuthors,
+      refreshAvatars,
       campaignsView,
       publishedView,
       credits,
@@ -618,6 +689,9 @@ export function AppDataProvider({ children }) {
       photoQueue,
       photoQueueCount,
       reloadPhotoQueue,
+      avatarQueue,
+      avatarQueueCount,
+      reloadAvatarQueue,
       linkProposalCount,
       reloadLinkProposals,
       adminTodoCount,

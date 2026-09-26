@@ -121,6 +121,7 @@ function DeletePanel({ onCancel }) {
             {isAdmin && <li>{t('auth.deleteAccount.itemAdminProfile')}</li>}
             <li>{t('auth.deleteAccount.itemComments', { count: preview.comments })}</li>
             {preview.photos > 0 && <li>{t('auth.deleteAccount.itemPhotos', { count: preview.photos })}</li>}
+            {preview.avatar && <li>{t('auth.deleteAccount.itemAvatar')}</li>}
             <li>{t('auth.deleteAccount.itemLogs')}</li>
           </ul>
         </div>

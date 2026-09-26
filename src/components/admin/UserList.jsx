@@ -133,7 +133,7 @@ export default function UserList() {
 function UserRow({ user, me, onChanged }) {
   const { t, locale } = useI18n();
   const { reloadProfile } = useAuth();
-  const { refreshAuthors } = useAppData();
+  const { refreshAuthors, refreshAvatars, reloadAvatarQueue } = useAppData();
   const [open, setOpen] = useState(null); // 'grant' | 'main' | 'revoke' | 'demote' | 'rename'
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -144,6 +144,9 @@ function UserRow({ user, me, onChanged }) {
   // After any change: refresh the cached public profiles (map, tables) and, if it is me, my profile.
   const afterChange = (message, ids = [user.id]) => {
     refreshAuthors(ids);
+    // A role change across student / admin deletes the picture (017).
+    refreshAvatars(ids);
+    reloadAvatarQueue();
     if (isMe) reloadProfile();
     setOpen(null);
     onChanged(message);

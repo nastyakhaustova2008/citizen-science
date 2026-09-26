@@ -9,7 +9,7 @@ import { emptyLab, labFromCampaign, labWithRevision } from '../lib/labs';
 import { canEditLab, getRevision } from '../lib/labsApi';
 import { EmptyState, ErrorBlock, LoadingBlock } from '../components/primitives';
 import LabEditor from '../components/labs/LabEditor';
-import { AdminProfileRequired } from '../components/labs/LabErrorText';
+import { AdminPhotoRequired, AdminProfileRequired } from '../components/labs/LabErrorText';
 
 /**
  * /labs/new and /labs/:id/edit — admins only (the database checks again on every save).
@@ -19,7 +19,9 @@ import { AdminProfileRequired } from '../components/labs/LabErrorText';
 export default function LabEditorPage() {
   const { id } = useParams();
   const { t, locale } = useI18n();
-  const { profile, adminProfile } = useAuth();
+  const { profile, adminProfile, myAvatar, adminPhotoConfirmed } = useAuth();
+  // 017: with the owner's switch on, lab work needs a confirmed face photo.
+  const photoMissing = Boolean(myAvatar?.required) && !adminPhotoConfirmed;
   const { getObservation, campaignsLoading, campaignsError, reloadCampaigns, refreshCampaigns } = useAppData();
   const [allowed, setAllowed] = useState(id ? null : true);
   const [reloadNonce, setReloadNonce] = useState(0);
@@ -72,6 +74,14 @@ export default function LabEditorPage() {
       <div className="mx-auto max-w-2xl space-y-4">
         {back}
         <AdminProfileRequired />
+      </div>
+    );
+  }
+  if (photoMissing) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4">
+        {back}
+        <AdminPhotoRequired />
       </div>
     );
   }
