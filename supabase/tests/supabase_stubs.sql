@@ -15,7 +15,10 @@ create table auth.users (id uuid primary key default gen_random_uuid(), email va
   raw_user_meta_data jsonb default '{}', is_anonymous boolean default false, created_at timestamptz default now(), last_sign_in_at timestamptz);
 create table auth.audit_log_entries (id uuid default gen_random_uuid(), payload json, created_at timestamptz default now());
 create table auth.sessions (id uuid default gen_random_uuid(), user_id uuid, created_at timestamptz default now());
-create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+-- sub from request.jwt.claim.sub (older PostgREST, the tests) or request.jwt.claims (PostgREST 12).
+create function auth.uid() returns uuid language sql stable as $$
+  select coalesce(nullif(current_setting('request.jwt.claim.sub', true), ''),
+                  nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')::uuid $$;
 grant execute on function auth.uid() to anon, authenticated;
 create schema storage; grant usage on schema storage to anon, authenticated, service_role;
 create table storage.buckets (id text primary key, name text, public boolean, file_size_limit bigint, allowed_mime_types text[]);

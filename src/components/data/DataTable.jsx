@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, ArrowDown, ChevronsUpDown, Download, Search, X } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAppData } from '../../context/AppDataContext';
+import { useAuth } from '../../context/AuthContext';
 import { USERS } from '../../data/mockData';
 import { formatDate, formatTime, formatNumber } from '../../lib/format';
 import { fieldsWithData, fieldLabel, formatFieldValue } from '../../lib/fields';
@@ -18,15 +19,18 @@ const SCHOOLS = [...new Set(USERS.map((u) => u.school).filter(Boolean))].sort();
  * (src/lib/measurementsApi.js), so every page and count covers all rows. `stats` (the lab's
  * aggregate) gives the columns: active fields + archived ones that have data.
  * Export: the selected rows, or every row matching the filters (page by page, up to EXPORT_CAP).
+ * Logged out (audit H2): no user_id is read, so the demo "school" filter and column are hidden.
  */
 export default function DataTable({ observation, stats }) {
   const { t, locale } = useI18n();
   const { getAuthor } = useAppData();
+  const withAuthor = Boolean(useAuth().session);
   // Every active field, plus archived fields that still have data.
   const fields = useMemo(() => fieldsWithData(observation, stats.keys), [observation, stats.keys]);
 
   const [sort, setSort] = useState({ key: 'timestamp', dir: 'desc' });
-  const [school, setSchool] = useState('__all__');
+  const [schoolChoice, setSchool] = useState('__all__');
+  const school = withAuthor ? schoolChoice : '__all__';
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [query, setQuery] = useState('');
@@ -49,9 +53,12 @@ export default function DataTable({ observation, stats }) {
       to,
       query: debouncedQuery,
       userIds: school === '__all__' ? null : USERS.filter((u) => u.school === school).map((u) => u.id),
+      withAuthor,
     }),
-    [fields, locale, sort, from, to, debouncedQuery, school],
+    [fields, locale, sort, from, to, debouncedQuery, school, withAuthor],
   );
+  // Logging in or out: rows chosen under the other view are dropped.
+  useEffect(() => setSelected(new Map()), [withAuthor]);
   // New filters → back to the first page.
   useEffect(() => setPage(0), [filters]);
 
@@ -134,21 +141,23 @@ export default function DataTable({ observation, stats }) {
     <div className="space-y-3">
       {/* Filters */}
       <div className="surface flex flex-wrap items-end gap-3 p-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-ink-faint">{t('data.filterBySchool')}</span>
-          <select
-            className="input py-2"
-            value={school}
-            onChange={(e) => setSchool(e.target.value)}
-          >
-            <option value="__all__">{t('common.all')}</option>
-            {SCHOOLS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </label>
+        {withAuthor && (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-ink-faint">{t('data.filterBySchool')}</span>
+            <select
+              className="input py-2"
+              value={school}
+              onChange={(e) => setSchool(e.target.value)}
+            >
+              <option value="__all__">{t('common.all')}</option>
+              {SCHOOLS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="flex flex-col gap-1">
           <span className="text-xs font-semibold text-ink-faint">{t('data.filterFrom')}</span>
           <input type="date" className="input py-2 tnum" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -282,7 +291,7 @@ export default function DataTable({ observation, stats }) {
                 </th>
                 <SortHeader colKey="timestamp" label={t('data.columns.date')} />
                 <SortHeader colKey="place" label={t('data.columns.place')} />
-                <SortHeader colKey="school" label={t('data.columns.school')} sortable={false} />
+                {withAuthor && <SortHeader colKey="school" label={t('data.columns.school')} sortable={false} />}
                 {fields.map((f) => (
                   <SortHeader
                     key={f.key}
@@ -323,7 +332,7 @@ export default function DataTable({ observation, stats }) {
                     </span>
                   </td>
                   <td className="px-3 py-2">{r.placeLabel}</td>
-                  <td className="px-3 py-2 text-ink-faint">{getAuthor(r.userId)?.school ?? ''}</td>
+                  {withAuthor && <td className="px-3 py-2 text-ink-faint">{getAuthor(r.userId)?.school ?? ''}</td>}
                   {fields.map((f) => {
                     const text = formatFieldValue(f, r.values[f.key], { locale, t });
                     if (f.type === 'number') {

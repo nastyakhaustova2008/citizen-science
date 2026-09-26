@@ -183,7 +183,7 @@
           <section class="short">
             <h2>The short version</h2>
             <ul>
-              <li>Your <strong>username</strong> and your <strong>measurements</strong> are public. Everything else about you is not.</li>
+              <li>Your <strong>measurements</strong> are public, but not who made them: visitors without an account see the points and values without any username. Your <strong>username</strong> and profile page are visible only to logged-in users. Everything else about you is not public.</li>
               <li>Admins (teachers and staff) also fill in an admin profile — full name, workplace and position — which is shown on the labs they create or approve.</li>
               <li>We don't sell your data, show ads, or track you (no analytics, no cookies).</li>
               <li>An email address is optional.</li>
@@ -204,13 +204,13 @@
           <h2>What we collect and why</h2>
           <h3>Your account</h3>
           <ul>
-            <li><strong>Username</strong> — shown next to your measurements. Everyone can see it.</li>
+            <li><strong>Username</strong> — shown next to your measurements and comments, to logged-in users only. Visitors without an account don't see it.</li>
             <li><strong>Password</strong> — stored only in scrambled form (a “hash”). Nobody, including us, can read it.</li>
             <li>
               <strong>Email (optional)</strong> — used only to reset your password and to confirm the address itself.
               We never show it to anyone and never send newsletters.
             </li>
-            <li><strong>When you joined and your role</strong> (student, admin, main admin or owner) — shown on your profile page.</li>
+            <li><strong>When you joined and your role</strong> (student, admin, main admin or owner) — shown on your profile page, to logged-in users only.</li>
             <li>
               <strong>Changes to your role or username</strong> — if an admin makes you an admin, removes it, or changes your
               username, we record who did it, what changed (including your previous username) and when. Only admins can
@@ -370,14 +370,20 @@
           <h2>What is public</h2>
           <p>Anyone, even without an account, can see:</p>
           <ul>
-            <li>your username;</li>
-            <li>your profile page: role, when you joined, your measurements;</li>
-            <li>all your measurements on the map and in the data table, including the approximate place (about 100 m), time and values;</li>
-            <li>if you are an admin: your full name, workplace and position on the labs you created or approved.</li>
+            <li>all measurements on the map and in the data table — the approximate place (about 100 m), time and values —
+              <strong>without the username or any other sign of who made them</strong>. Visitors without an account can't
+              tell which measurements were made by the same person;</li>
+            <li>the numbers on the home page: how many measurements and how many participants each lab has;</li>
+            <li>if you are an admin: your full name, workplace and position on the labs you created or approved (not your
+              username and not your profile picture).</li>
           </ul>
           <p>
-            Anyone can also download the measurements as a file. The file doesn't include usernames, but the website
-            shows who made each measurement.
+            Anyone can also download the measurements as a file. The file doesn't include usernames or any user number.
+          </p>
+          <p>
+            <strong>Only logged-in users</strong> can see who made each measurement (the username), open profile pages
+            (role, when you joined, your measurements), and read comments. Anything you write in a text field of a
+            measurement or as the place name is public like the values — don't write personal details there.
           </p>
           <p>
             <strong>Comments are not public:</strong> only logged-in users can read them, with the writer's username.
@@ -528,7 +534,8 @@
             password and, optionally, an email. We don't ask for a student's real name, school, age, phone number or
             photo (if a student signs in with Google, Google sends us their name and email — see above). A photo attached
             to a measurement should show only the instrument and the site; a teacher approves each one before other users
-            can see it, and visitors without an account never see photos. A profile picture is optional; we suggest
+            can see it, and visitors without an account never see photos. Visitors without an account also don't see
+            usernames next to measurements and can't open students' profile pages. A profile picture is optional; we suggest
             students use a drawing or an avatar, and only logged-in users see it. There are no
             ads, no tracking and no selling of data. To see, correct or delete your child's data, write to
             <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
@@ -549,7 +556,7 @@
           <section class="short">
             <h2>Коротко</h2>
             <ul>
-              <li>Ваше <strong>имя пользователя</strong> и ваши <strong>измерения</strong> видны всем. Всё остальное о вас — нет.</li>
+              <li>Ваши <strong>измерения</strong> видны всем, но не то, кто их сделал: посетители без аккаунта видят точки и значения без имени пользователя. Ваше <strong>имя пользователя</strong> и страницу профиля видят только вошедшие пользователи. Всё остальное о вас не публично.</li>
               <li>Администраторы (учителя и сотрудники) также заполняют профиль администратора — полное имя, место работы и должность; он показывается на лабораторных, которые они создали или одобрили.</li>
               <li>Мы не продаём данные, не показываем рекламу и не следим за вами (никакой аналитики, никаких cookies).</li>
               <li>Email указывать не обязательно.</li>
@@ -570,7 +577,7 @@
           <h2>Что мы собираем и зачем</h2>
           <h3>Ваш аккаунт</h3>
           <ul>
-            <li><strong>Имя пользователя</strong> — показывается рядом с вашими измерениями. Его видят все.</li>
+            <li><strong>Имя пользователя</strong> — показывается рядом с вашими измерениями и комментариями, только вошедшим пользователям. Посетители без аккаунта его не видят.</li>
             <li>
               <strong>Пароль</strong> — хранится только в зашифрованном виде («хеш»). Никто, даже мы, не может его прочитать.
             </li>
@@ -578,7 +585,7 @@
               <strong>Email (необязательно)</strong> — нужен только для сброса пароля и для подтверждения самого адреса.
               Мы никому его не показываем и не присылаем рассылок.
             </li>
-            <li><strong>Когда вы зарегистрировались и ваша роль</strong> (ученик, администратор, главный администратор или владелец) — видны на странице профиля.</li>
+            <li><strong>Когда вы зарегистрировались и ваша роль</strong> (ученик, администратор, главный администратор или владелец) — видны на странице профиля, только вошедшим пользователям.</li>
             <li>
               <strong>Изменения вашей роли или имени</strong> — если администратор назначает вас администратором, снимает
               эту роль или меняет ваше имя пользователя, мы записываем, кто это сделал, что изменилось (в том числе прежнее
@@ -740,14 +747,20 @@
           <h2>Что видно всем</h2>
           <p>Любой человек, даже без аккаунта, может увидеть:</p>
           <ul>
-            <li>ваше имя пользователя;</li>
-            <li>вашу страницу профиля: роль, когда вы зарегистрировались, ваши измерения;</li>
-            <li>все ваши измерения на карте и в таблице данных — с примерным местом (около 100 м), временем и значениями;</li>
-            <li>если вы администратор: ваше полное имя, место работы и должность на лабораторных, которые вы создали или одобрили.</li>
+            <li>все измерения на карте и в таблице данных — примерное место (около 100 м), время и значения —
+              <strong>без имени пользователя и без любого другого признака того, кто их сделал</strong>. Посетитель без
+              аккаунта не может узнать, какие измерения сделал один и тот же человек;</li>
+            <li>цифры на главной странице: сколько измерений и сколько участников у каждой лабораторной;</li>
+            <li>если вы администратор: ваше полное имя, место работы и должность на лабораторных, которые вы создали или
+              одобрили (но не имя пользователя и не фото профиля).</li>
           </ul>
           <p>
-            Любой может также скачать измерения файлом. В файле нет имён пользователей, но на сайте видно, кто сделал
-            каждое измерение.
+            Любой может также скачать измерения файлом. В файле нет имён пользователей и номеров пользователей.
+          </p>
+          <p>
+            <strong>Только вошедшие пользователи</strong> видят, кто сделал каждое измерение (имя пользователя), открывают
+            страницы профилей (роль, когда вы зарегистрировались, ваши измерения) и читают комментарии. То, что вы пишете
+            в текстовых полях измерения или в названии места, видно всем, как и значения, — не пишите туда личные данные.
           </p>
           <p>
             <strong>Комментарии не публичны:</strong> их читают только вошедшие пользователи, вместе с именем автора.
@@ -898,7 +911,8 @@
             пароль и, по желанию, email. Мы не спрашиваем настоящее имя ученика, школу, возраст, телефон или фото (если
             ученик входит через Google, Google передаёт нам его имя и email — см. выше). На фото к измерению должны быть
             только прибор и место; учитель одобряет каждое фото, прежде чем его увидят другие пользователи, а посетители без
-            аккаунта фото не видят никогда. Фото профиля необязательно; ученикам мы советуем рисунок или аватар, и видят
+            аккаунта фото не видят никогда. Посетители без аккаунта также не видят имён пользователей рядом с измерениями
+            и не могут открыть страницы профилей учеников. Фото профиля необязательно; ученикам мы советуем рисунок или аватар, и видят
             его только вошедшие пользователи. Нет рекламы, слежки и продажи
             данных. Чтобы посмотреть, исправить или удалить данные вашего ребёнка, напишите на
             <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
@@ -919,7 +933,7 @@
           <section class="short">
             <h2>בקצרה</h2>
             <ul>
-              <li><strong>שם המשתמש</strong> שלכם ו<strong>המדידות</strong> שלכם גלויים לכולם. שאר הפרטים עליכם — לא.</li>
+              <li><strong>המדידות</strong> שלכם גלויות לכולם, אבל לא מי עשה אותן: מבקרים בלי חשבון רואים את הנקודות והערכים בלי שם משתמש. <strong>שם המשתמש</strong> ודף הפרופיל שלכם גלויים רק למשתמשים מחוברים. שאר הפרטים עליכם לא גלויים.</li>
               <li>מנהלים (מורים ואנשי צוות) ממלאים גם פרופיל מנהל — שם מלא, מקום עבודה ותפקיד — שמוצג במעבדות שהם יצרו או אישרו.</li>
               <li>אנחנו לא מוכרים מידע, לא מציגים פרסומות ולא עוקבים אחריכם (אין כלי ניתוח ואין עוגיות).</li>
               <li>אימייל הוא לא חובה.</li>
@@ -940,13 +954,13 @@
           <h2>מה אנחנו אוספים ולמה</h2>
           <h3>החשבון שלכם</h3>
           <ul>
-            <li><strong>שם משתמש</strong> — מוצג ליד המדידות שלכם. כולם יכולים לראות אותו.</li>
+            <li><strong>שם משתמש</strong> — מוצג ליד המדידות והתגובות שלכם, רק למשתמשים מחוברים. מבקרים בלי חשבון לא רואים אותו.</li>
             <li><strong>סיסמה</strong> — נשמרת רק בצורה מוצפנת (hash). אף אחד, גם לא אנחנו, לא יכול לקרוא אותה.</li>
             <li>
               <strong>אימייל (לא חובה)</strong> — משמש רק לאיפוס סיסמה ולאישור הכתובת עצמה. אנחנו לא מציגים אותו לאף אחד
               ולא שולחים ניוזלטרים.
             </li>
-            <li><strong>מתי הצטרפתם והתפקיד שלכם</strong> (תלמיד, מנהל, מנהל ראשי או בעלים) — מוצגים בדף הפרופיל שלכם.</li>
+            <li><strong>מתי הצטרפתם והתפקיד שלכם</strong> (תלמיד, מנהל, מנהל ראשי או בעלים) — מוצגים בדף הפרופיל שלכם, רק למשתמשים מחוברים.</li>
             <li>
               <strong>שינויים בתפקיד או בשם המשתמש</strong> — אם מנהל ממנה אתכם למנהלים, מסיר את ההרשאה או משנה את שם
               המשתמש שלכם, אנחנו רושמים מי עשה את זה, מה השתנה (כולל שם המשתמש הקודם) ומתי. רק מנהלים יכולים לראות את
@@ -1093,13 +1107,20 @@
           <h2>מה גלוי לכולם</h2>
           <p>כל אחד, גם בלי חשבון, יכול לראות:</p>
           <ul>
-            <li>את שם המשתמש שלכם;</li>
-            <li>את דף הפרופיל שלכם: תפקיד, מתי הצטרפתם, המדידות שלכם;</li>
-            <li>את כל המדידות שלכם על המפה ובטבלת הנתונים — כולל המקום המשוער (כ־100 מטר), הזמן והערכים;</li>
-            <li>אם אתם מנהלים: את השם המלא, מקום העבודה והתפקיד שלכם במעבדות שיצרתם או אישרתם.</li>
+            <li>את כל המדידות על המפה ובטבלת הנתונים — המקום המשוער (כ־100 מטר), הזמן והערכים —
+              <strong>בלי שם המשתמש ובלי שום סימן אחר למי עשה אותן</strong>. מבקר בלי חשבון לא יכול לדעת אילו מדידות
+              עשה אותו אדם;</li>
+            <li>את המספרים בדף הבית: כמה מדידות וכמה משתתפים יש בכל מעבדה;</li>
+            <li>אם אתם מנהלים: את השם המלא, מקום העבודה והתפקיד שלכם במעבדות שיצרתם או אישרתם (לא את שם המשתמש ולא את
+              תמונת הפרופיל).</li>
           </ul>
           <p>
-            כל אחד יכול גם להוריד את המדידות כקובץ. בקובץ אין שמות משתמשים, אבל באתר רואים מי עשה כל מדידה.
+            כל אחד יכול גם להוריד את המדידות כקובץ. בקובץ אין שמות משתמשים ואין מספרי משתמשים.
+          </p>
+          <p>
+            <strong>רק משתמשים מחוברים</strong> רואים מי עשה כל מדידה (שם המשתמש), פותחים דפי פרופיל (תפקיד, מתי הצטרפתם,
+            המדידות שלכם) וקוראים תגובות. מה שאתם כותבים בשדות הטקסט של מדידה או בשם המקום גלוי לכולם, כמו הערכים — אל
+            תכתבו שם פרטים אישיים.
           </p>
           <p>
             <strong>התגובות לא גלויות לכולם:</strong> רק משתמשים מחוברים יכולים לקרוא אותן, יחד עם שם המשתמש של הכותב/ת.
@@ -1234,7 +1255,7 @@
             אימייל. אנחנו לא מבקשים את השם האמיתי של התלמיד, את בית הספר, הגיל, מספר הטלפון או תמונה (אם התלמיד נכנס
             עם Google, חברת Google שולחת לנו את השם והאימייל שלו — ראו למעלה). בתמונה שמצורפת למדידה צריכים להופיע רק
             המכשיר והמקום; מורה מאשר/ת כל תמונה לפני שמשתמשים אחרים יכולים לראות אותה, ומבקרים בלי חשבון אף פעם לא רואים
-            תמונות. תמונת פרופיל היא לא חובה; לתלמידים אנחנו ממליצים על ציור או אווטאר, ורק משתמשים מחוברים רואים אותה.
+            תמונות. מבקרים בלי חשבון גם לא רואים שמות משתמשים ליד המדידות ולא יכולים לפתוח דפי פרופיל של תלמידים. תמונת פרופיל היא לא חובה; לתלמידים אנחנו ממליצים על ציור או אווטאר, ורק משתמשים מחוברים רואים אותה.
             אין פרסומות, אין מעקב ואין מכירת מידע.
             כדי לראות, לתקן או למחוק את המידע של ילדכם, כתבו ל־<strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>

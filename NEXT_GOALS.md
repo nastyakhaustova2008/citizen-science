@@ -173,5 +173,13 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
   page with filters, search and sort on the server. Limits that are shown on screen when reached:
   map 5000 newest points, export 20,000 rows (also in the file name), profile 2000 points. The
   demo "by school" chart was removed. Details in CLAUDE.md ("Лимит строк и постраничное чтение").
-  For H2 (hide usernames / user ids from logged-out visitors): only `measurement_participant_counts()`
-  needs `measurements.user_id`; H2 switches just that function to SECURITY DEFINER.
+* **Hide who made a measurement from logged-out visitors (H2) — done (migration 020).** Most users
+  are minors. Without logging in, visitors see points, values, the table, statistics, charts and
+  exports, but no username and no user id anywhere (not in API responses, URLs or files) and
+  nothing that links two measurements to the same person. Profile pages and usernames are for
+  logged-in users only; the only public names are admins' credits on labs (full name, position,
+  workplace). Enforced in the database (column privileges on `measurements`, no anon access to
+  `profiles`); only the participant count per lab is a SECURITY DEFINER function. Logged-in users
+  see everything as before. Accepted residual: `username_available` still says whether a guessed
+  username is taken (needed for sign-up) — consider a rate limit in the hardening task (M9).
+  Deploy order: code first, then 020 (`SETUP_AUTH.md` → 23).

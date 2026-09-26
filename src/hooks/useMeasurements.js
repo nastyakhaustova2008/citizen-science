@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import {
   fetchLabPage,
   fetchLabPoints,
@@ -11,6 +12,7 @@ import {
 /**
  * Measurement reads for one screen (audit H5 — see src/lib/paging.js). Each hook reloads when
  * its inputs change and after a new measurement was added (`measurementsVersion`).
+ * Authors (user_id) are read only with a session (audit H2): logging in or out re-reads.
  * → { data, loading, error, reload }. While reloading, the previous data stays (no flicker).
  */
 function useLoad(load, deps) {
@@ -72,10 +74,18 @@ export function useLabStats(campaign) {
   }, [campaign.id, step, measurementsVersion]);
 }
 
-/** One page of the data table: data = { rows, total }. `state` must be memoised by the caller. */
+/**
+ * One page of the data table: data = { rows, total }. `state` must be memoised by the caller and
+ * carry `withAuthor` (see labQuery in measurementsApi.js).
+ */
 export function useLabPage(campaign, state, page) {
   const { measurementsVersion, viewMeasurement } = useAppData();
-  const res = useLoad((signal) => fetchLabPage(campaign, state, page, { signal }), [campaign.id, state, page, measurementsVersion]);
+  const { sessionReady } = useAuth();
+  // Until the stored session is checked, stay loading (withAuthor isn't known yet).
+  const res = useLoad(
+    (signal) => (sessionReady ? fetchLabPage(campaign, state, page, { signal }) : new Promise(() => {})),
+    [campaign.id, state, page, measurementsVersion, sessionReady],
+  );
   const data = useMemo(
     () => res.data && { ...res.data, rows: res.data.rows.map(viewMeasurement) },
     [res.data, viewMeasurement],
@@ -86,12 +96,17 @@ export function useLabPage(campaign, state, page) {
 /** The full row of one measurement (point panel): data = Measurement | null. */
 export function useMeasurement(id) {
   const { measurementsVersion, viewMeasurement } = useAppData();
-  const res = useLoad(() => (id ? fetchMeasurement(id) : Promise.resolve(null)), [id, measurementsVersion]);
+  const { session, sessionReady } = useAuth();
+  const withAuthor = Boolean(session);
+  const res = useLoad(
+    () => (id && sessionReady ? fetchMeasurement(id, { withAuthor }) : Promise.resolve(null)),
+    [id, measurementsVersion, withAuthor, sessionReady],
+  );
   const data = useMemo(() => (res.data ? viewMeasurement(res.data) : null), [res.data, viewMeasurement]);
   return { ...res, data };
 }
 
-/** One user's measurements (up to PROFILE_CAP): data = { rows, total, capped }. */
+/** One user's measurements (up to PROFILE_CAP; logged-in only): data = { rows, total, capped }. */
 export function useUserPoints(userId) {
   const { measurementsVersion, viewMeasurement } = useAppData();
   const res = useLoad((signal) => fetchUserPoints(userId, { signal }), [userId, measurementsVersion]);

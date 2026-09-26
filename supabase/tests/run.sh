@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Local database tests: a throwaway PostgreSQL cluster with Supabase stand-ins, all migrations in
-# the documented order, then the tests of each migration that has a folder here (018/ …).
+# the documented order, then the tests of each migration that has a folder here (018/, 019/, 020/).
 # See README.md. Usage: supabase/tests/run.sh   (from anywhere; exit code 1 = a test failed)
 set -euo pipefail
 
@@ -83,18 +83,40 @@ ESB=("$REPO/node_modules/.bin/esbuild" --bundle --platform=node --format=esm --l
 "${ESB[@]}" "$HERE/019/mirror.js" --outfile="$WORK/mirror19.mjs"
 node "$WORK/mirror19.mjs" "$WORK/mirror19.json" || MIRROR_OK=0
 
+# ---- 020 ----------------------------------------------------------------------------------
+apply migrations/020_hide_identities.sql
+apply migrations/020_hide_identities.sql   # safe to re-run
+echo "migration 020: applied twice"
+RESULT20="$("${PSQL[@]}" -At -f "$HERE/020/tests.sql" | grep -E '^(PASS|FAIL)')"
+echo "$RESULT20"
+FAILED20=$(grep -c '^FAIL' <<<"$RESULT20" || true)
+echo "020 database: $(grep -c '^PASS' <<<"$RESULT20") passed, $FAILED20 failed"
+# Every user id, username and anonymised id: no anon API response may contain one (020/api.js).
+"${PSQL[@]}" -At -c "select json_build_object(
+  'ids', (select json_agg(x) from (select id::text x from auth.users union select id::text from public.profiles
+          union select distinct user_id from public.measurements) s),
+  'usernames', (select json_agg(username) from public.profiles where username is not null),
+  'cols', (select json_object_agg(t, cols) from (
+     select c.relname t, json_agg(a.attname order by a.attnum) cols from pg_class c
+     join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+     where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'v', 'm', 'p')
+       and has_column_privilege('anon', c.oid, a.attnum, 'select') group by 1) g))" > "$WORK/ids20.json"
+
 # API tests need PostgREST (db-max-rows = 1000, like Supabase). Set POSTGREST_BIN or put
 # postgrest on PATH; without it they are skipped (the database tests above still run).
 API_OK=1
 PGRST="${POSTGREST_BIN:-$(command -v postgrest || true)}"
 if [ -n "$PGRST" ] && [ -x "$PGRST" ]; then
   API_PORT="${PGRST_PORT:-55499}"
+  # A test-only JWT secret: 020/api.js signs logged-in tokens (and the anon key) with it.
+  JWT_SECRET="mitzpe-local-test-secret-not-a-real-key-0123456789"
   cat > "$WORK/pgrst.conf" <<CONF
 db-uri = "postgres:///postgres?host=$WORK&port=$PORT&user=authenticator"
 db-schemas = "public"
 db-anon-role = "anon"
 db-max-rows = 1000
 server-port = $API_PORT
+jwt-secret = "$JWT_SECRET"
 CONF
   "$PGRST" "$WORK/pgrst.conf" > "$WORK/pgrst.log" 2>&1 &
   PGRST_PID=$!
@@ -102,8 +124,25 @@ CONF
   for _ in $(seq 50); do curl -s -o /dev/null "http://localhost:$API_PORT/" && break; sleep 0.2; done
   "${ESB[@]}" "$HERE/019/api.js" --outfile="$WORK/api19.mjs"
   node "$WORK/api19.mjs" "http://localhost:$API_PORT" || API_OK=0
+  # 020: the app's own query code (supabase-js) through a proxy at /rest/v1, logged out and in.
+  PROXY_PORT="${PROXY_PORT:-55498}"
+  ANON_KEY="$(node -e '
+    const c = require("crypto"); const b = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+    const h = b({ alg: "HS256", typ: "JWT" }), p = b({ role: "anon", exp: 4102444800 });
+    console.log(h + "." + p + "." + c.createHmac("sha256", process.argv[1]).update(h + "." + p).digest("base64url"));' "$JWT_SECRET")"
+  "${ESB[@]}" "--define:import.meta.env.VITE_SUPABASE_URL=\"http://localhost:$PROXY_PORT\"" \
+    "--define:import.meta.env.VITE_SUPABASE_ANON_KEY=\"$ANON_KEY\"" \
+    "$HERE/020/api.js" --outfile="$WORK/api20.mjs"
+  node "$WORK/api20.mjs" "http://localhost:$API_PORT" "$PROXY_PORT" "$JWT_SECRET" "$WORK/ids20.json" || API_OK=0
 else
-  echo "019 API tests: SKIPPED (no postgrest binary; set POSTGREST_BIN)"
+  echo "019 / 020 API tests: SKIPPED (no postgrest binary; set POSTGREST_BIN)"
 fi
 
-[ "$FAILED" = 0 ] && [ "$FAILED19" = 0 ] && [ "$MIRROR_OK" = 1 ] && [ "$API_OK" = 1 ] && echo "ALL TESTS PASSED" || { echo "SOME TESTS FAILED"; exit 1; }
+# 020 rollback file: back to the 019 state, then 020 again (runs last: it changes grants).
+RESULTRB="$("${PSQL[@]}" -At -f "$HERE/020/rollback.sql" | grep -E '^(PASS|FAIL)')"
+echo "$RESULTRB"
+FAILEDRB=$(grep -c '^FAIL' <<<"$RESULTRB" || true)
+echo "020 rollback: $(grep -c '^PASS' <<<"$RESULTRB") passed, $FAILEDRB failed"
+
+[ "$FAILED" = 0 ] && [ "$FAILED19" = 0 ] && [ "$FAILED20" = 0 ] && [ "$FAILEDRB" = 0 ] && [ "$MIRROR_OK" = 1 ] && [ "$API_OK" = 1 ] \
+  && echo "ALL TESTS PASSED" || { echo "SOME TESTS FAILED"; exit 1; }

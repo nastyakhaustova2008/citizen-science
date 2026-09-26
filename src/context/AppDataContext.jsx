@@ -144,17 +144,25 @@ export function AppDataProvider({ children }) {
   const [topics, setTopics] = useState(TOPICS);
   const [joined, setJoined] = useState(() => new Set(['obs-schoolyard-heat', 'obs-dark-skies']));
 
-  const { currentUser } = useAuth();
+  const { currentUser, session } = useAuth();
   const currentUserId = currentUser?.id ?? null;
+  // Profiles (usernames) are for logged-in users only (audit H2, migration 020).
+  const loggedIn = Boolean(session);
   // Admins see drafts: re-read campaigns when that changes (login / logout / role granted).
   const seesDrafts = ['admin', 'main_admin', 'owner'].includes(currentUser?.role);
 
-  // Public profiles of real users whose ids are on screen: id → author, or null (no such profile).
+  // Profiles of real users whose ids are on screen: id → author, or null (no such profile).
+  // Logged-in users only: logged out, nothing is loaded and getAuthor() knows only demo authors.
   const [authors, setAuthors] = useState({});
   const requestedAuthors = useRef(new Set());
+  useEffect(() => {
+    if (loggedIn) return;
+    requestedAuthors.current = new Set();
+    setAuthors({});
+  }, [loggedIn]);
 
   const loadAuthors = useCallback(async (ids) => {
-    if (!supabase) return;
+    if (!supabase || !loggedIn) return;
     const todo = [...new Set(ids)].filter((id) => UUID_RE.test(id) && !requestedAuthors.current.has(id));
     if (todo.length === 0) return;
     todo.forEach((id) => requestedAuthors.current.add(id));
@@ -173,7 +181,7 @@ export function AppDataProvider({ children }) {
         return next;
       });
     }
-  }, []);
+  }, [loggedIn]);
 
   /** Re-read these profiles (after an admin renamed them or changed their role). */
   const refreshAuthors = useCallback(

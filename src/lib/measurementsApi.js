@@ -4,9 +4,14 @@
  *   - one point:        fetchMeasurement() — the full row (point panel)
  *   - data table:       fetchLabPage()     — one page, filters / sort / search on the server
  *   - export:           fetchLabAll()      — same filters, all rows up to EXPORT_CAP
- *   - profile:          fetchUserPoints()  — one user's rows up to PROFILE_CAP
+ *   - profile:          fetchUserPoints()  — one user's rows up to PROFILE_CAP (logged-in only)
  *   - numbers / charts: fetchLabStats(), fetchSummary() — aggregate RPCs (migration 019)
  * Inserting stays in AppDataContext (addMeasurement).
+ *
+ * Logged-out visitors (audit H2, migration 020): the anon role may read only the columns in
+ * PUBLIC_MEASUREMENT_COLUMNS — no user_id, no created_at. Selecting, filtering or sorting by
+ * those as anon fails with 42501, so every read here takes `withAuthor` (true only with a
+ * session) and never mentions them otherwise. Ordering uses measured_at + id (granted to anon).
  */
 import { supabase } from './supabase';
 import { fetchAllPaged, fetchPage } from './paging';
@@ -19,6 +24,11 @@ export const TABLE_PAGE = 50;
 
 export const MEASUREMENT_COLUMNS =
   'id, observation_id, user_id, place_label, lat, lng, measured_at, verification, photo_seed, field_values, form_version';
+/** The same without the author: what logged-out visitors may read (grant in migration 020). */
+export const PUBLIC_MEASUREMENT_COLUMNS =
+  'id, observation_id, place_label, lat, lng, measured_at, verification, photo_seed, field_values, form_version';
+
+const columns = (withAuthor) => (withAuthor ? MEASUREMENT_COLUMNS : PUBLIC_MEASUREMENT_COLUMNS);
 
 const KEY_RE = /^[a-z][a-z0-9_]{0,39}$/; // campaign_fields.key (SQL check) — safe inside a query string
 
@@ -32,7 +42,7 @@ export function fromRow(row) {
   return {
     id: row.id,
     observationId: row.observation_id,
-    userId: row.user_id,
+    userId: row.user_id ?? null, // not read for logged-out visitors
     placeLabel: row.place_label || '',
     lat: row.lat,
     lng: row.lng,
@@ -75,9 +85,9 @@ export async function fetchLabPoints(campaign, { signal } = {}) {
   return { points, total, capped };
 }
 
-/** The full row of one measurement, or null. */
-export async function fetchMeasurement(id) {
-  const { data, error } = await db().from('measurements').select(MEASUREMENT_COLUMNS).eq('id', id).maybeSingle();
+/** The full row of one measurement, or null. `withAuthor`: also user_id (logged-in only). */
+export async function fetchMeasurement(id, { withAuthor = false } = {}) {
+  const { data, error } = await db().from('measurements').select(columns(withAuthor)).eq('id', id).maybeSingle();
   if (error) throw error;
   return data ? fromRow(data) : null;
 }
@@ -145,14 +155,15 @@ export const SORTABLE_TYPES = ['number', 'datetime', 'boolean', 'text'];
 /**
  * The table's query for one lab.
  * state: { fields, locale, sort: {key, dir}, from, to ('YYYY-MM-DD', UTC days like the table
- * shows), query, userIds (null = everyone; the demo "school" filter) }.
+ * shows), query, userIds (null = everyone; the demo "school" filter), withAuthor (logged in:
+ * also user_id; without it user_id is neither read nor filtered — userIds is ignored) }.
  */
 function labQuery(campaign, state, options) {
-  const { fields = [], locale, sort = { key: 'timestamp', dir: 'desc' }, from, to, query, userIds } = state;
-  let q = db().from('measurements').select(MEASUREMENT_COLUMNS, options).eq('observation_id', campaign.id);
+  const { fields = [], locale, sort = { key: 'timestamp', dir: 'desc' }, from, to, query, userIds, withAuthor } = state;
+  let q = db().from('measurements').select(columns(withAuthor), options).eq('observation_id', campaign.id);
   if (from && DATE_RE.test(from)) q = q.gte('measured_at', `${from}T00:00:00Z`);
   if (to && DATE_RE.test(to)) q = q.lt('measured_at', `${nextDay(to)}T00:00:00Z`);
-  if (userIds) q = q.in('user_id', userIds);
+  if (userIds && withAuthor) q = q.in('user_id', userIds);
   const search = searchFilter(query, fields, locale);
   if (search) q = q.or(search);
 
@@ -182,7 +193,10 @@ export async function fetchLabAll(campaign, state, { onProgress, signal } = {}) 
 
 // ---- profile --------------------------------------------------------------------------------
 
-/** One user's measurements, newest first, up to PROFILE_CAP → { rows, total, capped }. */
+/**
+ * One user's measurements, newest first, up to PROFILE_CAP → { rows, total, capped }.
+ * Logged-in users only (filters by user_id; the profile page doesn't call it logged out).
+ */
 export async function fetchUserPoints(userId, { signal } = {}) {
   const res = await fetchAllPaged(
     (o) =>
