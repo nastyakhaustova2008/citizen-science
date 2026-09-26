@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { normalizeUsername, usernameError } from '../../lib/username';
 import { LoadingBlock } from '../primitives';
 import { privacyUrl } from '../../lib/privacy';
+import { IDLE_SIGN_OUT_MINUTES } from '../../lib/authConfig';
 
 /** Wrap an LTR value (email) for interpolation into RTL/LTR text: Unicode first-strong isolate. */
 export const isolate = (value) => `\u2068${value}\u2069`;
@@ -91,7 +92,28 @@ export function OrDivider() {
   );
 }
 
-export function GoogleButton({ next }) {
+/**
+ * "This is a shared computer" (audit H6): session only until the browser closes + sign-out after
+ * inactivity. Starts from sharedPreference() (ON on computers, OFF on phones / tablets, then the
+ * last choice on this device); the choice is saved when the sign-in starts (beginSignIn).
+ */
+export function SharedDeviceCheckbox({ id, checked, onChange }) {
+  const { t } = useI18n();
+  return (
+    <label htmlFor={id} className="flex items-start gap-2 rounded-lg border border-edge p-3 text-sm dark:border-white/10">
+      <input id={id} type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <span>
+        <span className="font-semibold">{t('auth.shared.label')}</span>
+        <span className="block text-xs text-ink-faint">
+          {t('auth.shared.hint', { minutes: IDLE_SIGN_OUT_MINUTES })}
+        </span>
+      </span>
+    </label>
+  );
+}
+
+/** shared: the page's "shared computer" checkbox value (decided before leaving for Google). */
+export function GoogleButton({ next, shared }) {
   const { t } = useI18n();
   const { logInWithGoogle } = useAuth();
   const [error, setError] = useState(null);
@@ -106,7 +128,7 @@ export function GoogleButton({ next }) {
           setError(null);
           setBusy(true);
           try {
-            await logInWithGoogle(next);
+            await logInWithGoogle(next, { shared });
           } catch (err) {
             setError(err.code || 'oauth');
             setBusy(false);

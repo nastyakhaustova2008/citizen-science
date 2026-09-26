@@ -14,6 +14,7 @@ import ProtocolForm from './ProtocolForm';
 import FormPreview from './FormPreview';
 import SubmitPanel from './SubmitPanel';
 import RevisionPanel from './RevisionPanel';
+import { isSigningOut, setUnsavedWork } from '../../lib/session';
 import { LabErrorText } from './LabErrorText';
 
 const tabOfPath = (path) => {
@@ -93,12 +94,18 @@ export default function LabEditor({ initial, live = null, revision = null, onRel
 
   useEffect(() => {
     if (!dirty) return undefined;
+    // Signed out (shared computer: after inactivity): the page reloads, nothing may stop it.
+    setUnsavedWork('lab-editor', 'lab');
     const onBeforeUnload = (e) => {
+      if (isSigningOut()) return;
       e.preventDefault();
       e.returnValue = '';
     };
     window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      setUnsavedWork('lab-editor', null);
+    };
   }, [dirty]);
 
   const update = (fn) => {

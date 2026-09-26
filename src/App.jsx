@@ -20,6 +20,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ConfirmPage from './pages/auth/ConfirmPage';
 import ChooseUsernamePage from './pages/auth/ChooseUsernamePage';
 import { RequireAuth, UsernameGate, OAuthErrorBanner } from './components/auth/AuthUI';
+import { IdleSignOut, SharedReminder, SignedOutNotice } from './components/auth/SessionUI';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -44,8 +45,11 @@ export default function App() {
       <ScrollToTop />
       <UsernameGate />
       <AdminProfilePrompt />
+      <IdleSignOut />
       <main id="main" className="mx-auto w-full max-w-content flex-1 px-4 py-6 sm:px-6 sm:py-8">
         <OAuthErrorBanner />
+        <SignedOutNotice />
+        <SharedReminder />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/observations/:slug" element={<ObservationPage />} />

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { Menu, X, Moon, Sun, Languages, Telescope, LogIn } from 'lucide-react';
+import { Menu, X, Moon, Sun, Languages, Telescope, LogIn, LogOut } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -91,7 +91,7 @@ const navItemClass = ({ isActive }) =>
 
 export default function Header() {
   const { t } = useI18n();
-  const { currentUser, session, authLoading, logOut } = useAuth();
+  const { currentUser, session, authLoading, logOut, sharedSession } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   // Labs to review + reported comments + link domain proposals waiting for this admin.
   const { adminTodoCount } = useAppData();
@@ -143,6 +143,18 @@ export default function Header() {
               </span>
               <ReviewBadge count={adminTodoCount} />
             </Link>
+          )}
+          {!authLoading && loggedIn && (
+            <button
+              type="button"
+              className="btn-ghost hidden px-2 sm:inline-flex"
+              onClick={() => logOut()}
+              title={t('auth.logout')}
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              {/* On a shared computer the word is shown too, so nobody has to look for it. */}
+              <span className={sharedSession ? '' : 'sr-only'}>{t('auth.logout')}</span>
+            </button>
           )}
           {!authLoading && !loggedIn && (
             <div className="ms-1 hidden items-center gap-1 sm:flex">
@@ -210,6 +222,7 @@ export default function Header() {
                 >
                   {t('auth.logout')}
                 </button>
+                {sharedSession && <p className="px-3 pb-2 text-xs text-ink-faint">{t('auth.shared.reminder')}</p>}
               </>
             ) : (
               <>

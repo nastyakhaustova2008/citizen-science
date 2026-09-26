@@ -697,3 +697,113 @@ frontend works both before and after 020. So: **code first, 020 last.**
    code): SQL Editor → `supabase/rollback/020_hide_identities_rollback.sql` restores the 019 state
    (anon reads `user_id` and profiles again; the new frontend keeps working). The privacy policy no
    longer matches then — fix the cause and run 020 again as soon as possible.
+
+## 24. Account security on shared computers + honest password recovery (audit H6) — migration 021 + Edge Function `account`
+
+What changes: password and email changes need a log-in of **this** session within the last 15
+minutes (else the page asks for the current password or Google) — checked by the Edge Function
+(`change-password`, `change-email`), and migration 021 makes Supabase Auth itself refuse a new
+password / pending email that did not come through the function (a stolen session token calling
+`PUT /auth/v1/user` directly gets nowhere). "This is a shared computer" at log-in (session only
+until the browser closes, auto log-out after 30 min), "Log out on all devices", visible log-out.
+"Forgot password" by email and adding / changing an email are hidden until N2 (Brevo).
+
+**Order: Edge Function → preview → merge → production deploy → 021.** The new function only adds
+actions (`change-password`, `change-email`); the old ones are unchanged, so production keeps working
+with it. The new frontend changes passwords through the function, so the function must be deployed
+first. 021 must come **after** the production deploy: the old frontend changes passwords directly
+through Supabase Auth, which 021 ignores (the page would say "changed" and the password would stay
+the same). The function works before 021 too (it skips the ticket while the RPC is missing).
+
+0. Optional, on a computer with PostgreSQL 16: `supabase/tests/run.sh` → `ALL TESTS PASSED`
+   (021 database tests + rollback, and `account/`: the Edge Function under Node).
+1. **Dashboard values to check** (screenshots are enough, nothing secret):
+   * Authentication → Sign In / Providers → **Email**: *Confirm email* **ON**; *Secure email change*
+     **OFF** (accounts without email can't confirm the old address); *Secure password change*
+     **OFF** (it sends a code by email, which our users can't receive); *Minimum password length* 8.
+     If there is *Require current password when updating* — leave it **OFF for now**; it is an
+     optional extra layer for direct API calls (our function uses the admin API, so it is not
+     affected), but the production frontend from before this change would break with it. It can be
+     turned on after step 4.
+   * Authentication → Sign In / Providers: *Allow manual linking* **OFF** and *Allow anonymous
+     sign-ins* **OFF**. (With manual linking a stolen token could link another Google account to
+     the victim, and identity unlinking can change `auth.users.email`, which 021 does not guard.)
+   * Authentication → Sessions: *time-box* / *inactivity timeout* are Pro-only — not needed, the
+     shared-computer mode is done in our code.
+   * JWT / access token expiry (Settings → JWT Keys, or Authentication → Sessions): the default
+     3600 s means a token keeps working up to 1 hour after "log out on all devices" or a password
+     change. Optional: 1800 s halves that (more token refreshes, no other effect).
+   * Authentication → Hooks: nothing needed (no hook is used).
+2. **Edge Function** → Dashboard → Edge Functions → `account` → Code → paste
+   `supabase/functions/account/index.ts` → Deploy ("Verify JWT" stays OFF). Optional secret:
+   `CHANGE_LIMIT_PER_USER` (password / email changes per account per hour, default 10).
+   Quick check (production still on the old code): log in, log out, delete-account re-auth still
+   work.
+3. **Preview of the branch, BEFORE 021** (360 px, he / en / ru):
+   * Log in page: "This is a shared computer" is ticked on a computer, not ticked on a phone; the
+     choice is remembered next time on the same device.
+   * Shared computer ticked: the thin "don't forget to log out" bar and a "Log out" button with its
+     word in the header; open a new tab → not logged in; close the whole browser and open it again →
+     not logged in (if the browser is set to restore the last session, it may bring it back — known
+     limit). Leave the tab alone for 29 minutes (or test with a measurement half filled): the
+     "Are you still here?" window says the measurement has not been sent; after 1 more minute →
+     logged out, home page says why.
+   * Not ticked: logged in in a new tab and after reopening the browser (as before).
+   * Log out (header or Profile → Account): home page "You are logged out"; DevTools → Application →
+     Local Storage and Session Storage have no `sb-…` key. Logged in with Google on a shared computer
+     → the message also says to log out of Google.
+   * Profile → Account → change password **more than 15 minutes after logging in** → "Log in again"
+     box (password, or Google for Google accounts); a wrong password shows the error and counts
+     toward the log-in limit (10 wrong tries in 15 min → "too many attempts"); the right one → the
+     password is changed; log in with the new one works, the old one doesn't. Another browser logged
+     in to the same account is logged out within the token expiry (up to 1 hour by default).
+   * Right after logging in (< 15 min): change password works without the extra box.
+   * "Log out on all devices" → this browser logged out; another browser follows (token expiry).
+   * Sign-up: the "write your password down" box, no email field. "Forgot your password?" →
+     explanation (Google / new account / old measurements stay), no form. Profile → Account →
+     Email: shows the email if there is one + "possible soon", no form.
+   * Delete account still works (with the re-login box after 15 minutes).
+4. Merge → **wait for the production deploy** (Vercel → Deployments → Production → Ready).
+5. SQL Editor → run `supabase/migrations/021_session_security.sql`. Safe to re-run. Checks:
+
+   ```sql
+   select tgname, tgenabled from pg_trigger where tgname = 'mitzpe_auth_users_change_guard';  -- 1 row, O
+   select value from private.settings where key = 'require_change_ticket';                     -- true
+   select has_function_privilege('anon', 'public.account_change_ticket(uuid,text,text)', 'execute'),
+          has_function_privilege('authenticated', 'public.account_change_ticket(uuid,text,text)', 'execute');
+     -- false, false
+   select private.privacy_cleanup();   -- now also has "change_tickets"
+   ```
+
+6. **Direct API test on production** (use a test account, not a real student; the token is a
+   credential — don't paste it anywhere else). Log in to the test account on a computer, wait
+   more than 15 minutes, then DevTools → Application → Local Storage (or Session Storage) →
+   `sb-<project>-auth-token` → copy `access_token`. In a terminal (URL and publishable key as in
+   Vercel):
+
+   ```sh
+   URL=https://<project>.supabase.co; KEY=<publishable key>; TOKEN=<access_token>
+   # a) through our function: refused
+   curl -s -X POST "$URL/functions/v1/account" -H "apikey: $KEY" -H "Authorization: Bearer $TOKEN" \
+     -H 'Content-Type: application/json' -d '{"action":"change-password","password":"direct-test-123"}'
+     # {"error":"reauth_required"}
+   # b) straight to Supabase Auth: answers 200, but the password does NOT change (021)
+   curl -s -X PUT "$URL/auth/v1/user" -H "apikey: $KEY" -H "Authorization: Bearer $TOKEN" \
+     -H 'Content-Type: application/json' -d '{"password":"direct-test-123"}'
+   # c) a new email straight to Supabase Auth: refused (error, "Database error updating user")
+   curl -s -X PUT "$URL/auth/v1/user" -H "apikey: $KEY" -H "Authorization: Bearer $TOKEN" \
+     -H 'Content-Type: application/json' -d '{"email":"direct-test@example.com"}'
+   ```
+
+   Then: log in with `direct-test-123` → fails; the old password → works. Dashboard → Logs →
+   Postgres shows `mitzpe: password change without a ticket ignored`. Then in the app, change the
+   password normally (after the re-login box) → works.
+7. **Production, after 021:** step 3 again (change password old/new session, Google account, log
+   out everywhere, delete account). Optional: now turn on *Require current password when updating*
+   (step 1) as an extra layer.
+8. **If password changes break after 021** (e.g. Supabase changed how it writes passwords):
+   kill switch, no redeploy — `update private.settings set value = 'false' where key =
+   'require_change_ticket';` (turn back on with `'true'`). Full rollback only if needed:
+   `supabase/rollback/021_session_security_rollback.sql` (the frontend and function keep working).
+   To set a password for someone by hand (not planned — admins don't reset passwords): turn the
+   switch off, do it, turn it on again.

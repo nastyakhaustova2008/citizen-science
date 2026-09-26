@@ -29,8 +29,10 @@ The script:
    010 → seed 004 → 011 → 012 → 013 → 013b → 014 → 015 → 016 → 017. Then, for 018:
    `018/before.sql` → 018 → 018 again (it must be safe to re-run) → `018/tests.sql` → the mirror check;
    then 019 twice → `019/bulk.sql` (3000+ measurements, above the API's 1000-row limit) →
-   `019/tests.sql` → `019/mirror.*`; then 020 twice → `020/tests.sql`; then (needs PostgREST, see
-   below) `019/api.js` → `020/api.js`; last `020/rollback.sql`;
+   `019/tests.sql` → `019/mirror.*`; then 020 twice → 021 twice → `020/tests.sql` (its allow-lists
+   must still hold with 021) → `021/tests.sql`; then (needs PostgREST, see below) `019/api.js` →
+   `020/api.js`; then `021/rollback.sql` → `account/test.js` (the Edge Function, no database);
+   last `020/rollback.sql`;
 4. runs the tests of each migration that has a folder here. The last line says
    `ALL TESTS PASSED`; if any test failed, the exit code is 1.
 
@@ -115,6 +117,36 @@ It takes a few seconds. If you run it as root, the database server runs as the `
     profiles, the profile page query, the author filter.
 - **`rollback.sql`** (last): `supabase/rollback/020_hide_identities_rollback.sql` restores the 019
   state, and 020 applied again hides identities again.
+
+### 021 (audit H6) — `021/`
+
+- **`tests.sql`** — the guard on `auth.users`, run as `supabase_auth_admin` (the role Supabase Auth
+  uses; a stub role here):
+  - not blocked: sign-up (insert with a password), Google new user (insert, no password) and
+    returning user (metadata), username sign-in (incl. re-writing the same password — the value is
+    kept, no error), a full-row update, the `email` column itself, removing a password, confirming a
+    pending email, account deletion (prepare → delete as Supabase Auth → finish; a pending ticket
+    cascades), the Edge Function's admin update with a ticket;
+  - blocked: a new password without a ticket (kept, no error), a first password for a Google user
+    without a ticket, a used / expired / other user's ticket, a pending email without a ticket or
+    with a ticket for another address (42501);
+  - tickets: exact columns (no password or hash of it; email → sha256 of the normalised address),
+    deleted on use, expired ones removed by `privacy_cleanup`; `account_change_ticket` only for
+    `service_role` (anon / authenticated / PUBLIC can't execute it), `private` not reachable;
+  - kill switch off → changes go through; back on → guarded.
+- **`rollback.sql`** — `supabase/rollback/021_session_security_rollback.sql` removes the guard (a
+  direct password change goes through, `privacy_cleanup` is the 008 version), 021 again guards.
+
+### Edge Function `account` — `account/`
+
+`test.js` runs the real `supabase/functions/account/index.ts` under Node: `deno-env.js` provides
+`Deno.env` / `Deno.serve`, `supabase-stub.js` replaces `npm:@supabase/supabase-js@2` (esbuild alias)
+and records calls, `fetch` is a fake Supabase Auth. Checks: `change-password` / `change-email` —
+no token, session older than 15 min → `reauth_required` and nothing changed; after re-login, Google
+(2 / 30 min), recovery link → ok; order ticket → admin update → sign out other sessions; the ticket
+carries no password; before 021 (no ticket RPC) still works; 10 changes per hour; email: invalid /
+placeholder domain / taken, the user's own token + publishable key for `PUT /auth/v1/user`;
+`login` wrong password counted (10, then `too_many_attempts`); `delete` and `recover` unchanged.
 
 ## Adding tests for a new migration
 

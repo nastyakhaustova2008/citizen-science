@@ -3,10 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
-import { useAppData } from '../../context/AppDataContext';
 import { normalizeUsername, usernameKey } from '../../lib/username';
 import { SkeletonText } from '../primitives';
 import { Field, FormError, Notice, isolate } from './AuthUI';
+import Reauth from './Reauth';
 
 export const DELETE_ACCOUNT_HASH = '#delete-account';
 
@@ -52,7 +52,6 @@ function DeletePanel({ onCancel }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { profile, accountDeletePreview, deleteAccount, finishAccountDeletion } = useAuth();
-  const { reloadMeasurements } = useAppData();
 
   const [preview, setPreview] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -94,10 +93,10 @@ function DeletePanel({ onCancel }) {
       setBusy(false);
       return;
     }
-    // Leave the (own) profile page first, then drop the local session.
-    navigate('/', { replace: true, state: { accountDeleted: true } });
+    // Leave the (own) profile page first, then drop the local session: finishAccountDeletion
+    // clears the stored session and reloads the home page, which says the account was deleted.
+    navigate('/', { replace: true });
     await finishAccountDeletion();
-    reloadMeasurements();
   }
 
   if (loadError) return <FormError code={loadError} />;
@@ -203,6 +202,11 @@ function DeletePanel({ onCancel }) {
 
       {reauth ? (
         <Reauth
+          idBase="delete"
+          googleReturn={`/profile${DELETE_ACCOUNT_HASH}`}
+          title={t('auth.deleteAccount.reauthTitle')}
+          text={t('auth.deleteAccount.reauthText')}
+          submitLabel={t('auth.deleteAccount.reauthSubmit')}
           onDone={() => {
             setReauth(false);
             setError(null);
@@ -228,84 +232,5 @@ function DeletePanel({ onCancel }) {
         </button>
       </div>
     </form>
-  );
-}
-
-/** "Sign in again": the password (username accounts) and/or Google, whichever this account has. */
-function Reauth({ onDone }) {
-  const { t } = useI18n();
-  const { profile, providers, logIn, logInWithGoogle } = useAuth();
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-
-  const hasGoogle = providers.includes('google');
-  const hasPassword = providers.includes('email') || !hasGoogle;
-
-  async function onPassword() {
-    if (!password || busy) return;
-    setError(null);
-    setBusy(true);
-    try {
-      await logIn({ username: profile.username, password });
-      setPassword('');
-      onDone();
-    } catch (err) {
-      setError(err.code || 'generic');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onGoogle() {
-    setError(null);
-    setBusy(true);
-    try {
-      await logInWithGoogle(`/profile${DELETE_ACCOUNT_HASH}`, { reauth: true });
-    } catch (err) {
-      setError(err.code || 'oauth');
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="space-y-3 rounded-lg border border-edge p-3 dark:border-white/10">
-      <p className="text-sm font-semibold">{t('auth.deleteAccount.reauthTitle')}</p>
-      <p className="text-sm text-ink-faint">{t('auth.deleteAccount.reauthText')}</p>
-      {hasPassword && (
-        <div className="space-y-2">
-          <Field id="delete-reauth-password" label={t('auth.password')}>
-            <input
-              id="delete-reauth-password"
-              type="password"
-              className="input"
-              dir="ltr"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => {
-                // Inside the delete form: Enter signs in, it must not submit the deletion.
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  onPassword();
-                }
-              }}
-            />
-          </Field>
-          <button type="button" className="btn-primary" disabled={busy || !password} onClick={onPassword}>
-            {busy ? t('auth.working') : t('auth.deleteAccount.reauthSubmit')}
-          </button>
-        </div>
-      )}
-      {hasGoogle && (
-        <button type="button" className="btn-secondary w-full" disabled={busy} onClick={onGoogle}>
-          <span className="font-bold" aria-hidden="true">
-            G
-          </span>
-          {t('auth.withGoogle')}
-        </button>
-      )}
-      <FormError code={error} />
-    </div>
   );
 }

@@ -1,8 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase, supabaseUrl, supabaseKey, authRedirectBase } from '../lib/supabase';
 import { isPlaceholderEmail, normalizeUsername } from '../lib/username';
 import { myAdminProfile, saveAdminProfile as saveAdminProfileRpc } from '../lib/labsApi';
 import { myAvatar as fetchMyAvatar } from '../lib/avatarsApi';
+import { EMAIL_FLOWS_ENABLED } from '../lib/authConfig';
+import { authStorage, beginSignIn, finishSignOut, isSharedSession, isSigningOut, markSigningOut } from '../lib/session';
 
 /**
  * Accounts (roadmap step 4a).
@@ -14,6 +16,14 @@ import { myAvatar as fetchMyAvatar } from '../lib/avatarsApi';
  *   are read-only for users.
  * - Admins also have an admin profile (step 5a: full name, workplace, position) — loaded here;
  *   until it is filled the database refuses every lab action (admin_profile_required).
+ * - Sessions (audit H6): "shared computer" sign-ins keep the session in sessionStorage and sign
+ *   out after inactivity (lib/session.js, components/auth/SessionUI.jsx). Every sign-out clears
+ *   both storages and reloads the page (finishSignOut) — also when the session ends elsewhere
+ *   ("sign out on all devices", password changed on another device).
+ * - Password / email changes go through the Edge Function (change-password / change-email): the
+ *   server wants a sign-in of THIS session within 15 minutes (else reauth_required → the UI asks
+ *   for the password or Google, components/auth/Reauth.jsx), and migration 021 refuses changes
+ *   made directly through Supabase Auth.
  * - My profile picture (017): { avatar, rejected, confirmerUsername, required } — admins need a
  *   confirmed face photo for lab work once the owner turns the switch on (admin_photo_required).
  * Error codes → strings.js auth.errors.<code>.
@@ -89,6 +99,9 @@ export function AuthProvider({ children }) {
   const [profileError, setProfileError] = useState(false);
   const [profileNonce, setProfileNonce] = useState(0);
   const [oauthError, setOauthError] = useState(null);
+  // A session existed in this page: its end (SIGNED_OUT from elsewhere) must clear and reload.
+  const hadSession = useRef(false);
+  const signedOutInfo = useRef({ google: false, shared: false });
 
   useEffect(() => {
     if (!supabase) return undefined;
@@ -104,7 +117,23 @@ export function AuthProvider({ children }) {
         window.history.replaceState(null, '', authRedirectBase() + window.location.hash);
       }
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      // Another tab's sign-in (supabase-js relays it): not this tab's session if this tab's storage
+      // doesn't hold it — a shared-computer session stays in its own tab.
+      if (next && event !== 'INITIAL_SESSION' && !authStorage.getItem(supabase.auth.storageKey)) return;
+      if (next) {
+        hadSession.current = true;
+        const providers = next.user?.app_metadata?.providers || [];
+        signedOutInfo.current = { google: providers.includes('google'), shared: isSharedSession() };
+      }
+      // Ended elsewhere (all devices, refresh refused, another tab): same clean-up as a sign-out.
+      if (event === 'SIGNED_OUT' && hadSession.current && !isSigningOut()) {
+        markSigningOut();
+        finishSignOut({ reason: 'expired', ...signedOutInfo.current });
+        return;
+      }
+      setSession(next);
+    });
     return () => {
       alive = false;
       sub.subscription.unsubscribe();
@@ -190,37 +219,85 @@ export function AuthProvider({ children }) {
     return saved;
   }, []);
 
-  const signUp = useCallback(async ({ username, password, email }) => {
-    const data = await callAccount({ action: 'signup', username: normalizeUsername(username), password });
-    await startSession(data.session);
-    if (!email) return { emailSent: false };
-    // Same flow as "add email" in the profile: Supabase sends a confirmation link to it.
-    const { error } = await supabase.auth.updateUser(
-      { email: email.trim() },
-      { emailRedirectTo: authRedirectBase() },
-    );
-    return error ? { emailSent: false, emailError: mapAuthError(error) } : { emailSent: true };
+  /** Password / email change through the Edge Function (recent sign-in checked on the server). */
+  const callWithSession = useCallback(async (body) => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new AuthError('not_logged_in');
+    return callAccount(body, token);
   }, []);
 
-  const logIn = useCallback(async ({ username, password }) => {
+  const changeEmail = useCallback(
+    async (email) => {
+      await callWithSession({ action: 'change-email', email: email.trim(), redirectTo: authRedirectBase() });
+      await supabase.auth.refreshSession(); // shows the pending address (user.new_email)
+    },
+    [callWithSession],
+  );
+
+  /** Signs out the other sessions of this account too (the server does it after the change). */
+  const changePassword = useCallback(
+    (password) => callWithSession({ action: 'change-password', password }),
+    [callWithSession],
+  );
+
+  /** shared: the "shared computer" checkbox (session in sessionStorage, sign-out after inactivity). */
+  const signUp = useCallback(
+    async ({ username, password, email, shared }) => {
+      const data = await callAccount({ action: 'signup', username: normalizeUsername(username), password });
+      beginSignIn(Boolean(shared));
+      await startSession(data.session);
+      if (!email || !EMAIL_FLOWS_ENABLED) return { emailSent: false };
+      // Same flow as "add email" in the profile: Supabase sends a confirmation link to it.
+      try {
+        await changeEmail(email);
+        return { emailSent: true };
+      } catch (err) {
+        return { emailSent: false, emailError: err.code || 'generic' };
+      }
+    },
+    [changeEmail],
+  );
+
+  /** shared: undefined = keep this tab's mode (signing in again to confirm it is you). */
+  const logIn = useCallback(async ({ username, password, shared }) => {
     const data = await callAccount({ action: 'login', username: normalizeUsername(username), password });
+    if (shared !== undefined) beginSignIn(Boolean(shared));
     await startSession(data.session);
   }, []);
 
-  /** reauth: always show Google's account chooser (confirming it is you, e.g. before deleting). */
-  const logInWithGoogle = useCallback(async (next = '/', { reauth = false } = {}) => {
+  /**
+   * reauth: confirming it is you (e.g. before deleting). Google's account chooser is shown then and
+   * on shared computers — the browser may still be signed in to someone else's Google account.
+   */
+  const logInWithGoogle = useCallback(async (next = '/', { reauth = false, shared } = {}) => {
+    if (shared !== undefined) beginSignIn(Boolean(shared));
+    const chooser = reauth || isSharedSession();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${authRedirectBase()}#${next}`,
-        ...(reauth ? { queryParams: { prompt: 'select_account' } } : {}),
+        ...(chooser ? { queryParams: { prompt: 'select_account' } } : {}),
       },
     });
     if (error) throw new AuthError('oauth');
   }, []);
 
-  const logOut = useCallback(async () => {
-    await supabase.auth.signOut();
+  /**
+   * Sign out: scope 'local' (this browser; the server ends this session) or 'global' (every
+   * device). reason (for the message after the reload): 'manual' | 'global' | 'idle'.
+   * Always clears the stored session and reloads, even if the server can't be reached.
+   */
+  const logOut = useCallback(async ({ scope = 'local', reason } = {}) => {
+    const info = { ...signedOutInfo.current, shared: isSharedSession() };
+    markSigningOut();
+    try {
+      const { error } = await supabase.auth.signOut({ scope });
+      if (error) console.warn('[auth] sign out', error.code || error.message);
+    } catch (err) {
+      console.warn('[auth] sign out', err?.message);
+    }
+    finishSignOut({ ...info, reason: reason || (scope === 'global' ? 'global' : 'manual') });
   }, []);
 
   /**
@@ -266,7 +343,10 @@ export function AuthProvider({ children }) {
 
   /** After deleteAccount: the server sessions are gone, so only the local one is cleared. */
   const finishAccountDeletion = useCallback(async () => {
-    await supabase.auth.signOut({ scope: 'local' });
+    const info = { ...signedOutInfo.current, shared: isSharedSession() };
+    markSigningOut();
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    finishSignOut({ ...info, reason: 'deleted' });
   }, []);
 
   /**
@@ -305,19 +385,6 @@ export function AuthProvider({ children }) {
     [reloadProfile],
   );
 
-  const changeEmail = useCallback(async (email) => {
-    const { error } = await supabase.auth.updateUser(
-      { email: email.trim() },
-      { emailRedirectTo: authRedirectBase() },
-    );
-    if (error) throw new AuthError(mapAuthError(error));
-  }, []);
-
-  const changePassword = useCallback(async (password) => {
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) throw new AuthError(mapAuthError(error));
-  }, []);
-
   /** Email link (token_hash template): type 'recovery' | 'email_change' | 'email'. */
   const verifyEmailLink = useCallback(async ({ tokenHash, type }) => {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
@@ -344,6 +411,8 @@ export function AuthProvider({ children }) {
     () => ({
       configured: Boolean(supabase),
       session,
+      // This tab's session is a "shared computer" one (sessionStorage, sign-out after inactivity).
+      sharedSession: Boolean(session) && isSharedSession(),
       user,
       email,
       pendingEmail,
