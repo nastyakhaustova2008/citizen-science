@@ -24,7 +24,10 @@ The script:
 2. loads `supabase_stubs.sql`: minimal stand-ins for what Supabase provides (API roles, `auth.uid()`,
    `storage.objects`, `cron.schedule`, `vault`). pg_cron isn't installed locally, so its
    `create extension` line is skipped;
-3. applies all migrations and seeds in the order from CLAUDE.md;
+3. applies all migrations and seeds in the order from CLAUDE.md (the list is in `run.sh`):
+   001 → seed 001 → 002 → seed 002 → 003 → 004 → seed 003 → 005 → 006 → 007 → 008 → 009 →
+   010 → seed 004 → 011 → 012 → 013 → 013b → 014 → 015 → 016 → 017. Then, for 018:
+   `018/before.sql` → 018 → 018 again (it must be safe to re-run) → `018/tests.sql` → the mirror check;
 4. runs the tests of each migration that has a folder here. The last line says
    `ALL TESTS PASSED`; if any test failed, the exit code is 1.
 
