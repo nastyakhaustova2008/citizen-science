@@ -22,6 +22,7 @@ const CODES = [
   'link_domain_not_allowed',
   'edit_window_closed',
   'comment_hidden',
+  'comment_under_review',
   'already_reported',
   // allowed link domains
   'invalid_domain',

@@ -3,7 +3,15 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { LoadingBlock } from '../../components/primitives';
-import { AuthCard, FormError, PrivacyConsent, UsernameField, loginPath, safeNext } from '../../components/auth/AuthUI';
+import {
+  AuthCard,
+  FormError,
+  PrivacyConsent,
+  UsernameField,
+  loginPath,
+  safeNext,
+  usernameUsable,
+} from '../../components/auth/AuthUI';
 
 /** First Google sign-in: the profile has no username yet. Chosen once. */
 export default function ChooseUsernamePage() {
@@ -23,7 +31,7 @@ export default function ChooseUsernamePage() {
 
   async function onSubmit(e) {
     e.preventDefault();
-    if (status !== 'available') return;
+    if (!usernameUsable(status)) return;
     setError(null);
     setBusy(true);
     try {
@@ -43,7 +51,7 @@ export default function ChooseUsernamePage() {
         <UsernameField id="choose-username" value={username} onChange={setUsername} status={status} onStatus={setStatus} />
         <p className="text-xs text-ink-faint">{t('auth.privacyNoteGoogle')}</p>
         <FormError code={error} />
-        <button type="submit" className="btn-primary w-full" disabled={busy || status !== 'available'}>
+        <button type="submit" className="btn-primary w-full" disabled={busy || !usernameUsable(status)}>
           {busy ? t('auth.working') : t('auth.chooseSubmit')}
         </button>
       </form>

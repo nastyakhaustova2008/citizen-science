@@ -155,8 +155,7 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
 
 ### Later — a small migration
 
-* Stop accepting the old photo value `true` for new measurements (after PR 1 is in production).
-  (The number 018 went to the measurement limits below.)
+* ~~Stop accepting the old photo value `true` for new measurements~~ — done in migration 022.
 
 ## Audit fixes (September 2026)
 
@@ -180,8 +179,8 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
   logged-in users only; the only public names are admins' credits on labs (full name, position,
   workplace). Enforced in the database (column privileges on `measurements`, no anon access to
   `profiles`); only the participant count per lab is a SECURITY DEFINER function. Logged-in users
-  see everything as before. Accepted residual: `username_available` still says whether a guessed
-  username is taken (needed for sign-up) — consider a rate limit in the hardening task (M9).
+  see everything as before. Accepted residual: whether a guessed username is taken can be asked
+  (needed for sign-up) — rate-limited per network since 022.
   Deploy order: code first, then 020 (`SETUP_AUTH.md` → 23).
 * **Account security on shared computers + honest password recovery (H6) — done (migration 021,
   Edge Function `account`).** Most users are minors on shared school computers.
@@ -206,3 +205,23 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
     log-out; a token stolen within 15 minutes of a log-in passes the recency check; browsers that
     restore the last session can bring back a "shared computer" login. Deploy order: Edge Function
     → code → 021 (`SETUP_AUTH.md` → 24).
+* **Final hardening, part A (audit Medium / Low) — done (migration 022, Edge Function `account`).**
+  * Email links return only to production or localhost (no preview wildcard, ever).
+  * Log-in lockout (M3): wrong passwords counted per username **and** network + a higher cap per
+    username — someone else's guesses don't lock a student out.
+  * Username squatting (M9): the database takes a username at sign-up only from accounts the Edge
+    Function created; never-confirmed accounts without a name or data are deleted after 7 days.
+    "Is this name free?" only through the Edge Function (300 checks / 10 min per network).
+  * Reports (M4): only accounts older than 48 hours count towards hiding (still 3); one person → one
+    author: 5 reports a day. A reported or hidden comment can't be edited or deleted by its author
+    (M6). Main admins moderate only pictures of people below them (L1).
+  * Upload limits count uploads (L2), with a "limit reached" / "storage full" message; kill switch
+    `upload_limit_by_hits`. Photo value `true` refused.
+  * Sessions unused for 30 days end; admins see admin profiles of current admins only; RLS on the
+    private settings / trash tables; FK indexes; lab-revision lock order; trigger functions not
+    callable through the API.
+  * Residual: `set_my_username` has no failure limit (a failed call rolls back its own counter);
+    it needs a logged-in Google account without a username.
+  * Deploy order: read-only checks → Edge Function → code → 022 (`SETUP_AUTH.md` → 25).
+* **Final hardening, parts B and C** — next: moderation queues and mock data (B), privacy re-check,
+  security headers, dependencies, bundle size, docs (C).

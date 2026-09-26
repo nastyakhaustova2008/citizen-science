@@ -53,12 +53,18 @@ Then **Authentication → Rate Limits → "Rate limit for sending emails"**: `30
 **Authentication → URL Configuration:**
 
 * **Site URL:** `https://<prod>/`
-* **Redirect URLs** (Add URL, one per line):
+* **Redirect URLs** (Add URL, one per line) — **exactly these two, nothing else:**
   * `https://<prod>/**`
-  * `https://*-<team>.vercel.app/**` — all Vercel preview deployments
   * `http://localhost:5173/**` — local dev
 
 Email links and Google return here. A URL not on this list silently falls back to the Site URL.
+
+**Never add a wildcard for Vercel previews** (such as `https://*-<team>.vercel.app/**` or
+`https://*.vercel.app/**`). Anyone can create a Vercel project whose preview address matches such
+a pattern; a password-reset or email-confirmation link that points there would hand the one-time
+code to that site. The Edge Function `account` also accepts `redirectTo` only for production and
+localhost (`REDIRECT_ORIGINS`, step 25). Consequence: **Google sign-in and email links are tested
+on production only** (on a preview, Google sign-in returns you to production).
 
 ## 4. Supabase — sign-in settings
 
@@ -132,8 +138,12 @@ current production code. **Do not run 007 yet** (step 11).
    → Save. (Callers are not logged in yet; the publishable key is not a JWT.)
 4. Optional secrets (**Edge Functions → Secrets**), defaults in brackets:
    `SIGNUP_LIMIT_PER_IP` (30/hour — a whole class behind one school NAT must fit),
-   `SIGNUP_LIMIT_GLOBAL` (150/hour), `LOGIN_FAIL_LIMIT_PER_USER` (10 per 15 min),
-   `RECOVER_LIMIT_PER_IP` (20/hour), `RECOVER_LIMIT_PER_USER` (3/hour), `CLIENT_IP_HEADER` (auto).
+   `SIGNUP_LIMIT_GLOBAL` (150/hour), `LOGIN_FAIL_LIMIT_PER_USER` (10 wrong passwords per username
+   and IP per 15 min), `LOGIN_FAIL_LIMIT_PER_USER_ALL` (100 wrong passwords per username per hour,
+   all IPs), `USERNAME_CHECK_LIMIT_PER_IP` (300 per 10 min), `USERNAME_CHECK_LIMIT_GLOBAL`
+   (5000 per 10 min), `RECOVER_LIMIT_PER_IP` (20/hour), `RECOVER_LIMIT_PER_USER` (3/hour),
+   `CLIENT_IP_HEADER` (auto), `REDIRECT_ORIGINS` (production + `http://localhost:5173`; only
+   change it if the production address changes — never a wildcard).
    Changing a secret needs no redeploy.
 
 ### 8a. Check that the client IP cannot be spoofed
@@ -848,3 +858,117 @@ the same). The function works before 021 too (it skips the ticket while the RPC 
    `supabase/rollback/021_session_security_rollback.sql` (the frontend and function keep working).
    To set a password for someone by hand (not planned — admins don't reset passwords): turn the
    switch off, do it, turn it on again.
+
+## 25. Final hardening, part A (audit Medium / Low) — migration 022 + Edge Function `account`
+
+What changes:
+* **Email links** (password reset, email confirmation) may return only to production or
+  `http://localhost:5173` (`REDIRECT_ORIGINS` in the function); anything else → the Site URL.
+* **Log-in lockout (M3):** wrong passwords are counted per username **and** network (10 per 15 min),
+  plus 100 per username per hour from all networks — someone guessing from home can't lock a
+  student out at school.
+* **Username squatting (M9):** the database takes a username at sign-up only from accounts the
+  Edge Function created (a mark in `app_metadata` that the public sign-up API can't set). Accounts
+  started through Supabase's own API that never confirm an email, have no username and no data are
+  deleted after 7 days (daily cleanup).
+* **"Is this name free?"** goes through the Edge Function (`username-check`, 300 per 10 min per
+  network); the browser can no longer call `username_available` directly.
+* **Reports (M4):** only reporters whose account is older than 48 hours count towards hiding a
+  comment / photo / student picture (still 3); one person can report the same author at most 5
+  times a day. **Comments under review (M6):** the author can't delete or edit a comment that is
+  hidden or has an open report. **Pictures (L1):** main admins moderate only people below them.
+* **Upload limits (L2):** 30 photos / 10 profile pictures per 24 h now count uploads (deleting a
+  file no longer frees a slot); the page says "limit reached" or "storage full" instead of a
+  general error.
+* **Photos:** the old value `true` (a photo "attached" without a file) is refused.
+* Sessions not used for **30 days** are ended by the daily cleanup; admins see the admin profile
+  (full name, workplace) only of current admins; RLS on `private.settings` / `storage_trash`;
+  trigger functions not callable through the API; 11 foreign-key indexes; lab-revision lock order.
+
+**Order: read-only checks → Edge Function → preview → merge → production deploy → 022 → tests on
+production.** The new function works with the old frontend and before 022 (it skips the new RPC
+while it is missing). 022 must come **after** the production deploy: it closes
+`username_available` for browsers, and the old frontend uses it for the "name is free" hint (sign-up
+itself would still work).
+
+0. Optional, on a computer with PostgreSQL 16: `supabase/tests/run.sh` → `ALL TESTS PASSED`
+   (022 database tests + rollback, `account/`: redirect list, log-in lockout, sign-up mark,
+   username-check limit). With `POSTGREST_BIN` set, the 019/020 API tests run too.
+1. **Read-only checks on production, before anything else** (SQL Editor → New query → paste → Run;
+   they change nothing):
+   * `supabase/checks/022_signup_cleanup_preview.sql` — three result tables (in the SQL Editor
+     each one appears after the previous; scroll or run the parts one by one). Part 1: kinds of
+     accounts; rows with `would_delete = true` are what the cleanup would remove. Part 2: those
+     accounts one by one (date, provider, confirmed?, has username?, ever signed in?) — **no emails
+     or names are shown**. Part 3: how many sign-in sessions are older than 30 days without use.
+     **If any `would_delete` account looks like a real person (e.g. provider `google`, or
+     `ever_signed_in = true`), stop and tell me** — don't run 022.
+   * `supabase/checks/022_legacy_photo_true.sql` — expected: no rows.
+   * `supabase/checks/022_unindexed_fks.sql` — expected now: 11 rows (after 022: none).
+   * **Authentication → URL Configuration → Redirect URLs:** verify the list is exactly
+     `https://<prod>/**` and `http://localhost:5173/**` (step 3). Nothing to change if so.
+2. **Edge Function** → Dashboard → **Edge Functions** → `account` → **Code** → select all, paste the
+   whole `supabase/functions/account/index.ts` → **Deploy** ("Verify JWT" stays OFF). No new secrets
+   are needed (optional ones: step 8.4). Quick check on production (still the old frontend):
+   sign up a new test account → you are logged in and the header shows its name; log out; log in;
+   one wrong password → "wrong username or password".
+3. **Preview of the branch, before 022** (360 px, he / en / ru):
+   * Sign-up: type a free name → "Username is available"; a taken one → "taken" (the hint now comes
+     from the Edge Function; wait ~½ s after typing). Sign up → logged in, name in the header.
+   * Choose-a-name page can't be reached on a preview (Google returns to production) — tested in step 6.
+   * Log in with a wrong password 3 times, then the right one → works.
+   * Comments, photos, profile pictures: work as before (the new rules start with 022).
+   * Upload a measurement photo and a profile picture → both work (the new limits start with 022).
+4. Merge → **wait for the production deploy** (Vercel → Deployments → Production → Ready).
+5. SQL Editor → paste and run `supabase/migrations/022_hardening.sql`. Safe to re-run. Checks:
+
+   ```sql
+   select has_function_privilege('anon', 'public.username_available(text)', 'execute');   -- false
+   select value from private.settings where key = 'upload_limit_by_hits';                 -- true
+   select count(*) from pg_policies where schemaname = 'storage' and tablename = 'objects'
+     and cmd = 'INSERT' and with_check like '%_upload_take(name)%';                        -- 2
+   select private.privacy_cleanup();
+     -- has "sessions" and "unconfirmed_signups" with NUMBERS; if either says "error", tell me
+     -- (Dashboard → Logs → Postgres shows the reason) — the rest of the cleanup still ran.
+   ```
+   Then `supabase/checks/022_unindexed_fks.sql` → no rows.
+6. **Tests on production after 022** (use test accounts, not real students):
+   * **Uploads (L2) — right away, because the new check runs inside Storage's own upload:**
+     1. Profile → upload a profile picture → works. Remove it, upload another → works.
+     2. Add a measurement with a photo (a lab with a photo field) → sent, photo visible to you.
+     3. Hit the picture limit: upload profile pictures until the 11th in 24 h (10 is the limit,
+        the ones from 1. count) → "You reached the limit: 10 pictures in 24 hours".
+     4. Hit the photo limit without 30 uploads: in SQL Editor, with the test account's name,
+        (the first line empties this account's photo counter, the second fills in 29):
+        ```sql
+        delete from private.rate_limit_hits where bucket = 'photo_upload:user:' ||
+          (select id from public.profiles where username = '<test name>')::text;
+        insert into private.rate_limit_hits (bucket)
+        select 'photo_upload:user:' || (select id from public.profiles where username = '<test name>')
+        from generate_series(1, 29);
+        ```
+        → one more measurement with a photo works (30th), the next one says "30 photos in 24
+        hours". Clean up: run the `delete …` line again.
+     5. **If uploads fail for everyone** ("can't upload right now") — kill switch, no redeploy:
+        `update private.settings set value = 'false' where key = 'upload_limit_by_hits';`
+        → uploads use the old rule again; tell me. Back on: the same with `'true'`.
+   * Sign-up name hint (free / taken) works; sign up a new account → name shown.
+   * Google sign-in with a new Google test account → "choose a name" page, the hint works, the name
+     is saved. An existing Google account signs in as before.
+   * Log in with a wrong password 3 times from your phone on mobile data, then the right one from
+     the computer → works.
+   * Comment M6: account B reports account A's comment; A tries to delete / edit it → "Someone
+     reported this comment…"; after a moderator presses "keep" → A can delete it.
+   * Reports M4: 3 reports from accounts created today → the comment stays visible (the reports are
+     in the moderation queue). Hiding needs 3 accounts older than 2 days.
+   * Main admin: can't hide / delete the owner's or another main admin's photo (error); can a
+     student's picture. Owner: can any.
+   * Forgot password (explanation only, as before) — no change.
+7. **If something breaks:**
+   * Uploads → the kill switch in 6.5.
+   * Anything else → `supabase/rollback/022_hardening_rollback.sql` (puts back the 006–021 versions;
+     keeps indexes and RLS). The new frontend and Edge Function keep working after a rollback.
+
+**Emergency stop for the cleanup of unconfirmed sign-ups** (if the preview in step 1 was wrong):
+the cleanup runs daily at 03:17 UTC. To stop it at once, re-run the 021 version of the cleanup from
+`supabase/rollback/022_hardening_rollback.sql` (only the `private.privacy_cleanup` part), and tell me.

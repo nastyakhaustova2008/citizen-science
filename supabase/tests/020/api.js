@@ -15,6 +15,7 @@
 //    panel, statistics, home numbers): none fails, none returns an identifier.
 // 4. Logged in (student, then admin): the same queries with authors work as before; profiles
 //    and the profile page's query work; credits stay public.
+import './browser-env.js';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -165,7 +166,6 @@ function sampleArgs(fn) {
 for (const fn of rpcs) {
   const r = await raw(`/rpc/${fn}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sampleArgs(fn)) });
   const text = await r.text();
-  // username_available answers taken/available for a guessed name (accepted residual, CLAUDE.md).
   const found = leak(text);
   check(`rpc ${fn} (anon): no identifier in the answer`, !found, found || `${r.status} ${text.slice(0, 80)}`);
 }

@@ -29,10 +29,10 @@ The script:
    010 → seed 004 → 011 → 012 → 013 → 013b → 014 → 015 → 016 → 017. Then, for 018:
    `018/before.sql` → 018 → 018 again (it must be safe to re-run) → `018/tests.sql` → the mirror check;
    then 019 twice → `019/bulk.sql` (3000+ measurements, above the API's 1000-row limit) →
-   `019/tests.sql` → `019/mirror.*`; then 020 twice → 021 twice → `020/tests.sql` (its allow-lists
-   must still hold with 021) → `021/tests.sql`; then (needs PostgREST, see below) `019/api.js` →
-   `020/api.js`; then `021/rollback.sql` → `account/test.js` (the Edge Function, no database);
-   last `020/rollback.sql`;
+   `019/tests.sql` → `019/mirror.*`; then 020 twice → 021 twice → 022 twice → `020/tests.sql` (its
+   allow-lists must still hold with 021 and 022) → `021/tests.sql` → `022/tests.sql`; then (needs
+   PostgREST, see below) `019/api.js` → `020/api.js`; then `021/rollback.sql` → 022 again →
+   `022/rollback.sql` → `account/test.js` (the Edge Function, no database); last `020/rollback.sql`;
 4. runs the tests of each migration that has a folder here. The last line says
    `ALL TESTS PASSED`; if any test failed, the exit code is 1.
 
@@ -45,6 +45,9 @@ It takes a few seconds. If you run it as root, the database server runs as the `
 | `018/` | `018_measurement_limits.sql` | see below |
 | `019/` | `019_row_limits.sql` | see below |
 | `020/` | `020_hide_identities.sql` | see below |
+| `021/` | `021_session_security.sql` | guard on `auth.users`, tickets, kill switch, rollback |
+| `022/` | `022_hardening.sql` | every part of 022 (see the header of `022/tests.sql`) + rollback |
+| `account/` | Edge Function `account` | re-auth, change password / email, log-in limit per username + IP, redirect allow-list, sign-up mark + safety net, username-check limit |
 
 **`018/`** runs its files in this order:
 
@@ -156,3 +159,9 @@ placeholder domain / taken, the user's own token + publishable key for `PUT /aut
 
 `t_ins` inserts as a logged-in user (role `authenticated` + JWT `sub`, like the API).
 `t_sql` runs SQL as the SQL Editor would.
+
+**PostgREST for the API tests:** download the static Linux binary of PostgREST 12 from its GitHub
+releases (`postgrest-v12.2.3-linux-static-x64.tar.xz`), unpack it and run
+`POSTGREST_BIN=/path/to/postgrest supabase/tests/run.sh`. `020/browser-env.js` gives the app's
+code in-memory `localStorage` / `sessionStorage` (since 021 the session lives there); test helper
+tables and functions (`t21_*`, `t22_*`) are closed to anon so the anon OpenAPI stays exact.

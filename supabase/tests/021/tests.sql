@@ -41,16 +41,32 @@ declare r text; begin execute p_sql into r; return r; end $$;
 create function public.t21_tickets(p_user uuid) returns bigint language sql as $$
   select count(*) from private.auth_change_tickets where user_id = p_user $$;
 
+
+-- Test helpers are not part of the API (PostgREST would list them for anon: 020/api.js).
+do $$
+declare r record;
+begin
+  for r in select oid::regprocedure::text as f from pg_proc
+           where pronamespace = 'public'::regnamespace and proname ~ '^t21(_|$)' loop
+    execute 'revoke all on function ' || r.f || ' from public, anon, authenticated';
+  end loop;
+  for r in select oid::regclass::text as t from pg_class
+           where relnamespace = 'public'::regnamespace and relkind = 'r' and relname ~ '^t21_' loop
+    execute 'revoke all on ' || r.t || ' from public, anon, authenticated';
+  end loop;
+end $$;
+
 \set U  '''21000000-0000-4000-8000-000000000001'''
 \set G  '''21000000-0000-4000-8000-000000000002'''
 \set D  '''21000000-0000-4000-8000-000000000003'''
 
 -- ---- 1. what the guard must not block ---------------------------------------------------------
 -- Sign-up (Edge Function createUser → insert with a password).
+-- (022: the username is taken only with the Edge Function's sign-up mark in app_metadata.)
 select public.t21('sign-up: insert with a password works (username account)',
-  public.t21_auth($q$insert into auth.users (id, email, email_confirmed_at, encrypted_password, raw_user_meta_data)
+  public.t21_auth($q$insert into auth.users (id, email, email_confirmed_at, encrypted_password, raw_user_meta_data, raw_app_meta_data)
     values ('21000000-0000-4000-8000-000000000001', 'u1@noemail.mitzpe.invalid', now(), '$2a$10$first',
-            '{"mitzpe_username":"pwtest21"}')$q$) = 'ok'
+            '{"mitzpe_username":"pwtest21"}', '{"provider":"email","mitzpe_signup":true}')$q$) = 'ok'
   and public.t21_q($q$select username from public.profiles where id = '21000000-0000-4000-8000-000000000001'$q$) = 'pwtest21');
 
 -- Username sign-in: last_sign_in_at, and (key rotation / cost change) the SAME password re-written.
@@ -168,8 +184,8 @@ select public.t21('guard: SECURITY DEFINER with empty search_path',
    where p.oid in ('private.auth_users_change_guard()'::regprocedure, 'public.account_change_ticket(uuid,text,text)'::regprocedure)));
 
 -- ---- 5. account deletion still works ----------------------------------------------------------
-insert into auth.users (id, email, email_confirmed_at, encrypted_password, raw_user_meta_data)
-values (:D, 'd@noemail.mitzpe.invalid', now(), '$2a$10$d', '{"mitzpe_username":"deltest21"}');
+insert into auth.users (id, email, email_confirmed_at, encrypted_password, raw_user_meta_data, raw_app_meta_data)
+values (:D, 'd@noemail.mitzpe.invalid', now(), '$2a$10$d', '{"mitzpe_username":"deltest21"}', '{"mitzpe_signup":true}');
 select public.account_change_ticket(:D, 'password');
 create temp table t21_prep as select public.account_delete_prepare(:D, 'deltest21', false) as p;
 select public.t21('deletion: prepare ok, auth user deleted (as Supabase Auth), pending ticket cascades',

@@ -225,8 +225,8 @@
             <li>
               <strong>Admin profile</strong> (admins only) — your <strong>full name</strong>, <strong>workplace</strong>
               (school or organization) and, if you want, your <strong>position</strong> (for example “physics teacher”).
-              Other admins can see it, and it is <strong>shown publicly on the labs you create or approve</strong>, so
-              everyone knows who prepared and checked each lab. Until you fill in your full name and workplace you cannot
+              Other admins can see it while you are an admin, and it is <strong>shown publicly on the labs you create or
+              approve</strong>, so everyone knows who prepared and checked each lab. Until you fill in your full name and workplace you cannot
               work on labs.
             </li>
             <li>
@@ -267,7 +267,8 @@
             <li>
               <strong>What you write</strong>, the language the site was in when you wrote it (for automatic translation
               in the future), when you wrote it and, if you changed it, when (“edited”). A comment can be edited only in
-              the first 15 minutes.
+              the first 15 minutes. While someone's report about your comment is open, or the comment is hidden, you
+              can't change or delete it — an admin checks it first.
             </li>
             <li>
               <strong>“Problem” reports</strong> about a measurement are stored as comments too (marked in red).
@@ -275,7 +276,9 @@
             <li>
               <strong>Reports about a comment</strong> — if you report someone's comment, we store that you reported it,
               the reason you chose and when, so each person can report a comment only once. Nobody on the site sees who
-              reported. A comment with 3 reports is hidden until an admin checks it.
+              reported. A comment with 3 reports is hidden until an admin checks it (only reports from accounts older
+              than two days count for this; newer ones still go to the admins). One person can report the same
+              writer at most 5 times a day.
             </li>
             <li>
               <strong>Safety rules, checked by our server:</strong> comments can't contain phone numbers or email
@@ -308,7 +311,8 @@
             </li>
             <li>
               <strong>Reports and moderation</strong> — like comments: anyone logged in can report a photo (we store the
-              reason and when, nobody sees who reported), and a photo with 3 reports is hidden until an admin checks it.
+              reason and when, nobody sees who reported), and a photo with 3 reports from accounts older than two days is
+              hidden until an admin checks it.
               We record which admin approved, hid or deleted whose photo, when and why — <strong>not the photo itself</strong>.
               Only admins can see this record.
             </li>
@@ -336,9 +340,10 @@
             </li>
             <li>
               <strong>Reports and moderation</strong> — anyone logged in can report a picture (we store the reason and
-              when; nobody sees who reported). A student picture with 3 reports is hidden until a main admin checks it; an
-              admin photo is never hidden automatically. Main admins and the owner can hide, show again or delete
-              pictures. We record who uploaded, confirmed, rejected, hid or deleted a picture, when and why —
+              when; nobody sees who reported). A student picture with 3 reports from accounts older than two days is
+              hidden until a main admin checks it; an
+              admin photo is never hidden automatically. Main admins can hide, show again or delete the pictures of
+              students and admins; only the owner can do this to a main admin's photo. We record who uploaded, confirmed, rejected, hid or deleted a picture, when and why —
               <strong>not the picture itself</strong>. Only admins can see this record.
             </li>
             <li>
@@ -354,13 +359,17 @@
               to keep accounts safe.
             </li>
             <li>
-              A <strong>scrambled (hashed) form of your IP address</strong> — used to block anyone who tries to sign up
-              or log in too many times.
+              A <strong>scrambled (hashed) form of your IP address</strong> — used to block anyone who tries too many
+              times to sign up, to log in with a wrong password, to check which usernames are taken, or to reset a
+              password. Wrong passwords are counted per username <em>and</em> network, so someone guessing from another
+              place can't lock you out.
             </li>
             <li>
-              A short record that <strong>your account</strong> posted a comment or a report, or added a measurement —
-              used to stop too many in a short time (comments: up to 5 a minute, 30 an hour, 100 a day; measurements:
-              up to 10 a minute, 60 an hour, 200 a day).
+              A short record that <strong>your account</strong> posted a comment, reported a comment, photo or picture
+              (and whose), added a measurement or uploaded a photo or picture; and, by username, wrong passwords and
+              password-reset requests — used to stop too many in a short time (comments: up to 5 a minute, 30 an
+              hour, 100 a day; reports: 20 a day, at most 5 about the same person; measurements: up to 10 a minute,
+              60 an hour, 200 a day; photos: 30 a day; profile pictures: 10 a day).
             </li>
             <li>
               <strong>Your browser's local storage</strong> keeps your language, light/dark theme, whether this is a
@@ -438,10 +447,18 @@
               a shared scientific dataset — see “Deleting your account”.)
             </li>
             <li>
-              <strong>Login records (IP address and device)</strong> — while you are logged in, and in our security log for
-              <strong>up to 30 days</strong>.
+              <strong>Logins</strong> — a login that isn't used for <strong>30 days</strong> ends automatically (you
+              then log in again); on a shared computer it ends when the browser is closed or after 30 minutes without
+              use. Login records (IP address and device) stay in our security log for <strong>up to 30 days</strong>.
             </li>
-            <li><strong>Hashed IP addresses</strong> used to block too many attempts — deleted after one day.</li>
+            <li>
+              <strong>Hashed IP addresses and the other records used to block too many attempts</strong> — deleted
+              within two days.
+            </li>
+            <li>
+              <strong>Unfinished sign-ups</strong> — an account that was started outside our sign-up page, never
+              confirmed its email and has no username and nothing else is deleted after 7 days.
+            </li>
             <li>
               <strong>The log of role and username changes</strong> — while your account exists. When the account is
               deleted, your usernames are erased from the log.
@@ -449,7 +466,8 @@
             <li>
               <strong>Admin profile</strong> — while your account exists. If you stop being an admin, your name, workplace
               and position <strong>stay on the labs you created or approved</strong> (they are a record of who prepared
-              and checked the lab), but are not shown anywhere else. You can ask us to correct them. They are deleted with
+              and checked the lab, also in the review history admins see for those labs), but are not shown anywhere
+              else, not even to other admins. You can ask us to correct them. They are deleted with
               your account.
             </li>
             <li>
@@ -465,7 +483,6 @@
               <strong>The comment moderation log</strong> (no text) — kept; when an account is deleted, it no longer
               points to that user.
             </li>
-            <li><strong>Records used to limit how many comments you post</strong> — deleted after one day.</li>
             <li>
               <strong>Photos of measurements</strong> — until you delete them, an admin deletes them, or your account is
               deleted. Hidden photos are deleted automatically <strong>90 days</strong> after they were hidden. A photo that
@@ -631,7 +648,7 @@
             <li>
               <strong>Профиль администратора</strong> (только у администраторов) — ваше <strong>полное имя</strong>,
               <strong>место работы</strong> (школа или организация) и, по желанию, <strong>должность</strong> (например,
-              «учитель физики»). Его видят другие администраторы, и он <strong>публично показывается на лабораторных,
+              «учитель физики»). Его видят другие администраторы, пока вы администратор, и он <strong>публично показывается на лабораторных,
               которые вы создали или одобрили</strong>, — чтобы все знали, кто подготовил и проверил каждую лабораторную.
               Пока не заполнены полное имя и место работы, работать с лабораторными нельзя.
             </li>
@@ -673,13 +690,16 @@
             <li>
               <strong>Что вы написали</strong>, на каком языке был сайт в этот момент (для автоматического перевода в
               будущем), когда вы написали и, если вы исправляли текст, когда («изменено»). Комментарий можно изменить
-              только в первые 15 минут.
+              только в первые 15 минут. Пока на ваш комментарий есть нерассмотренная жалоба или он скрыт, изменить или
+              удалить его нельзя — сначала его проверит администратор.
             </li>
             <li><strong>Сообщения о проблеме</strong> с измерением тоже хранятся как комментарии (отмечены красным).</li>
             <li>
               <strong>Жалобы на комментарий</strong> — если вы пожаловались на чужой комментарий, мы храним, что вы
               пожаловались, выбранную причину и время, чтобы каждый мог пожаловаться только один раз. На сайте никто не
-              видит, кто пожаловался. Комментарий с 3 жалобами скрывается, пока его не проверит администратор.
+              видит, кто пожаловался. Комментарий с 3 жалобами скрывается, пока его не проверит администратор (для этого
+              считаются только жалобы от аккаунтов старше двух дней; остальные тоже попадают к администраторам). Один
+              человек может пожаловаться на одного и того же автора не больше 5 раз в день.
             </li>
             <li>
               <strong>Правила безопасности, их проверяет наш сервер:</strong> в комментариях нельзя писать номера
@@ -713,8 +733,8 @@
             </li>
             <li>
               <strong>Жалобы и модерация</strong> — как у комментариев: любой вошедший может пожаловаться на фото (мы храним
-              причину и время, кто пожаловался — не видит никто), а фото с 3 жалобами скрывается, пока администратор его не
-              проверит. Мы записываем, какой администратор одобрил, скрыл или удалил чьё фото, когда и почему — <strong>без
+              причину и время, кто пожаловался — не видит никто), а фото с 3 жалобами от аккаунтов старше двух дней
+              скрывается, пока администратор его не проверит. Мы записываем, какой администратор одобрил, скрыл или удалил чьё фото, когда и почему — <strong>без
               самого фото</strong>. Эту запись видят только администраторы.
             </li>
             <li>Своё фото вы можете удалить в любой момент; измерение останется.</li>
@@ -742,9 +762,10 @@
             </li>
             <li>
               <strong>Жалобы и модерация</strong> — любой вошедший может пожаловаться на фото профиля (мы храним причину и
-              время, кто пожаловался — не видит никто). Картинка ученика с 3 жалобами скрывается, пока её не проверит
-              главный администратор; фото администратора автоматически не скрывается никогда. Главные администраторы и
-              владелец могут скрыть, снова показать или удалить картинку. Мы записываем, кто загрузил, подтвердил,
+              время, кто пожаловался — не видит никто). Картинка ученика с 3 жалобами от аккаунтов старше двух дней
+              скрывается, пока её не проверит главный администратор; фото администратора автоматически не скрывается
+              никогда. Главные администраторы могут скрыть, снова показать или удалить картинку ученика или
+              администратора; фото главного администратора — только владелец. Мы записываем, кто загрузил, подтвердил,
               отклонил, скрыл или удалил картинку, когда и почему — <strong>без самой картинки</strong>. Эту запись видят
               только администраторы.
             </li>
@@ -762,12 +783,16 @@
             </li>
             <li>
               <strong>Зашифрованный (хешированный) IP-адрес</strong> — чтобы блокировать тех, кто слишком много раз пытается
-              зарегистрироваться или войти.
+              зарегистрироваться, войти с неверным паролем, проверить, какие имена заняты, или сбросить пароль. Неверные
+              пароли считаются по имени пользователя <em>и</em> сети, поэтому тот, кто подбирает пароль из другого места,
+              не сможет вас заблокировать.
             </li>
             <li>
-              Короткая запись о том, что <strong>ваш аккаунт</strong> написал комментарий или жалобу или добавил
-              измерение, — чтобы не давать делать это слишком часто (комментарии: до 5 в минуту, 30 в час, 100 в день;
-              измерения: до 10 в минуту, 60 в час, 200 в день).
+              Короткая запись о том, что <strong>ваш аккаунт</strong> написал комментарий, пожаловался на комментарий,
+              фото или картинку (и на чьи), добавил измерение или загрузил фото или картинку; а по имени пользователя —
+              неверные пароли и запросы на сброс пароля, — чтобы не давать делать это слишком часто (комментарии: до 5 в
+              минуту, 30 в час, 100 в день; жалобы: 20 в день, не больше 5 на одного человека; измерения: до 10 в минуту,
+              60 в час, 200 в день; фото: 30 в день; фото профиля: 10 в день).
             </li>
             <li>
               <strong>Локальное хранилище браузера</strong> хранит язык, светлую/тёмную тему, отметку «общий компьютер» и
@@ -843,10 +868,18 @@
               научного набора данных, см. «Удаление аккаунта».)
             </li>
             <li>
-              <strong>Записи о входе (IP-адрес и устройство)</strong> — пока вы в аккаунте, а в журнале безопасности —
-              <strong>до 30 дней</strong>.
+              <strong>Вход в аккаунт</strong> — вход, которым не пользовались <strong>30 дней</strong>, завершается
+              автоматически (потом нужно войти снова); на общем компьютере — при закрытии браузера или через 30 минут без
+              действий. Записи о входе (IP-адрес и устройство) хранятся в журнале безопасности <strong>до 30 дней</strong>.
             </li>
-            <li><strong>Хешированные IP-адреса</strong> для блокировки лишних попыток — удаляются через сутки.</li>
+            <li>
+              <strong>Хешированные IP-адреса и другие записи для блокировки лишних попыток</strong> — удаляются в течение
+              двух суток.
+            </li>
+            <li>
+              <strong>Незаконченные регистрации</strong> — аккаунт, начатый не через нашу страницу регистрации, который
+              так и не подтвердил email и у которого нет имени пользователя и ничего другого, удаляется через 7 дней.
+            </li>
             <li>
               <strong>Журнал изменений ролей и имён</strong> — пока существует ваш аккаунт. При удалении аккаунта ваши имена
               стираются из журнала.
@@ -854,8 +887,9 @@
             <li>
               <strong>Профиль администратора</strong> — пока существует ваш аккаунт. Если вы перестанете быть
               администратором, имя, место работы и должность <strong>останутся на лабораторных, которые вы создали или
-              одобрили</strong> (это запись о том, кто подготовил и проверил лабораторную), но больше нигде показываться не
-              будут. Вы можете попросить нас их исправить. Они удаляются вместе с аккаунтом.
+              одобрили</strong> (это запись о том, кто подготовил и проверил лабораторную; и в истории проверки этих
+              лабораторных, которую видят администраторы), но больше нигде показываться не будут — даже другим
+              администраторам. Вы можете попросить нас их исправить. Они удаляются вместе с аккаунтом.
             </li>
             <li>
               <strong>Журнал изменений лабораторных</strong> — пока существуют лабораторные. При удалении аккаунта ваше имя
@@ -870,7 +904,6 @@
               <strong>Журнал модерации комментариев</strong> (без текста) — хранится; при удалении аккаунта он больше не
               указывает на этого пользователя.
             </li>
-            <li><strong>Записи для ограничения числа комментариев</strong> — удаляются через сутки.</li>
             <li>
               <strong>Фото измерений</strong> — пока вы их не удалите, их не удалит администратор или не будет удалён ваш
               аккаунт. Скрытые фото удаляются автоматически через <strong>90 дней</strong> после скрытия. Фото, которое
@@ -1033,7 +1066,7 @@
             </li>
             <li>
               <strong>פרופיל מנהל</strong> (רק למנהלים) — <strong>השם המלא</strong>, <strong>מקום העבודה</strong> (בית
-              ספר או ארגון) ואם תרצו גם <strong>התפקיד</strong> (למשל „מורה לפיזיקה”). מנהלים אחרים רואים אותו, והוא
+              ספר או ארגון) ואם תרצו גם <strong>התפקיד</strong> (למשל „מורה לפיזיקה”). מנהלים אחרים רואים אותו כל עוד אתם מנהלים, והוא
               <strong>מוצג לכולם במעבדות שיצרתם או אישרתם</strong>, כדי שכולם יידעו מי הכין ובדק כל מעבדה. עד שממלאים שם
               מלא ומקום עבודה אי אפשר לעבוד על מעבדות.
             </li>
@@ -1071,13 +1104,15 @@
           <ul>
             <li>
               <strong>מה שכתבתם</strong>, באיזו שפה היה האתר באותו רגע (לתרגום אוטומטי בעתיד), מתי כתבתם, ואם תיקנתם —
-              מתי („נערך”). אפשר לערוך תגובה רק ב־15 הדקות הראשונות.
+              מתי („נערך”). אפשר לערוך תגובה רק ב־15 הדקות הראשונות. כל עוד יש דיווח פתוח על התגובה שלכם או שהיא
+              מוסתרת, אי אפשר לשנות או למחוק אותה — קודם מנהל/ת בודקים אותה.
             </li>
             <li><strong>דיווחים על בעיה</strong> במדידה נשמרים גם הם כתגובות (מסומנים באדום).</li>
             <li>
               <strong>דיווחים על תגובה</strong> — אם דיווחתם על תגובה של מישהו, אנחנו שומרים שדיווחתם, את הסיבה שבחרתם
               ומתי, כדי שכל אחד יוכל לדווח על תגובה רק פעם אחת. אף אחד באתר לא רואה מי דיווח. תגובה עם 3 דיווחים מוסתרת עד
-              שמנהל/ת בודקים אותה.
+              שמנהל/ת בודקים אותה (לשם כך נספרים רק דיווחים מחשבונות שקיימים יותר מיומיים; השאר מגיעים גם הם למנהלים).
+              אדם אחד יכול לדווח על אותו כותב/ת לכל היותר 5 פעמים ביום.
             </li>
             <li>
               <strong>כללי בטיחות שהשרת שלנו בודק:</strong> אסור לכתוב בתגובות מספרי טלפון או כתובות אימייל, וקישורים
@@ -1108,7 +1143,8 @@
             </li>
             <li>
               <strong>דיווחים וניהול</strong> — כמו בתגובות: כל משתמש מחובר יכול לדווח על תמונה (אנחנו שומרים את הסיבה ואת
-              הזמן, ואף אחד לא רואה מי דיווח), ותמונה עם 3 דיווחים מוסתרת עד שמנהל/ת בודקים אותה. אנחנו רושמים איזה
+              הזמן, ואף אחד לא רואה מי דיווח), ותמונה עם 3 דיווחים מחשבונות שקיימים יותר מיומיים מוסתרת עד שמנהל/ת בודקים
+              אותה. אנחנו רושמים איזה
               מנהל/ת אישר/ה, הסתיר/ה או מחק/ה את התמונה של מי, מתי ולמה — <strong>בלי התמונה עצמה</strong>. רק מנהלים
               רואים את הרישום הזה.
             </li>
@@ -1135,8 +1171,9 @@
             </li>
             <li>
               <strong>דיווחים וניהול</strong> — כל משתמש מחובר יכול לדווח על תמונת פרופיל (אנחנו שומרים את הסיבה ואת הזמן,
-              ואף אחד לא רואה מי דיווח). תמונה של תלמיד/ה עם 3 דיווחים מוסתרת עד שמנהל/ת ראשי/ת בודקים אותה; תמונה של
-              מנהל/ת אף פעם לא מוסתרת אוטומטית. מנהלים ראשיים והבעלים יכולים להסתיר, להציג מחדש או למחוק תמונות. אנחנו
+              ואף אחד לא רואה מי דיווח). תמונה של תלמיד/ה עם 3 דיווחים מחשבונות שקיימים יותר מיומיים מוסתרת עד שמנהל/ת
+              ראשי/ת בודקים אותה; תמונה של מנהל/ת אף פעם לא מוסתרת אוטומטית. מנהלים ראשיים יכולים להסתיר, להציג מחדש או
+              למחוק תמונות של תלמידים ושל מנהלים; תמונה של מנהל/ת ראשי/ת — רק הבעלים. אנחנו
               רושמים מי העלה, אישר, דחה, הסתיר או מחק תמונה, מתי ולמה — <strong>בלי התמונה עצמה</strong>. רק מנהלים רואים
               את הרישום הזה.
             </li>
@@ -1153,11 +1190,15 @@
               החשבונות.
             </li>
             <li>
-              <strong>כתובת ה־IP בצורה מוצפנת (hash)</strong> — כדי לחסום מי שמנסה להירשם או להיכנס יותר מדי פעמים.
+              <strong>כתובת ה־IP בצורה מוצפנת (hash)</strong> — כדי לחסום מי שמנסה יותר מדי פעמים להירשם, להיכנס עם
+              סיסמה שגויה, לבדוק אילו שמות משתמש תפוסים או לאפס סיסמה. סיסמאות שגויות נספרות לפי שם משתמש <em>וגם</em>
+              לפי רשת, כך שמי שמנחש ממקום אחר לא יכול לנעול אתכם בחוץ.
             </li>
             <li>
-              רישום קצר ש<strong>החשבון שלכם</strong> כתב תגובה או דיווח, או הוסיף מדידה — כדי למנוע יותר מדי בזמן קצר
-              (תגובות: עד 5 בדקה, 30 בשעה, 100 ביום; מדידות: עד 10 בדקה, 60 בשעה, 200 ביום).
+              רישום קצר ש<strong>החשבון שלכם</strong> כתב תגובה, דיווח על תגובה, תמונה או תמונת פרופיל (ועל של מי),
+              הוסיף מדידה או העלה תמונה; ולפי שם משתמש — סיסמאות שגויות ובקשות לאיפוס סיסמה — כדי למנוע יותר מדי בזמן
+              קצר (תגובות: עד 5 בדקה, 30 בשעה, 100 ביום; דיווחים: 20 ביום, לכל היותר 5 על אותו אדם; מדידות: עד 10
+              בדקה, 60 בשעה, 200 ביום; תמונות: 30 ביום; תמונות פרופיל: 10 ביום).
             </li>
             <li>
               <strong>האחסון המקומי בדפדפן</strong> שומר את השפה, את המצב הבהיר/הכהה, את הסימון „מחשב משותף” ואת הכניסה
@@ -1231,18 +1272,25 @@
               „מחיקת החשבון”.)
             </li>
             <li>
-              <strong>רישומי כניסה (כתובת IP ומכשיר)</strong> — כל עוד אתם מחוברים, וביומן האבטחה שלנו —
-              <strong>עד 30 יום</strong>.
+              <strong>כניסה לחשבון</strong> — כניסה שלא משתמשים בה <strong>30 יום</strong> מסתיימת אוטומטית (ואז
+              נכנסים שוב); במחשב משותף — כשסוגרים את הדפדפן או אחרי 30 דקות בלי שימוש. רישומי כניסה (כתובת IP ומכשיר)
+              נשמרים ביומן האבטחה שלנו <strong>עד 30 יום</strong>.
             </li>
-            <li><strong>כתובות IP מוצפנות</strong> לחסימת ניסיונות רבים מדי — נמחקות אחרי יום.</li>
+            <li>
+              <strong>כתובות IP מוצפנות ושאר הרישומים לחסימת ניסיונות רבים מדי</strong> — נמחקים תוך יומיים.
+            </li>
+            <li>
+              <strong>הרשמות שלא הושלמו</strong> — חשבון שנפתח שלא דרך דף ההרשמה שלנו, לא אישר אימייל ואין לו שם משתמש
+              ושום דבר אחר — נמחק אחרי 7 ימים.
+            </li>
             <li>
               <strong>יומן השינויים בתפקידים ובשמות</strong> — כל עוד החשבון קיים. כשהחשבון נמחק, השמות שלכם נמחקים
               מהיומן.
             </li>
             <li>
               <strong>פרופיל מנהל</strong> — כל עוד החשבון קיים. אם תפסיקו להיות מנהלים, השם, מקום העבודה והתפקיד
-              <strong>יישארו במעבדות שיצרתם או אישרתם</strong> (זה תיעוד של מי הכין ובדק את המעבדה), אבל לא יוצגו בשום
-              מקום אחר. אפשר לבקש מאיתנו לתקן אותם. הם נמחקים יחד עם החשבון.
+              <strong>יישארו במעבדות שיצרתם או אישרתם</strong> (זה תיעוד של מי הכין ובדק את המעבדה; וגם בהיסטוריית הבדיקה
+              של המעבדות האלה שמנהלים רואים), אבל לא יוצגו בשום מקום אחר — גם לא למנהלים אחרים. אפשר לבקש מאיתנו לתקן אותם. הם נמחקים יחד עם החשבון.
             </li>
             <li>
               <strong>יומן השינויים במעבדות</strong> — כל עוד המעבדות קיימות. כשהחשבון נמחק, השם שלכם מוסר ממנו.
@@ -1254,7 +1302,6 @@
             <li>
               <strong>יומן ניהול התגובות</strong> (בלי טקסט) — נשמר; כשחשבון נמחק, היומן כבר לא מצביע על המשתמש.
             </li>
-            <li><strong>רישומים להגבלת מספר התגובות</strong> — נמחקים אחרי יום.</li>
             <li>
               <strong>תמונות של מדידות</strong> — עד שתמחקו אותן, מנהל/ת ימחקו אותן או שהחשבון שלכם יימחק. תמונות מוסתרות
               נמחקות אוטומטית <strong>90 יום</strong> אחרי שהוסתרו. תמונה שהועלתה אבל לא צורפה למדידה (למשל כשהשליחה
