@@ -9,22 +9,50 @@ import AdminProfileForm from './AdminProfileForm';
  * An admin without an admin profile gets this dialog (once per page load; closing it is fine —
  * the app keeps working, only lab actions stay blocked until the profile is filled).
  * With the profile filled but no face photo (017), it asks for the photo instead (a link to the
- * profile, where the upload with consent is).
+ * profile, where the upload with consent is) — at most once per browser session (sessionStorage);
+ * the notice in the profile stays until there is a photo.
  * Not shown on the profile page (the form is there) or the auth pages.
  */
+// sessionStorage key: the photo window was shown in this browser session.
+const PHOTO_PROMPT_KEY = 'mitzpe.photoPromptShown';
+
+function photoPromptShown() {
+  try {
+    return window.sessionStorage.getItem(PHOTO_PROMPT_KEY) === '1';
+  } catch {
+    return false; // storage blocked: the window may show once per page load
+  }
+}
+
+function markPhotoPromptShown() {
+  try {
+    window.sessionStorage.setItem(PHOTO_PROMPT_KEY, '1');
+  } catch {
+    // storage blocked: nothing to remember
+  }
+}
+
 export default function AdminProfilePrompt() {
   const { t } = useI18n();
   const { adminProfile, myAvatar } = useAuth();
   const { pathname } = useLocation();
   const [dismissed, setDismissed] = useState(false);
   const [justSaved, setJustSaved] = useState(false); // keep "saved" on screen for a moment
+  const [photoShownBefore] = useState(photoPromptShown);
   const dialogRef = useRef(null);
 
   const needsProfile = adminProfile === null || justSaved;
   // Admin profile filled, but no face photo yet (or it was rejected).
-  const needsPhoto = !needsProfile && Boolean(adminProfile) && myAvatar !== undefined && !myAvatar.avatar;
+  const needsPhoto =
+    !needsProfile && !photoShownBefore && Boolean(adminProfile) && myAvatar !== undefined && !myAvatar.avatar;
   const open =
     (needsProfile || needsPhoto) && !dismissed && !pathname.startsWith('/profile') && !pathname.startsWith('/auth/');
+
+  // Remember the photo window as soon as it appears (closing, following the link or reloading
+  // all count): at most once per browser session.
+  useEffect(() => {
+    if (open && needsPhoto) markPhotoPromptShown();
+  }, [open, needsPhoto]);
 
   useEffect(() => {
     if (!open) return undefined;
