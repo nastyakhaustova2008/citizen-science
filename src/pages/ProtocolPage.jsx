@@ -108,6 +108,11 @@ export default function ProtocolPage() {
         </>
       )}
 
+      {/* Photo rules apply to every lab with a photo field, whatever its own protocol says. */}
+      {observation.fields.some((f) => f.type === 'photo' && !f.archived) && (
+        <StepList title={t('protocol.sections.photos')} items={t('protocol.photos')} />
+      )}
+
       <div className="pt-2">
         <Link to={`/observations/${observation.slug}/add`} className="btn-primary">
           {t('observation.addMeasurement')}

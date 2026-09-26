@@ -218,6 +218,8 @@ export function AuthProvider({ children }) {
       // 015 (0 until the migration runs)
       comments: data.comments ?? 0,
       commentsOnMeasurements: data.comments_on_measurements ?? 0,
+      // 016: stored measurement photos (always deleted)
+      photos: data.photos ?? 0,
     };
   }, []);
 

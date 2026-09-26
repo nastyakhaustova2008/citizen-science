@@ -416,3 +416,85 @@ only return extra keys), so it can run before the merge. **No Edge Function chan
    * delete a throwaway account that has comments → the preview counts them; after deletion
      they're gone.
 4. Merge → production deploy.
+
+## 19. Measurement photos in Storage — migration 016 + Edge Function `account`
+
+Needs 015 (and 008: the cleanup job uses pg_cron). Works with the frontend already on production
+(a photo value `true`, which the old code sends, is still accepted; the three account-deletion
+functions keep their arguments and only return extra keys), so it can run before the merge.
+**The Edge Function changes** (it deletes Storage files) — redeploy it right after the migration.
+
+Why an Edge Function: Supabase does not let SQL delete Storage files (`delete from storage.objects`
+is refused by Storage's own trigger, and would leave the file behind anyway). The database only
+queues files in `private.storage_trash`; they are deleted through the Storage API — by the owner or
+a moderator in the browser right away, otherwise by the function's daily `sweep` (secret key).
+
+1. SQL Editor → run `supabase/migrations/016_measurement_photos.sql`. Safe to re-run. It creates the
+   bucket too — nothing to click for it.
+2. Check (SQL Editor):
+
+   ```sql
+   select id, public, file_size_limit, allowed_mime_types from storage.buckets;
+                            -- measurement-photos | false | 1048576 | {image/jpeg}
+   select policyname from pg_policies where tablename = 'objects' and schemaname = 'storage';
+                            -- measurement photos: upload / read / delete
+   select private.photos_cleanup();   -- {"rows": 0, "expired": 0, "orphans_queued": 0, "resolved_reports": 0}
+   select jobname, schedule from cron.job;   -- + 'mitzpe-photos-cleanup' at 03:37 UTC
+   ```
+
+   Dashboard → **Storage**: the bucket `measurement-photos` shows **Private**. If the SQL could not
+   create it (it should), create it by hand: name `measurement-photos`, Public **off**, file size
+   limit **1 MB**, allowed MIME type **image/jpeg** — then run the migration again for the policies.
+3. Dashboard → **Edge Functions** → `account` → **Code** → paste the new
+   `supabase/functions/account/index.ts` → **Deploy**. Keep **Verify JWT OFF**.
+4. The daily sweep:
+   1. Dashboard → **Database → Extensions** → enable **pg_net**.
+   2. Make a long random secret, e.g. in the SQL Editor:
+      `select encode(gen_random_bytes(32), 'hex');` — copy the result.
+   3. Dashboard → **Edge Functions → Secrets** → add `CRON_SECRET` = that value. (Without it the
+      `sweep` action is disabled.)
+   4. SQL Editor (replace both placeholders; `<project-ref>` is in your project URL). The secret
+      goes to Vault, not into the job text:
+
+      ```sql
+      select vault.create_secret('<the secret>', 'mitzpe_cron_secret');
+      select vault.create_secret('https://<project-ref>.supabase.co/functions/v1/account', 'mitzpe_account_url');
+      select cron.schedule('mitzpe-storage-sweep', '47 3 * * *', $job$
+        select net.http_post(
+          url     := (select decrypted_secret from vault.decrypted_secrets where name = 'mitzpe_account_url'),
+          headers := jsonb_build_object(
+                       'Content-Type', 'application/json',
+                       'x-mitzpe-cron', (select decrypted_secret from vault.decrypted_secrets where name = 'mitzpe_cron_secret')),
+          body    := '{"action":"sweep"}'::jsonb)
+      $job$);
+      ```
+
+   5. Test it now: run the `select net.http_post(…)` part alone, then
+      `select status_code, content from net._http_response order by id desc limit 1;`
+      → `200`, `{"ok":true,"removed":0,"left":0}`. With a wrong secret → `401`.
+5. Vercel **preview** of the branch. The database is shared with production — use throwaway
+   accounts and a lab you are allowed to test on:
+   * logged out → a point with a photo says "log in to see the photo"; no photo URL works without
+     logging in (the bucket's public URL `…/storage/v1/object/public/measurement-photos/<file>` → 400).
+   * student → add a measurement with a photo from a phone (a 12 MP photo): it uploads, the success
+     screen says "waiting for a teacher's approval". In the bucket (Dashboard → Storage) the file is
+     a `.jpg` of at most 1600 px and well under 1 MB; download it and check it has no EXIF / GPS
+     (any EXIF viewer). A HEIC photo in Chrome is still refused.
+   * the author sees the photo with "waiting for approval"; another student sees "not shown right
+     now"; the lab's admin (or a main admin) sees it in **Administration → Comments & photos** with
+     a badge (also in the header) → **Approve** → the other student now sees it.
+   * old measurements whose photo value is `true` show "a photo was attached but not saved".
+   * another student → **Report** (reason) → "Thank you"; 3 different students → it is hidden for
+     them, its author sees "hidden after reports", the admin sees it in the queue → **Show again** /
+     **Hide** / **Delete** (reason) work; after Delete the author sees the reason and the file is
+     gone from the bucket; **Log → Photos** shows every action without the image.
+   * an admin who didn't create the lab (not a main admin) can't moderate its photos.
+   * the author → **Delete my photo** → "You deleted this photo", the file is gone from the bucket.
+   * from the browser console as a student, try to overwrite or delete someone else's file
+     (`supabase.storage.from('measurement-photos').remove(['<their file>'])`) → nothing is deleted;
+     upload a 2 MB file or a PNG → refused.
+   * delete a throwaway account with photos, keeping its measurements → the preview lists the
+     photos; afterwards its files are gone from the bucket and the measurements show "Photo deleted".
+6. Merge → production deploy.
+7. Later (after production has run the new code for a while): migration 018 stops accepting the
+   old value `true` for new measurements (a separate small PR).

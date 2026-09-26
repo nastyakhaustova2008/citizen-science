@@ -6,7 +6,8 @@ Each goal is one task = one branch = one PR. Before each one: plan first, code a
 
 ## Suggested order
 
-Done: goal 1 (coordinate rounding), goal 2 (delete my account) and goal 6 (comments in the database).
+Done: goal 1 (coordinate rounding), goal 2 (delete my account), goal 6 (comments in the database) and goal 8 part A (measurement photos in Storage).
+In progress: goal 8 part B (profile pictures, admin face photos).
 Dropped: goal 4 (date and time of a measurement).
 
 3. Privacy policy details + Brevo emails
@@ -41,7 +42,7 @@ Decisions:
 * Runs in the Edge Function (needs the secret key). Deletion by email request is still possible, done manually (steps in CLAUDE.md).
 * The privacy policy describes the button and what is deleted.
 
-Future: once photo Storage exists, photos are **always** deleted on account deletion, even when the measurements are kept.
+Photos (goal 8, migration 016): they are **always** deleted on account deletion, even when the measurements are kept.
 
 ## 3. Privacy policy details + Brevo
 
@@ -110,3 +111,45 @@ Notes:
 * Texts are sent to a third party: update the privacy policy.
 * Numbers, units and choice options are already translated by the field definitions — only free text needs machine translation.
 * Possible extra: help admins fill lab texts in all 6 languages with a translation draft (the admin checks and edits it before submitting).
+
+## 8. Images in Supabase Storage
+
+**Goal:** store images on the server, privately. Most users are minors, and photos can show faces,
+homes, school uniforms and car plates, so privacy comes first. Two PRs.
+
+### Part A — measurement photos — done (migration 016)
+
+* Private bucket `measurement-photos` (no public URLs); images are shown through signed URLs that
+  expire after 15 minutes. JPEG only, ≤ 1 MB (enforced by Storage). In the browser: EXIF/GPS
+  stripped, longest side 1600 px, JPEG ≈ 0.8 (≈ 200–400 KB). The free plan's 1 GB holds about
+  2,500–3,000 photos; uploads stop at 900 MB in total, and at 30 per user per day.
+* Visible to logged-in users only, and only after a moderator (the lab's author, main admins, the
+  owner) approves; until then the author sees "waiting for a teacher's approval".
+* Reports and moderation reuse the comments flow: 3 reports hide a photo; moderators approve, hide,
+  or delete with a reason (people, personal details, off topic, other) shown to the author; the
+  author can delete their own photo; the log has ids and reasons only.
+* Rules: a warning under the upload button (no people or faces, no house numbers, addresses or car
+  plates), a "Photos" section in the protocol, and the moderator's reasons.
+* Files are deleted only through the Storage API: the database queues them, the browser of the
+  owner / moderator deletes at once, and the `account` Edge Function's daily `sweep` (pg_cron +
+  pg_net) deletes the rest. Hidden photos go after 90 days, never-attached uploads after a day.
+* Account deletion: all photos are deleted, also when the measurements are kept.
+* Old rows with the value `true` show "a photo was attached but not saved".
+
+### Part B — profile pictures (migration 017, next PR)
+
+* Everyone can upload, change and remove their own picture, shown where the name appears (profile,
+  comments, lab credits). Logged-in users only.
+* Students: any image (a drawing or an avatar is suggested); reportable and hidden / removed by
+  moderators (main admins and the owner), falling back to the default avatar.
+* Admins: a photo of their own face is required, with consent. The person who appointed them
+  confirms it is really their face (the owner when the appointer is gone or not an admin; the
+  owner's own photo is confirmed automatically, logged). Until confirmed the photo is "pending": not
+  shown to students, and the admin can't create or approve labs (behind a `require_admin_photo`
+  switch that the owner turns on after the deploy). A new photo goes back to "pending"; confirm /
+  reject (optional reason) is logged; pending photos have a badge for the confirmer.
+* A demoted admin's photo is deleted.
+
+### Later — migration 018
+
+* Stop accepting the old photo value `true` for new measurements (after PR 1 is in production).

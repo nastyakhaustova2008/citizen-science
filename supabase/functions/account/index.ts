@@ -24,6 +24,12 @@
 //             | 'username_mismatch' | 'owner_cannot_delete' | 'no_username' }
 //             "Delete my account" (migration 014). Only the logged-in user, only themselves; the
 //             session must have signed in within REAUTH_MAX_AGE_MINUTES (shared school computers).
+//             All their files in Storage are removed before the auth user (016); if that fails
+//             → { error: 'storage_failed' } and nothing else has happened that can't be repeated.
+//   sweep     {} + header x-mitzpe-cron: <CRON_SECRET> → { ok, removed, left } | 401
+//             Removes the files queued in private.storage_trash through the Storage API (the
+//             database cannot delete Storage files itself). Called daily by pg_cron + pg_net
+//             (supabase/SETUP_AUTH.md → 19). Without the CRON_SECRET secret it is disabled.
 //
 // Rate limits (table private.rate_limit_hits via rpc rate_limit_take; IPs stored only as HMAC):
 //   signup: SIGNUP_LIMIT_PER_IP per hour per IP (default 30 — a whole class behind one school
@@ -61,6 +67,8 @@ const LIMITS = {
   // "Delete my account" needs a sign-in (password or Google) at most this long ago.
   reauthMaxAgeMinutes: envInt('REAUTH_MAX_AGE_MINUTES', 15),
 };
+// Shared with the pg_cron job that calls `sweep` (stored in Vault on the database side).
+const CRON_SECRET = Deno.env.get('CRON_SECRET') || '';
 const HOUR = 3600;
 const LOGIN_WINDOW = 15 * 60;
 
@@ -364,6 +372,56 @@ function sessionSignedInAt(token, user) {
 
 const DELETE_ERRORS = new Set(['username_mismatch', 'owner_cannot_delete', 'no_username']);
 
+/* ------------------------------------------------------------ storage files */
+
+/** Removes [{bucket, path}] through the Storage API (secret key), 100 per request. */
+async function removeFiles(list) {
+  const byBucket = new Map();
+  for (const f of list || []) {
+    if (!f?.bucket || !f?.path) continue;
+    if (!byBucket.has(f.bucket)) byBucket.set(f.bucket, []);
+    byBucket.get(f.bucket).push(f.path);
+  }
+  for (const [bucket, paths] of byBucket) {
+    for (let i = 0; i < paths.length; i += 100) {
+      const { error } = await admin.storage.from(bucket).remove(paths.slice(i, i + 100));
+      if (error) console.error('[account] storage remove failed', bucket, error.message);
+    }
+  }
+}
+
+async function accountFiles(userId) {
+  const { data, error } = await admin.rpc('account_storage_objects', { p_user: userId });
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+function sameSecret(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+async function sweep(req) {
+  if (!CRON_SECRET || !sameSecret(req.headers.get('x-mitzpe-cron') || '', CRON_SECRET)) {
+    return json({ error: 'not_allowed' }, 401);
+  }
+  let removed = 0;
+  let left = 0;
+  // A few rounds: each call forgets files that are gone and hands out the next batch.
+  for (let round = 0; round < 4; round++) {
+    const { data, error } = await admin.rpc('storage_sweep', { p_limit: 500 });
+    if (error) throw error;
+    removed += data?.done || 0;
+    const pending = data?.pending || [];
+    left = pending.length;
+    if (!pending.length) break;
+    await removeFiles(pending);
+  }
+  return json({ ok: true, removed, left });
+}
+
 async function deleteAccount(req, body) {
   const token = bearer(req);
   if (!token) return json({ error: 'not_logged_in' });
@@ -393,6 +451,14 @@ async function deleteAccount(req, body) {
   if (prepError) {
     if (DELETE_ERRORS.has(prepError.message)) return json({ error: prepError.message });
     throw prepError;
+  }
+
+  // Files (016): always deleted, also when the measurements are kept. Before the auth user, so a
+  // failure leaves an account the user can simply delete again.
+  const files = await accountFiles(user.id);
+  if (files.length) {
+    await removeFiles(files);
+    if ((await accountFiles(user.id)).length) return json({ error: 'storage_failed' });
   }
 
   // Everything above is safe to repeat, so if this fails the user just tries again.
@@ -443,6 +509,8 @@ Deno.serve(async (req) => {
         return clientIpInfo(req);
       case 'delete':
         return await deleteAccount(req, body);
+      case 'sweep':
+        return await sweep(req);
       default:
         return json({ error: 'bad_request' }, 400);
     }

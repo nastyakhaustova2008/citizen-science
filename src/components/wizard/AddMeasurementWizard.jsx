@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Crosshair,
@@ -20,6 +20,7 @@ import {
   fieldLabel,
   formatFieldValue,
 } from '../../lib/fields';
+import { uploadPhoto, UploadError } from '../../lib/storage';
 import { roundLatLng, locationLabel } from '../../lib/location';
 import LocationPicker from './LocationPicker';
 import FieldInput from './FieldInput';
@@ -50,6 +51,8 @@ function nowLocalInput() {
  * summary and confirmation. The database re-validates on insert; if it rejects the values
  * (e.g. the form changed meanwhile), the campaign is re-read, the input is kept and the
  * fields that need fixing are highlighted.
+ * Photos (016) are uploaded to Storage on submit and the measurement stores their path; an
+ * uploaded photo is reused when the same picture is sent again after an error.
  */
 export default function AddMeasurementWizard({ observation }) {
   const { t, locale } = useI18n();
@@ -74,7 +77,11 @@ export default function AddMeasurementWizard({ observation }) {
 
   const [confirmed, setConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  // null | an i18n key for the error line
+  const [saveError, setSaveError] = useState(null);
+  const [savedWithPhoto, setSavedWithPhoto] = useState(false);
+  // field key → { src: the data URL that was uploaded, path }
+  const uploads = useRef({});
 
   // Re-derived on every render, so a refreshed definition applies immediately.
   const fields = activeFields(observation);
@@ -193,23 +200,40 @@ export default function AddMeasurementWizard({ observation }) {
     if (photoStepErrors.length) return;
 
     setSaving(true);
-    setSaveError(false);
+    setSaveError(null);
     setFormUpdated(false);
     try {
-      const photos = {};
-      for (const f of photoFields) if (inputs[f.key]) photos[f.key] = inputs[f.key];
+      const toSave = { ...values };
+      let withPhoto = false;
+      for (const f of photoFields) {
+        const src = inputs[f.key];
+        if (!src) continue;
+        if (uploads.current[f.key]?.src !== src) {
+          uploads.current[f.key] = { src, path: await uploadPhoto(src) };
+        }
+        toSave[f.key] = uploads.current[f.key].path;
+        withPhoto = true;
+      }
       await addMeasurement({
         observationId: observation.id,
         lat: coords[0],
         lng: coords[1],
         placeLabel: placeLabel.trim(),
         timestamp: new Date(datetime).toISOString(),
-        values,
-        photos,
+        values: toSave,
       });
+      uploads.current = {};
+      setSavedWithPhoto(withPhoto);
       setDone(true);
     } catch (err) {
-      if (err instanceof InvalidValuesError) {
+      if (err instanceof UploadError) {
+        setSaveError(`wizard.photoUpload.${err.code}`);
+      } else if (err instanceof InvalidValuesError) {
+        // An uploaded photo the database no longer accepts (e.g. unused for over a day and
+        // deleted) is uploaded again on the next try.
+        for (const [k, code] of Object.entries(err.fieldErrors)) {
+          if (code === 'photo_missing' || code === 'photo_taken') delete uploads.current[k];
+        }
         // The campaign was re-read; keep every input and highlight what the database refused.
         setServerErrors(err.fieldErrors);
         setFormUpdated(true);
@@ -222,7 +246,7 @@ export default function AddMeasurementWizard({ observation }) {
         }
       } else {
         console.error('[wizard] save failed', err);
-        setSaveError(true);
+        setSaveError('wizard.saveError');
       }
     } finally {
       setSaving(false);
@@ -242,6 +266,8 @@ export default function AddMeasurementWizard({ observation }) {
     setServerErrors({});
     setFormUpdated(false);
     setConfirmed(false);
+    setSavedWithPhoto(false);
+    uploads.current = {};
   }
 
   if (done) {
@@ -252,6 +278,7 @@ export default function AddMeasurementWizard({ observation }) {
           {t('wizard.success.title')}
         </h2>
         <p className="mt-1.5 text-sm text-ink-faint">{t('wizard.success.body')}</p>
+        {savedWithPhoto && <p className="mt-1.5 text-sm text-ink-faint">{t('wizard.success.photoPending')}</p>}
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button
             type="button"
@@ -459,7 +486,7 @@ export default function AddMeasurementWizard({ observation }) {
           {saveError && (
             <p className="flex items-center gap-1.5 text-sm text-danger" role="alert">
               <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-              {t('wizard.saveError')}
+              {t(saveError)}
             </p>
           )}
         </div>
