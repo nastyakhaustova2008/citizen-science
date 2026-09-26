@@ -10,7 +10,7 @@ import { adminLabs, deleteLab } from '../../lib/labsApi';
 import { EmptyState, ErrorBlock, SkeletonText } from '../primitives';
 import { isolate } from '../auth/AuthUI';
 import ObsIcon from '../ObsIcon';
-import { AdminProfileRequired, LabErrorText } from './LabErrorText';
+import { AdminPhotoRequired, AdminProfileRequired, LabErrorText } from './LabErrorText';
 import { APPROVALS_NEEDED } from './SubmitPanel';
 
 const smallBtn = 'btn-secondary !px-2.5 !py-1.5 text-xs';
@@ -18,7 +18,9 @@ const smallBtn = 'btn-secondary !px-2.5 !py-1.5 text-xs';
 /** Admin panel → Labs: "New lab", my drafts, and every lab with who made it and what I may do. */
 export default function LabList() {
   const { t } = useI18n();
-  const { profile, adminProfile } = useAuth();
+  const { profile, adminProfile, myAvatar, adminPhotoConfirmed } = useAuth();
+  // 017: with the owner's switch on, lab work needs a confirmed face photo.
+  const photoMissing = Boolean(myAvatar?.required) && !adminPhotoConfirmed;
   const { reviewQueue, reloadReviewQueue } = useAppData();
   const [labs, setLabs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +60,8 @@ export default function LabList() {
     <div className="space-y-5">
       {adminProfile === null ? (
         <AdminProfileRequired />
+      ) : photoMissing ? (
+        <AdminPhotoRequired />
       ) : (
         <Link to="/labs/new" className="btn-primary">
           <Plus className="h-4 w-4" aria-hidden="true" />

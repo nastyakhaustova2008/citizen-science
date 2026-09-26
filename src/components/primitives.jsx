@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   AlertTriangle,
   Inbox,
@@ -9,6 +10,7 @@ import {
 import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../i18n';
 import { avatarDataUri } from '../lib/media';
+import useAvatarUrl from '../hooks/useAvatarUrl';
 
 /* ---------------------------------------------------------------- Skeletons */
 
@@ -90,11 +92,20 @@ export function ErrorBlock({ onRetry }) {
 
 /* ---------------------------------------------------------------- Avatar */
 
-export function Avatar({ user, size = 32, className = '' }) {
+/**
+ * The user's profile picture when this viewer may see it (user.avatarPath, 017 — signed URL),
+ * otherwise the generated default. `path` overrides user.avatarPath (e.g. lab credits).
+ */
+export function Avatar({ user, size = 32, className = '', path }) {
+  const url = useAvatarUrl(path !== undefined ? path : user?.avatarPath);
+  const [failed, setFailed] = useState(null);
   if (!user) return null;
+  const real = url && failed !== url ? url : null;
   return (
     <img
-      src={avatarDataUri(user.avatarSeed, user.displayName)}
+      src={real || avatarDataUri(user.avatarSeed, user.displayName)}
+      onError={real ? () => setFailed(real) : undefined}
+      referrerPolicy="no-referrer"
       alt={user.displayName}
       width={size}
       height={size}

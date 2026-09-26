@@ -6,8 +6,7 @@ Each goal is one task = one branch = one PR. Before each one: plan first, code a
 
 ## Suggested order
 
-Done: goal 1 (coordinate rounding), goal 2 (delete my account), goal 6 (comments in the database) and goal 8 part A (measurement photos in Storage).
-In progress: goal 8 part B (profile pictures, admin face photos).
+Done: goal 1 (coordinate rounding), goal 2 (delete my account), goal 6 (comments in the database) and goal 8 (images in Storage: measurement photos, profile pictures and admin face photos).
 Dropped: goal 4 (date and time of a measurement).
 
 3. Privacy policy details + Brevo emails
@@ -136,7 +135,7 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
 * Account deletion: all photos are deleted, also when the measurements are kept.
 * Old rows with the value `true` show "a photo was attached but not saved".
 
-### Part B — profile pictures (migration 017, next PR)
+### Part B — profile pictures — done (migration 017)
 
 * Everyone can upload, change and remove their own picture, shown where the name appears (profile,
   comments, lab credits). Logged-in users only.
@@ -148,7 +147,11 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
   shown to students, and the admin can't create or approve labs (behind a `require_admin_photo`
   switch that the owner turns on after the deploy). A new photo goes back to "pending"; confirm /
   reject (optional reason) is logged; pending photos have a badge for the confirmer.
-* A demoted admin's photo is deleted.
+* A demoted admin's photo is deleted; a student's picture is deleted when they become an admin.
+* Reports on admin photos never hide them automatically — main admins and the owner decide.
+* The confirmer doesn't need a confirmed photo of their own.
+* Private bucket `avatars`: a 256 px square, JPEG ≤ 100 KB, 10 uploads a day; hidden pictures are
+  deleted after 90 days; account deletion deletes the picture.
 
 ### Later — migration 018
 

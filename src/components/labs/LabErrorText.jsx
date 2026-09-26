@@ -7,6 +7,7 @@ export function LabErrorText({ error }) {
   const { t } = useI18n();
   if (!error) return null;
   if (error.code === 'admin_profile_required') return <AdminProfileRequired />;
+  if (error.code === 'admin_photo_required') return <AdminPhotoRequired />;
   let text = t(`labs.errors.${error.code}`);
   if (text.startsWith('labs.errors.')) text = t('labs.errors.generic');
   return (
@@ -14,6 +15,22 @@ export function LabErrorText({ error }) {
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
       {text}
     </p>
+  );
+}
+
+/** "Your face photo must be confirmed first" (017, when the owner's switch is on). */
+export function AdminPhotoRequired() {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-lg border border-warn/40 bg-warn/10 p-3 text-sm text-ink dark:text-paper" role="alert">
+      <p className="flex items-start gap-2">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden="true" />
+        <span>{t('avatars.labsBlocked')}</span>
+      </p>
+      <Link to="/profile#profile-picture" className="btn-secondary mt-2 !py-1.5 text-xs">
+        {t('avatars.goToPhoto')}
+      </Link>
+    </div>
   );
 }
 

@@ -3,16 +3,24 @@ import { BadgeCheck, UserRound } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { formatDate } from '../../lib/format';
 import { labCredits } from '../../lib/labsApi';
+import { useAuth } from '../../context/AuthContext';
+import { Avatar } from '../primitives';
 
-/** "Name, position · workplace" (a deleted account → "former staff member"). */
+/**
+ * "Name, position · workplace" (a deleted account → "former staff member"), with the admin's
+ * confirmed face photo for logged-in viewers (017; the server sends it only to them).
+ */
 function Person({ p }) {
   const { t } = useI18n();
   if (!p?.fullName) return <span className="text-ink-faint">{t('labs.review.formerStaff')}</span>;
   return (
-    <span dir="auto">
-      <span className="font-semibold text-ink dark:text-paper">{p.fullName}</span>
-      {p.position && <span>, {p.position}</span>}
-      {p.workplace && <span className="text-ink-faint"> · {p.workplace}</span>}
+    <span dir="auto" className="inline-flex items-center gap-1.5">
+      {p.avatar && <Avatar user={{ displayName: p.fullName, avatarSeed: p.fullName }} path={p.avatar} size={24} className="!rounded-full" />}
+      <span>
+        <span className="font-semibold text-ink dark:text-paper">{p.fullName}</span>
+        {p.position && <span>, {p.position}</span>}
+        {p.workplace && <span className="text-ink-faint"> · {p.workplace}</span>}
+      </span>
     </span>
   );
 }
@@ -24,6 +32,9 @@ function Person({ p }) {
 export default function LabCredits({ campaignId }) {
   const { t, locale } = useI18n();
   const [credits, setCredits] = useState(undefined);
+  // Photos are sent only to logged-in users: read again when that changes.
+  const { currentUser } = useAuth();
+  const viewerId = currentUser?.id ?? null;
 
   useEffect(() => {
     let alive = true;
@@ -34,7 +45,7 @@ export default function LabCredits({ campaignId }) {
     return () => {
       alive = false;
     };
-  }, [campaignId]);
+  }, [campaignId, viewerId]);
 
   if (!credits) return null;
   // Latest approved revision (5c): "Updated on …, approved by …".

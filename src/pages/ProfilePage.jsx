@@ -21,6 +21,8 @@ import ContributionGraph from '../components/ContributionGraph';
 import AccountSettings from '../components/auth/AccountSettings';
 import AdminPanel from '../components/admin/AdminPanel';
 import AdminProfileForm from '../components/labs/AdminProfileForm';
+import AvatarUpload from '../components/avatars/AvatarUpload';
+import AvatarActions from '../components/avatars/AvatarActions';
 import { loginPath } from '../components/auth/AuthUI';
 import { formatDate } from '../lib/format';
 import { monthlyCounts } from '../lib/stats';
@@ -64,6 +66,7 @@ function ProfileView({ id, isOwn }) {
     measurementsLoading,
     measurementsError,
     reloadMeasurements,
+    currentUser,
   } = useAppData();
 
   const loading = campaignsLoading || measurementsLoading;
@@ -143,6 +146,11 @@ function ProfileView({ id, isOwn }) {
               {t('profile.activeSince', { date: formatDate(user.joinedAt, locale) })}
             </span>
           </div>
+          {!isOwn && user.kind === 'real' && currentUser && (
+            <div className="mt-2">
+              <AvatarActions userId={id} />
+            </div>
+          )}
         </div>
         <dl className="flex gap-6">
           <div className="text-center">
@@ -216,6 +224,8 @@ function ProfileView({ id, isOwn }) {
           )}
         </section>
       )}
+
+      {isOwn && user.kind === 'real' && <AvatarUpload />}
 
       {isOwn && user.kind === 'real' && isAdminRole(user.role) && (
         <>

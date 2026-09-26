@@ -189,6 +189,7 @@
               <li>An email address is optional.</li>
               <li>Comments on measurements are visible only to logged-in users, and admins remove harmful ones.</li>
               <li>Photos of measurements are stored privately: only logged-in users can see them, and only after a teacher approves them.</li>
+              <li>A profile picture is optional for students (we suggest a drawing or an avatar). Admins show a photo of their face, confirmed by the person who appointed them. Only logged-in users see profile pictures.</li>
               <li>You can delete your account yourself in your profile, and you can ask us to see, fix or delete your data at any time.</li>
             </ul>
           </section>
@@ -311,6 +312,38 @@
             <li>You can delete your own photo at any time; the measurement stays.</li>
           </ul>
 
+          <h3>Profile pictures</h3>
+          <ul>
+            <li>
+              <strong>Students</strong> — a profile picture is optional and can be any image; we suggest a drawing or an
+              avatar rather than a photo of yourself. Your browser removes its location data (GPS) and other metadata and
+              makes it a small square (256 pixels) before it is uploaded.
+            </li>
+            <li>
+              <strong>Admins (teachers and staff)</strong> — must use a clear photo of their own face, so students know who
+              they are talking to. When uploading it, the admin confirms: “This is a photo of my face and I agree that it
+              will be shown to logged-in users of the site”; we store when they agreed. The person who appointed the admin
+              (or the owner) confirms that the photo is really their face, or rejects it with an optional reason. Until it
+              is confirmed, only the admin, the person confirming it, the main admins and the owner see it, and the admin
+              cannot work on labs. A new photo has to be confirmed again.
+            </li>
+            <li>
+              <strong>Who sees them</strong> — only <strong>logged-in users</strong>, through temporary links that stop
+              working after 15 minutes. Visitors without an account see a default picture.
+            </li>
+            <li>
+              <strong>Reports and moderation</strong> — anyone logged in can report a picture (we store the reason and
+              when; nobody sees who reported). A student picture with 3 reports is hidden until a main admin checks it; an
+              admin photo is never hidden automatically. Main admins and the owner can hide, show again or delete
+              pictures. We record who uploaded, confirmed, rejected, hid or deleted a picture, when and why —
+              <strong>not the picture itself</strong>. Only admins can see this record.
+            </li>
+            <li>
+              <strong>Role changes</strong> — when an admin stops being an admin, their face photo is deleted; when a
+              student becomes an admin, their student picture is deleted.
+            </li>
+          </ul>
+
           <h3>Technical information</h3>
           <ul>
             <li>
@@ -350,6 +383,7 @@
           <p>
             <strong>Photos are not public either:</strong> only logged-in users can see them, and only after a teacher
             approves them. The downloaded file only says whether a measurement has a photo.
+            <strong>Profile pictures</strong> (also admins' face photos) are shown to logged-in users only.
           </p>
 
           <h2>What we do NOT store (for now)</h2>
@@ -428,6 +462,14 @@
               then 90 more days. The photo moderation log (no photos) is kept like the comment log.
             </li>
             <li>
+              <strong>Profile pictures</strong> — until you change or remove yours, a main admin deletes it, your role
+              changes between student and admin, or your account is deleted. Hidden pictures are deleted
+              <strong>90 days</strong> after they were hidden; a rejected admin photo is deleted at once; an uploaded file
+              that was never used is deleted after one day. Reports about pictures — until a main admin decides, then 90
+              more days. The picture log (no pictures) is kept; when an account is deleted, it no longer points to that
+              user.
+            </li>
+            <li>
               <strong>Hosting logs</strong> at Vercel and Supabase — a short time (a few days), under their own rules.
             </li>
           </ul>
@@ -450,7 +492,8 @@
             if you signed in more than 15 minutes ago, you will be asked to sign in again (password or Google). Deletion
             permanently removes your profile and username, email address, password and Google sign-in link, admin profile
             (full name, workplace, position) and the records of your sign-ins, including IP addresses. All your comments
-            and your reports about comments and photos are always deleted, and so are <strong>all your photos</strong> —
+            and your reports about comments and photos are always deleted, and so are <strong>all your photos</strong>
+            and your profile picture —
             also when you keep your measurements. You choose whether
             your measurements are deleted or kept as shared scientific data; kept measurements are shown as “Unknown
             participant” and get a new random identifier, so they cannot be linked to your account. If you delete your
@@ -470,6 +513,7 @@
             </li>
             <li><strong>Don't write personal details</strong> (phone number, address, full name) in text fields or comments — yours or other students'.</li>
             <li><strong>Don't photograph people</strong> (yourself included), house numbers, addresses or car plates. Photograph only the instrument and the site.</li>
+            <li><strong>For your profile picture</strong>, use a drawing or an avatar rather than a photo of yourself.</li>
             <li>Be kind in comments. If a comment hurts or worries you, press “Report” — an admin will check it.</li>
             <li>Don't share your password with anyone, not even friends.</li>
             <li>If something worries you, talk to your teacher or a parent, or write to us.</li>
@@ -481,7 +525,8 @@
             password and, optionally, an email. We don't ask for a student's real name, school, age, phone number or
             photo (if a student signs in with Google, Google sends us their name and email — see above). A photo attached
             to a measurement should show only the instrument and the site; a teacher approves each one before other users
-            can see it, and visitors without an account never see photos. There are no
+            can see it, and visitors without an account never see photos. A profile picture is optional; we suggest
+            students use a drawing or an avatar, and only logged-in users see it. There are no
             ads, no tracking and no selling of data. To see, correct or delete your child's data, write to
             <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
@@ -507,6 +552,7 @@
               <li>Email указывать не обязательно.</li>
               <li>Комментарии к измерениям видны только вошедшим пользователям, а администраторы убирают вредные.</li>
               <li>Фото измерений хранятся закрыто: их видят только вошедшие пользователи и только после одобрения учителя.</li>
+              <li>Фото профиля для учеников необязательно (советуем рисунок или аватар). Администраторы показывают фото своего лица, его подтверждает тот, кто их назначил. Фото профиля видят только вошедшие пользователи.</li>
               <li>Вы можете сами удалить аккаунт в профиле, а также в любой момент попросить нас показать, исправить или удалить ваши данные.</li>
             </ul>
           </section>
@@ -631,6 +677,40 @@
             <li>Своё фото вы можете удалить в любой момент; измерение останется.</li>
           </ul>
 
+          <h3>Фото профиля</h3>
+          <ul>
+            <li>
+              <strong>Ученики</strong> — фото профиля необязательно и может быть любой картинкой; советуем рисунок или
+              аватар, а не своё фото. Ваш браузер удаляет из картинки данные о месте (GPS) и другие метаданные и делает её
+              небольшим квадратом (256 пикселей) до загрузки.
+            </li>
+            <li>
+              <strong>Администраторы (учителя и сотрудники)</strong> — должны использовать чёткое фото своего лица, чтобы
+              ученики знали, с кем говорят. При загрузке администратор подтверждает: «Это фото моего лица, и я согласен(на),
+              чтобы его видели вошедшие пользователи сайта»; мы храним, когда было дано согласие. Тот, кто назначил
+              администратора (или владелец), подтверждает, что на фото действительно его лицо, или отклоняет фото (причину
+              можно указать). Пока фото не подтверждено, его видят только сам администратор, подтверждающий, главные
+              администраторы и владелец, а работать с лабораторными администратор не может. Новое фото нужно подтвердить
+              снова.
+            </li>
+            <li>
+              <strong>Кто видит</strong> — только <strong>вошедшие пользователи</strong>, по временным ссылкам, которые
+              перестают работать через 15 минут. Посетители без аккаунта видят картинку по умолчанию.
+            </li>
+            <li>
+              <strong>Жалобы и модерация</strong> — любой вошедший может пожаловаться на фото профиля (мы храним причину и
+              время, кто пожаловался — не видит никто). Картинка ученика с 3 жалобами скрывается, пока её не проверит
+              главный администратор; фото администратора автоматически не скрывается никогда. Главные администраторы и
+              владелец могут скрыть, снова показать или удалить картинку. Мы записываем, кто загрузил, подтвердил,
+              отклонил, скрыл или удалил картинку, когда и почему — <strong>без самой картинки</strong>. Эту запись видят
+              только администраторы.
+            </li>
+            <li>
+              <strong>Смена роли</strong> — когда администратор перестаёт быть администратором, фото его лица удаляется;
+              когда ученик становится администратором, его картинка ученика удаляется.
+            </li>
+          </ul>
+
           <h3>Техническая информация</h3>
           <ul>
             <li>
@@ -670,6 +750,7 @@
           <p>
             <strong>Фото тоже не публичны:</strong> их видят только вошедшие пользователи и только после одобрения
             учителя. В скачанном файле указано лишь, есть ли у измерения фото.
+            <strong>Фото профиля</strong> (и фото лиц администраторов) видят только вошедшие пользователи.
           </p>
 
           <h2>Что мы НЕ храним (пока)</h2>
@@ -745,6 +826,14 @@
               удалённого фото убирается из хранилища в течение суток. Жалобы на фото — пока администратор не примет решение,
               и ещё 90 дней. Журнал модерации фото (без самих фото) хранится так же, как журнал комментариев.
             </li>
+            <li>
+              <strong>Фото профиля</strong> — пока вы его не замените или не удалите, его не удалит главный
+              администратор, ваша роль не сменится между учеником и администратором или не будет удалён аккаунт. Скрытые
+              картинки удаляются через <strong>90 дней</strong> после скрытия; отклонённое фото администратора — сразу;
+              загруженный, но не использованный файл — через сутки. Жалобы на картинки — пока главный администратор не
+              примет решение, и ещё 90 дней. Журнал фото профиля (без самих картинок) хранится; при удалении аккаунта он
+              больше не указывает на этого пользователя.
+            </li>
             <li><strong>Журналы хостинга</strong> Vercel и Supabase — недолго (несколько дней), по их правилам.</li>
           </ul>
 
@@ -767,7 +856,8 @@
             своё имя пользователя, а если с момента входа прошло больше 15 минут, — войти ещё раз (паролем или через
             Google). При удалении навсегда стираются: профиль и имя пользователя, email, пароль и привязка к Google, профиль
             администратора (полное имя, место работы, должность) и записи о входах в аккаунт, включая IP-адреса. Все ваши
-            комментарии и жалобы на комментарии и фото удаляются всегда, как и <strong>все ваши фото</strong> — даже если
+            комментарии и жалобы на комментарии и фото удаляются всегда, как и <strong>все ваши фото</strong> и фото
+            профиля — даже если
             вы оставляете измерения. Измерения
             можно удалить или оставить как общие научные данные; оставленные измерения показываются как «Неизвестный
             участник» и получают новый случайный идентификатор, поэтому связать их с аккаунтом нельзя. Если вы удаляете
@@ -790,6 +880,7 @@
             </li>
             <li><strong>Не пишите личные данные</strong> (телефон, адрес, полное имя) в текстовых полях и комментариях — ни свои, ни других учеников.</li>
             <li><strong>Не фотографируйте людей</strong> (и себя тоже), номера домов, адреса и автомобильные номера. Снимайте только прибор и место.</li>
+            <li><strong>Для фото профиля</strong> лучше выберите рисунок или аватар, а не своё фото.</li>
             <li>Будьте вежливы в комментариях. Если комментарий обижает или тревожит вас, нажмите «Пожаловаться» — администратор проверит.</li>
             <li>Никому не говорите свой пароль, даже друзьям.</li>
             <li>Если что-то беспокоит — поговорите с учителем или родителями или напишите нам.</li>
@@ -801,7 +892,8 @@
             пароль и, по желанию, email. Мы не спрашиваем настоящее имя ученика, школу, возраст, телефон или фото (если
             ученик входит через Google, Google передаёт нам его имя и email — см. выше). На фото к измерению должны быть
             только прибор и место; учитель одобряет каждое фото, прежде чем его увидят другие пользователи, а посетители без
-            аккаунта фото не видят никогда. Нет рекламы, слежки и продажи
+            аккаунта фото не видят никогда. Фото профиля необязательно; ученикам мы советуем рисунок или аватар, и видят
+            его только вошедшие пользователи. Нет рекламы, слежки и продажи
             данных. Чтобы посмотреть, исправить или удалить данные вашего ребёнка, напишите на
             <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
@@ -827,6 +919,7 @@
               <li>אימייל הוא לא חובה.</li>
               <li>תגובות על מדידות גלויות רק למשתמשים מחוברים, והמנהלים מסירים תגובות פוגעות.</li>
               <li>תמונות של מדידות נשמרות באופן פרטי: רק משתמשים מחוברים רואים אותן, ורק אחרי שמורה אישר/ה אותן.</li>
+              <li>תמונת פרופיל לתלמידים היא לא חובה (אנחנו ממליצים על ציור או אווטאר). מנהלים מציגים תמונה של הפנים שלהם, ומי שמינה אותם מאשר אותה. רק משתמשים מחוברים רואים תמונות פרופיל.</li>
               <li>אפשר למחוק את החשבון בעצמכם בפרופיל, ואפשר לבקש מאיתנו בכל זמן לראות, לתקן או למחוק את המידע שלכם.</li>
             </ul>
           </section>
@@ -940,6 +1033,37 @@
             <li>אפשר למחוק את התמונה שלכם בכל זמן; המדידה נשארת.</li>
           </ul>
 
+          <h3>תמונות פרופיל</h3>
+          <ul>
+            <li>
+              <strong>תלמידים</strong> — תמונת פרופיל היא לא חובה ויכולה להיות כל תמונה; אנחנו ממליצים על ציור או אווטאר
+              ולא על תמונה שלכם. הדפדפן שלכם מוחק ממנה את מידע המיקום (GPS) ושאר המטא־דאטה ומקטין אותה לריבוע קטן (256
+              פיקסלים) לפני ההעלאה.
+            </li>
+            <li>
+              <strong>מנהלים (מורים ואנשי צוות)</strong> — חייבים להשתמש בתמונה ברורה של הפנים שלהם, כדי שהתלמידים ידעו עם
+              מי הם מדברים. בהעלאה המנהל/ת מאשר/ת: „זו תמונה של הפנים שלי, ואני מסכים/ה שהיא תוצג למשתמשים המחוברים לאתר”;
+              אנחנו שומרים מתי ניתנה ההסכמה. מי שמינה את המנהל/ת (או הבעלים) מאשר/ת שזו באמת תמונה של הפנים שלו/ה, או
+              דוחה אותה (אפשר לכתוב סיבה). עד האישור רק המנהל/ת עצמו/ה, מי שמאשר/ת, המנהלים הראשיים והבעלים רואים אותה,
+              והמנהל/ת לא יכול/ה לעבוד על מעבדות. תמונה חדשה צריכה אישור מחדש.
+            </li>
+            <li>
+              <strong>מי רואה אותן</strong> — רק <strong>משתמשים מחוברים</strong>, דרך קישורים זמניים שמפסיקים לעבוד אחרי 15
+              דקות. מבקרים בלי חשבון רואים תמונת ברירת מחדל.
+            </li>
+            <li>
+              <strong>דיווחים וניהול</strong> — כל משתמש מחובר יכול לדווח על תמונת פרופיל (אנחנו שומרים את הסיבה ואת הזמן,
+              ואף אחד לא רואה מי דיווח). תמונה של תלמיד/ה עם 3 דיווחים מוסתרת עד שמנהל/ת ראשי/ת בודקים אותה; תמונה של
+              מנהל/ת אף פעם לא מוסתרת אוטומטית. מנהלים ראשיים והבעלים יכולים להסתיר, להציג מחדש או למחוק תמונות. אנחנו
+              רושמים מי העלה, אישר, דחה, הסתיר או מחק תמונה, מתי ולמה — <strong>בלי התמונה עצמה</strong>. רק מנהלים רואים
+              את הרישום הזה.
+            </li>
+            <li>
+              <strong>שינוי תפקיד</strong> — כשמנהל/ת מפסיק/ה להיות מנהל/ת, תמונת הפנים שלו/ה נמחקת; כשתלמיד/ה הופך/ת
+              למנהל/ת, תמונת התלמיד/ה נמחקת.
+            </li>
+          </ul>
+
           <h3>מידע טכני</h3>
           <ul>
             <li>
@@ -977,6 +1101,7 @@
           <p>
             <strong>גם התמונות לא גלויות לכולם:</strong> רק משתמשים מחוברים רואים אותן, ורק אחרי שמורה אישר/ה אותן.
             בקובץ שמורידים כתוב רק אם יש למדידה תמונה.
+            <strong>תמונות פרופיל</strong> (גם תמונות הפנים של מנהלים) מוצגות רק למשתמשים מחוברים.
           </p>
 
           <h2>מה אנחנו לא שומרים (כרגע)</h2>
@@ -1046,6 +1171,12 @@
               נכשלה) נמחקת אחרי יום. הקובץ של תמונה שנמחקה מוסר מהאחסון תוך יום. דיווחים על תמונות — עד שמנהל/ת מחליטים,
               ועוד 90 יום. יומן ניהול התמונות (בלי התמונות) נשמר כמו יומן התגובות.
             </li>
+            <li>
+              <strong>תמונות פרופיל</strong> — עד שתחליפו או תסירו את התמונה, מנהל/ת ראשי/ת ימחקו אותה, התפקיד שלכם יעבור
+              בין תלמיד/ה למנהל/ת או שהחשבון יימחק. תמונות מוסתרות נמחקות <strong>90 יום</strong> אחרי שהוסתרו; תמונת פנים
+              של מנהל/ת שנדחתה נמחקת מיד; קובץ שהועלה ולא שימש נמחק אחרי יום. דיווחים על תמונות — עד שמנהל/ת ראשי/ת
+              מחליטים, ועוד 90 יום. יומן תמונות הפרופיל (בלי התמונות) נשמר; כשחשבון נמחק, היומן כבר לא מצביע על המשתמש.
+            </li>
             <li><strong>יומני האחסון</strong> של Vercel ו־Supabase — זמן קצר (כמה ימים), לפי הכללים שלהן.</li>
           </ul>
 
@@ -1066,7 +1197,8 @@
             אפשר למחוק את החשבון בעצמכם: פרופיל ← חשבון ← „מחיקת החשבון”. לאישור יש להקליד את שם המשתמש, ואם עברו יותר
             מ־15 דקות מאז הכניסה – להיכנס שוב (בסיסמה או דרך Google). במחיקה נמחקים לצמיתות: הפרופיל ושם המשתמש, כתובת
             האימייל, הסיסמה והחיבור ל־Google, פרופיל המנהל (שם מלא, מקום עבודה, תפקיד) ורישומי הכניסה לחשבון, כולל כתובות
-            IP. כל התגובות שלכם והדיווחים שלכם על תגובות ותמונות נמחקים תמיד, וגם <strong>כל התמונות שלכם</strong> —
+            IP. כל התגובות שלכם והדיווחים שלכם על תגובות ותמונות נמחקים תמיד, וגם <strong>כל התמונות שלכם</strong>
+            ותמונת הפרופיל —
             גם אם אתם משאירים את המדידות. את המדידות אפשר למחוק או להשאיר כנתונים מדעיים משותפים; מדידות שנשארות מוצגות כ„משתתף/ת לא ידוע/ה”
             ומקבלות מזהה אקראי חדש, כך שאי אפשר לקשר אותן לחשבון. אם מוחקים את המדידות, נמחקות גם התגובות של אחרים עליהן. מעבדות שיצר/ה או אישר/ה מנהל/ת נשארות, ובמקום השם מופיע
             „איש/אשת צוות לשעבר”; ביומני הניהול לא נשארים שם או מזהה. שם המשתמש מתפנה מיד. עותקים טכניים אצל ספק האחסון
@@ -1083,6 +1215,7 @@
             </li>
             <li><strong>אל תכתבו פרטים אישיים</strong> (טלפון, כתובת, שם מלא) בשדות הטקסט ובתגובות — לא שלכם ולא של תלמידים אחרים.</li>
             <li><strong>אל תצלמו אנשים</strong> (גם לא את עצמכם), מספרי בתים, כתובות או לוחיות רישוי. צלמו רק את המכשיר ואת המקום.</li>
+            <li><strong>לתמונת הפרופיל</strong> עדיף ציור או אווטאר ולא תמונה שלכם.</li>
             <li>כתבו תגובות בכבוד. אם תגובה פוגעת בכם או מדאיגה אתכם, לחצו „דיווח” — מנהל/ת יבדקו אותה.</li>
             <li>אל תגלו את הסיסמה שלכם לאף אחד, גם לא לחברים.</li>
             <li>אם משהו מדאיג אתכם — דברו עם המורה או עם ההורים, או כתבו לנו.</li>
@@ -1094,7 +1227,8 @@
             אימייל. אנחנו לא מבקשים את השם האמיתי של התלמיד, את בית הספר, הגיל, מספר הטלפון או תמונה (אם התלמיד נכנס
             עם Google, חברת Google שולחת לנו את השם והאימייל שלו — ראו למעלה). בתמונה שמצורפת למדידה צריכים להופיע רק
             המכשיר והמקום; מורה מאשר/ת כל תמונה לפני שמשתמשים אחרים יכולים לראות אותה, ומבקרים בלי חשבון אף פעם לא רואים
-            תמונות. אין פרסומות, אין מעקב ואין מכירת מידע.
+            תמונות. תמונת פרופיל היא לא חובה; לתלמידים אנחנו ממליצים על ציור או אווטאר, ורק משתמשים מחוברים רואים אותה.
+            אין פרסומות, אין מעקב ואין מכירת מידע.
             כדי לראות, לתקן או למחוק את המידע של ילדכם, כתבו ל־<strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
 

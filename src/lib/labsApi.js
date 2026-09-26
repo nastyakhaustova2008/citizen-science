@@ -13,6 +13,7 @@ const CODES = [
   'not_logged_in',
   'not_allowed',
   'admin_profile_required',
+  'admin_photo_required',
   'not_found',
   'edited_elsewhere',
   'invalid_lab',
@@ -203,7 +204,9 @@ export async function reviewHistory(id) {
 export async function labCredits(id) {
   const data = await rpc('lab_credits', { p_id: id });
   if (!data) return null;
-  const person = (p) => (p ? { fullName: p.full_name, position: p.position, workplace: p.workplace, at: p.at } : null);
+  // avatar (017): path of the confirmed face photo — only for logged-in callers.
+  const person = (p) =>
+    p ? { fullName: p.full_name, position: p.position, workplace: p.workplace, at: p.at, avatar: p.avatar || null } : null;
   return {
     legacy: Boolean(data.legacy),
     publishedAt: data.published_at || null,

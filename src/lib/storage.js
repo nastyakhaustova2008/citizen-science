@@ -8,6 +8,7 @@ import { dataUrlToBlob } from './image';
  */
 
 export const PHOTO_BUCKET = 'measurement-photos';
+export const AVATAR_BUCKET = 'avatars';
 
 // Signed URLs live 15 minutes; a cached one is reused while it has at least a minute left.
 const SIGNED_TTL = 15 * 60;
@@ -47,19 +48,50 @@ export async function uploadPhoto(dataUrl, bucket = PHOTO_BUCKET) {
   return path;
 }
 
+// Requests made in the same tick are sent together (a list of avatars → one request per bucket).
+const waiting = new Map(); // bucket → Map(path → [resolve])
+const inFlight = new Map(); // `${bucket}/${path}` → Promise
+
+async function flush(bucket) {
+  const batch = waiting.get(bucket);
+  waiting.delete(bucket);
+  if (!batch) return;
+  const paths = [...batch.keys()];
+  let rows = [];
+  try {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrls(paths, SIGNED_TTL);
+    if (!error) rows = data || [];
+  } catch {
+    rows = [];
+  }
+  const byPath = new Map(rows.filter((r) => r.signedUrl && !r.error).map((r) => [r.path, r.signedUrl]));
+  for (const [path, resolvers] of batch) {
+    const url = byPath.get(path) || null;
+    const key = `${bucket}/${path}`;
+    if (url) signed.set(key, { url, until: Date.now() + SIGNED_TTL * 1000 });
+    else signed.delete(key);
+    inFlight.delete(key);
+    resolvers.forEach((r) => r(url));
+  }
+}
+
 /** Signed URL for a file, or null (not allowed / missing). */
-export async function signedUrl(path, bucket = PHOTO_BUCKET) {
-  if (!supabase || !path) return null;
+export function signedUrl(path, bucket = PHOTO_BUCKET) {
+  if (!supabase || !path) return Promise.resolve(null);
   const key = `${bucket}/${path}`;
   const hit = signed.get(key);
-  if (hit && hit.until - Date.now() > 60_000) return hit.url;
-  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, SIGNED_TTL);
-  if (error || !data?.signedUrl) {
-    signed.delete(key);
-    return null;
-  }
-  signed.set(key, { url: data.signedUrl, until: Date.now() + SIGNED_TTL * 1000 });
-  return data.signedUrl;
+  if (hit && hit.until - Date.now() > 60_000) return Promise.resolve(hit.url);
+  if (inFlight.has(key)) return inFlight.get(key);
+  const promise = new Promise((resolve) => {
+    if (!waiting.has(bucket)) {
+      waiting.set(bucket, new Map());
+      queueMicrotask(() => flush(bucket));
+    }
+    const batch = waiting.get(bucket);
+    batch.set(path, [...(batch.get(path) || []), resolve]);
+  });
+  inFlight.set(key, promise);
+  return promise;
 }
 
 /** Forget a cached URL (after a status change: the file may no longer be visible). */

@@ -498,3 +498,53 @@ a moderator in the browser right away, otherwise by the function's daily `sweep`
 6. Merge → production deploy.
 7. Later (after production has run the new code for a while): migration 018 stops accepting the
    old value `true` for new measurements (a separate small PR).
+
+## 20. Profile pictures and admin face photos — migration 017
+
+Needs 016. Works with the frontend already on production (it adds a bucket, tables and functions;
+`lab_begin`, `lab_credits` and the account-deletion functions keep their arguments; the admin-photo
+requirement is behind a switch that starts **off**), so it can run before the merge.
+**No Edge Function change** and nothing new for pg_net / Vault / `CRON_SECRET`: `delete` already
+removes every file a user owns in any bucket, and the daily `sweep` empties the trash of every bucket.
+
+1. SQL Editor → run `supabase/migrations/017_avatars.sql`. Safe to re-run. It creates the `avatars`
+   bucket too — nothing to click for it.
+2. Check (SQL Editor):
+
+   ```sql
+   select id, public, file_size_limit, allowed_mime_types from storage.buckets where id = 'avatars';
+                                    -- avatars | false | 102400 | {image/jpeg}
+   select policyname from pg_policies where schemaname = 'storage' and tablename = 'objects';
+                                    -- + avatars: upload / read / delete
+   select * from private.settings;  -- require_admin_photo | false
+   select private.avatars_cleanup(); -- {"expired": 0, "orphans_queued": 0, "resolved_reports": 0}
+   select jobname, schedule from cron.job;   -- + 'mitzpe-avatars-cleanup' at 03:39 UTC
+   ```
+
+   Dashboard → **Storage**: the bucket `avatars` shows **Private**. If the SQL could not create it,
+   create it by hand: name `avatars`, Public **off**, file size limit **100 KB**, allowed MIME type
+   **image/jpeg** — then run the migration again.
+3. Vercel **preview** of the branch. The database is shared with production — use throwaway
+   accounts where you can (the checklist is in the PR description).
+4. Merge → production deploy.
+5. Turn the requirement on, when the admins are ready:
+   1. The owner uploads a face photo (Profile → "Your photo") — it is confirmed automatically.
+   2. Main admins upload theirs; the owner confirms them (Administration → Comments & photos, or
+      on their profile page).
+   3. Every admin uploads theirs; the person who appointed them confirms it (or the owner).
+   4. Check who is still missing:
+
+      ```sql
+      select p.username, p.role, a.status
+      from public.profiles p left join public.avatars a on a.user_id = p.id
+      where p.role in ('admin', 'main_admin', 'owner')
+      order by a.status nulls first, p.username;
+      ```
+
+   5. Turn it on (admins without a confirmed photo then get "photo needed" in every lab action):
+
+      ```sql
+      update private.settings set value = 'true' where key = 'require_admin_photo';
+      ```
+
+      Back off again: the same with `'false'`.
