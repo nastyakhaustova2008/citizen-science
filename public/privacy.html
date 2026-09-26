@@ -188,6 +188,7 @@
               <li>We don't sell your data, show ads, or track you (no analytics, no cookies).</li>
               <li>An email address is optional.</li>
               <li>Comments on measurements are visible only to logged-in users, and admins remove harmful ones.</li>
+              <li>Photos of measurements are stored privately: only logged-in users can see them, and only after a teacher approves them.</li>
               <li>You can delete your account yourself in your profile, and you can ask us to see, fix or delete your data at any time.</li>
             </ul>
           </section>
@@ -248,7 +249,7 @@
           <h3>Your measurements</h3>
           <ul>
             <li>The values you enter, including any text you type.</li>
-            <li><strong>Approximate location</strong> — coordinates are rounded to about 100 metres before they are saved (the server enforces this too), and the place name you entered. We do not store your exact location. Location data (GPS) and other metadata are removed from photos in your browser before they are used; a photo that can't be cleaned is not attached.</li>
+            <li><strong>Approximate location</strong> — coordinates are rounded to about 100 metres before they are saved (the server enforces this too), and the place name you entered. We do not store your exact location. Location data (GPS) and other metadata are removed from photos in your browser before they are uploaded; a photo that can't be cleaned is not attached.</li>
             <li>The date and time.</li>
           </ul>
           <p>
@@ -282,6 +283,32 @@
               <strong>Moderation</strong> — the admins responsible for a lab can hide or delete comments on it. We record
               which admin did it, to whose comment and when — <strong>not the text</strong>. Only admins can see this record.
             </li>
+          </ul>
+
+          <h3>Photos of measurements</h3>
+          <ul>
+            <li>
+              <strong>What we store</strong> — the photo you attach to a measurement, after your browser has removed its
+              location data (GPS) and other metadata and made it smaller (at most 1600 pixels on the longest side). It is
+              stored in a <strong>private</strong> storage space: there is no public link to it.
+            </li>
+            <li>
+              <strong>Who sees it</strong> — at first only you and the admins responsible for the lab. A teacher (one of
+              those admins) approves it; after that, <strong>logged-in users</strong> can see it. Visitors without an
+              account never see photos. The site shows a photo through a temporary link that stops working after 15
+              minutes.
+            </li>
+            <li>
+              <strong>Rules</strong> — photograph only the instrument and the site: no people or faces, no house numbers,
+              addresses or car plates. An admin deletes a photo that breaks the rules and tells you why.
+            </li>
+            <li>
+              <strong>Reports and moderation</strong> — like comments: anyone logged in can report a photo (we store the
+              reason and when, nobody sees who reported), and a photo with 3 reports is hidden until an admin checks it.
+              We record which admin approved, hid or deleted whose photo, when and why — <strong>not the photo itself</strong>.
+              Only admins can see this record.
+            </li>
+            <li>You can delete your own photo at any time; the measurement stays.</li>
           </ul>
 
           <h3>Technical information</h3>
@@ -320,19 +347,22 @@
             <strong>Comments are not public:</strong> only logged-in users can read them, with the writer's username.
             A hidden comment is visible only to its writer and to the admins responsible for the lab.
           </p>
+          <p>
+            <strong>Photos are not public either:</strong> only logged-in users can see them, and only after a teacher
+            approves them. The downloaded file only says whether a measurement has a photo.
+          </p>
 
           <h2>What we do NOT store (for now)</h2>
           <p>
-            Photos you add to a measurement and forum posts currently stay
-            <strong>only in your browser</strong> and disappear when you reload the page. They are not sent to our server.
-            This may change — if it does, we will update this page before it happens.
+            Forum posts currently stay <strong>only in your browser</strong> and disappear when you reload the page.
+            They are not sent to our server. This may change — if it does, we will update this page before it happens.
           </p>
 
           <h2>Who else receives data</h2>
           <p>We use a few services to run Mitzpe:</p>
           <ul>
             <li>
-              <strong>Supabase</strong> — our database and login system. It stores everything described above, on servers
+              <strong>Supabase</strong> — our database, file storage (photos) and login system. It stores everything described above, on servers
               in <strong>Frankfurt, Germany (EU)</strong>. Sign-up and login requests pass through the Supabase server
               nearest to you. For now, Supabase also sends our emails (password reset, email confirmation).
             </li>
@@ -391,6 +421,13 @@
             </li>
             <li><strong>Records used to limit how many comments you post</strong> — deleted after one day.</li>
             <li>
+              <strong>Photos of measurements</strong> — until you delete them, an admin deletes them, or your account is
+              deleted. Hidden photos are deleted automatically <strong>90 days</strong> after they were hidden. A photo that
+              was uploaded but not attached to a measurement (for example, when sending failed) is deleted after one day.
+              A deleted photo's file is removed from storage within a day. Reports about photos — until an admin decides,
+              then 90 more days. The photo moderation log (no photos) is kept like the comment log.
+            </li>
+            <li>
               <strong>Hosting logs</strong> at Vercel and Supabase — a short time (a few days), under their own rules.
             </li>
           </ul>
@@ -413,7 +450,8 @@
             if you signed in more than 15 minutes ago, you will be asked to sign in again (password or Google). Deletion
             permanently removes your profile and username, email address, password and Google sign-in link, admin profile
             (full name, workplace, position) and the records of your sign-ins, including IP addresses. All your comments
-            and your reports about comments are always deleted. You choose whether
+            and your reports about comments and photos are always deleted, and so are <strong>all your photos</strong> —
+            also when you keep your measurements. You choose whether
             your measurements are deleted or kept as shared scientific data; kept measurements are shown as “Unknown
             participant” and get a new random identifier, so they cannot be linked to your account. If you delete your
             measurements, other people's comments on them are deleted too. Labs an admin created
@@ -431,6 +469,7 @@
               another public place.
             </li>
             <li><strong>Don't write personal details</strong> (phone number, address, full name) in text fields or comments — yours or other students'.</li>
+            <li><strong>Don't photograph people</strong> (yourself included), house numbers, addresses or car plates. Photograph only the instrument and the site.</li>
             <li>Be kind in comments. If a comment hurts or worries you, press “Report” — an admin will check it.</li>
             <li>Don't share your password with anyone, not even friends.</li>
             <li>If something worries you, talk to your teacher or a parent, or write to us.</li>
@@ -440,7 +479,9 @@
           <p>
             Mitzpe is used by school students, many of them under 18. We collect as little as possible: a username, a
             password and, optionally, an email. We don't ask for a student's real name, school, age, phone number or
-            photo (if a student signs in with Google, Google sends us their name and email — see above). There are no
+            photo (if a student signs in with Google, Google sends us their name and email — see above). A photo attached
+            to a measurement should show only the instrument and the site; a teacher approves each one before other users
+            can see it, and visitors without an account never see photos. There are no
             ads, no tracking and no selling of data. To see, correct or delete your child's data, write to
             <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
@@ -465,6 +506,7 @@
               <li>Мы не продаём данные, не показываем рекламу и не следим за вами (никакой аналитики, никаких cookies).</li>
               <li>Email указывать не обязательно.</li>
               <li>Комментарии к измерениям видны только вошедшим пользователям, а администраторы убирают вредные.</li>
+              <li>Фото измерений хранятся закрыто: их видят только вошедшие пользователи и только после одобрения учителя.</li>
               <li>Вы можете сами удалить аккаунт в профиле, а также в любой момент попросить нас показать, исправить или удалить ваши данные.</li>
             </ul>
           </section>
@@ -528,7 +570,7 @@
           <h3>Ваши измерения</h3>
           <ul>
             <li>Значения, которые вы вводите, включая любой текст.</li>
-            <li><strong>Примерное место</strong> — координаты округляются примерно до 100 метров до сохранения (это проверяет и сервер), и название места, которое вы указали. Точное место мы не храним. Данные о месте (GPS) и другие метаданные удаляются из фотографий в вашем браузере до их использования; фото, которое нельзя очистить, не прикрепляется.</li>
+            <li><strong>Примерное место</strong> — координаты округляются примерно до 100 метров до сохранения (это проверяет и сервер), и название места, которое вы указали. Точное место мы не храним. Данные о месте (GPS) и другие метаданные удаляются из фотографий в вашем браузере до загрузки; фото, которое нельзя очистить, не прикрепляется.</li>
             <li>Дата и время.</li>
           </ul>
           <p>
@@ -561,6 +603,32 @@
               к ней. Мы записываем, какой администратор это сделал, с чьим комментарием и когда — <strong>без текста</strong>.
               Эту запись видят только администраторы.
             </li>
+          </ul>
+
+          <h3>Фото измерений</h3>
+          <ul>
+            <li>
+              <strong>Что мы храним</strong> — фото, которое вы прикрепили к измерению, после того как ваш браузер удалил из
+              него данные о месте (GPS) и другие метаданные и уменьшил его (не больше 1600 пикселей по длинной стороне).
+              Фото хранится в <strong>закрытом</strong> хранилище: публичной ссылки на него нет.
+            </li>
+            <li>
+              <strong>Кто его видит</strong> — сначала только вы и администраторы, отвечающие за лабораторную. Учитель (один
+              из этих администраторов) одобряет фото; после этого его видят <strong>вошедшие пользователи</strong>.
+              Посетители без аккаунта фото не видят никогда. Сайт показывает фото по временной ссылке, которая перестаёт
+              работать через 15 минут.
+            </li>
+            <li>
+              <strong>Правила</strong> — снимайте только прибор и место: без людей и лиц, без номеров домов, адресов и
+              автомобильных номеров. Фото, нарушающее правила, администратор удаляет и сообщает причину.
+            </li>
+            <li>
+              <strong>Жалобы и модерация</strong> — как у комментариев: любой вошедший может пожаловаться на фото (мы храним
+              причину и время, кто пожаловался — не видит никто), а фото с 3 жалобами скрывается, пока администратор его не
+              проверит. Мы записываем, какой администратор одобрил, скрыл или удалил чьё фото, когда и почему — <strong>без
+              самого фото</strong>. Эту запись видят только администраторы.
+            </li>
+            <li>Своё фото вы можете удалить в любой момент; измерение останется.</li>
           </ul>
 
           <h3>Техническая информация</h3>
@@ -599,18 +667,22 @@
             <strong>Комментарии не публичны:</strong> их читают только вошедшие пользователи, вместе с именем автора.
             Скрытый комментарий видят только его автор и администраторы, отвечающие за лабораторную.
           </p>
+          <p>
+            <strong>Фото тоже не публичны:</strong> их видят только вошедшие пользователи и только после одобрения
+            учителя. В скачанном файле указано лишь, есть ли у измерения фото.
+          </p>
 
           <h2>Что мы НЕ храним (пока)</h2>
           <p>
-            Фото, которые вы добавляете к измерению, и сообщения на форуме сейчас остаются <strong>только в вашем браузере</strong> и исчезают при перезагрузке страницы. На наш
-            сервер они не отправляются. Это может измениться — тогда мы заранее обновим эту страницу.
+            Сообщения на форуме сейчас остаются <strong>только в вашем браузере</strong> и исчезают при перезагрузке
+            страницы. На наш сервер они не отправляются. Это может измениться — тогда мы заранее обновим эту страницу.
           </p>
 
           <h2>Кто ещё получает данные</h2>
           <p>Для работы Мицпе мы пользуемся несколькими сервисами:</p>
           <ul>
             <li>
-              <strong>Supabase</strong> — база данных и система входа. Хранит всё, что описано выше, на серверах во
+              <strong>Supabase</strong> — база данных, хранилище файлов (фото) и система входа. Хранит всё, что описано выше, на серверах во
               <strong>Франкфурте, Германия (ЕС)</strong>. Запросы регистрации и входа проходят через ближайший к вам сервер
               Supabase. Пока Supabase также отправляет наши письма (сброс пароля, подтверждение email).
             </li>
@@ -666,6 +738,13 @@
               указывает на этого пользователя.
             </li>
             <li><strong>Записи для ограничения числа комментариев</strong> — удаляются через сутки.</li>
+            <li>
+              <strong>Фото измерений</strong> — пока вы их не удалите, их не удалит администратор или не будет удалён ваш
+              аккаунт. Скрытые фото удаляются автоматически через <strong>90 дней</strong> после скрытия. Фото, которое
+              загрузилось, но не прикрепилось к измерению (например, если отправка не удалась), удаляется через сутки. Файл
+              удалённого фото убирается из хранилища в течение суток. Жалобы на фото — пока администратор не примет решение,
+              и ещё 90 дней. Журнал модерации фото (без самих фото) хранится так же, как журнал комментариев.
+            </li>
             <li><strong>Журналы хостинга</strong> Vercel и Supabase — недолго (несколько дней), по их правилам.</li>
           </ul>
 
@@ -688,7 +767,8 @@
             своё имя пользователя, а если с момента входа прошло больше 15 минут, — войти ещё раз (паролем или через
             Google). При удалении навсегда стираются: профиль и имя пользователя, email, пароль и привязка к Google, профиль
             администратора (полное имя, место работы, должность) и записи о входах в аккаунт, включая IP-адреса. Все ваши
-            комментарии и жалобы на комментарии удаляются всегда. Измерения
+            комментарии и жалобы на комментарии и фото удаляются всегда, как и <strong>все ваши фото</strong> — даже если
+            вы оставляете измерения. Измерения
             можно удалить или оставить как общие научные данные; оставленные измерения показываются как «Неизвестный
             участник» и получают новый случайный идентификатор, поэтому связать их с аккаунтом нельзя. Если вы удаляете
             измерения, комментарии других людей к ним тоже удаляются. Лабораторные,
@@ -709,6 +789,7 @@
               или в другом общественном месте.
             </li>
             <li><strong>Не пишите личные данные</strong> (телефон, адрес, полное имя) в текстовых полях и комментариях — ни свои, ни других учеников.</li>
+            <li><strong>Не фотографируйте людей</strong> (и себя тоже), номера домов, адреса и автомобильные номера. Снимайте только прибор и место.</li>
             <li>Будьте вежливы в комментариях. Если комментарий обижает или тревожит вас, нажмите «Пожаловаться» — администратор проверит.</li>
             <li>Никому не говорите свой пароль, даже друзьям.</li>
             <li>Если что-то беспокоит — поговорите с учителем или родителями или напишите нам.</li>
@@ -718,7 +799,9 @@
           <p>
             Мицпе пользуются школьники, многие из них младше 18 лет. Мы собираем как можно меньше: имя пользователя,
             пароль и, по желанию, email. Мы не спрашиваем настоящее имя ученика, школу, возраст, телефон или фото (если
-            ученик входит через Google, Google передаёт нам его имя и email — см. выше). Нет рекламы, слежки и продажи
+            ученик входит через Google, Google передаёт нам его имя и email — см. выше). На фото к измерению должны быть
+            только прибор и место; учитель одобряет каждое фото, прежде чем его увидят другие пользователи, а посетители без
+            аккаунта фото не видят никогда. Нет рекламы, слежки и продажи
             данных. Чтобы посмотреть, исправить или удалить данные вашего ребёнка, напишите на
             <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
@@ -743,6 +826,7 @@
               <li>אנחנו לא מוכרים מידע, לא מציגים פרסומות ולא עוקבים אחריכם (אין כלי ניתוח ואין עוגיות).</li>
               <li>אימייל הוא לא חובה.</li>
               <li>תגובות על מדידות גלויות רק למשתמשים מחוברים, והמנהלים מסירים תגובות פוגעות.</li>
+              <li>תמונות של מדידות נשמרות באופן פרטי: רק משתמשים מחוברים רואים אותן, ורק אחרי שמורה אישר/ה אותן.</li>
               <li>אפשר למחוק את החשבון בעצמכם בפרופיל, ואפשר לבקש מאיתנו בכל זמן לראות, לתקן או למחוק את המידע שלכם.</li>
             </ul>
           </section>
@@ -800,7 +884,7 @@
           <h3>המדידות שלכם</h3>
           <ul>
             <li>הערכים שהזנתם, כולל כל טקסט שכתבתם.</li>
-            <li><strong>מיקום משוער</strong> — הקואורדינטות מעוגלות לכ־100 מטר לפני השמירה (והשרת בודק זאת), ושם המקום שציינתם. אנחנו לא שומרים את המיקום המדויק. מידע מיקום (GPS) ושאר המטא־דאטה מוסרים מהתמונות בדפדפן לפני השימוש בהן; תמונה שלא ניתן לנקות לא מצורפת.</li>
+            <li><strong>מיקום משוער</strong> — הקואורדינטות מעוגלות לכ־100 מטר לפני השמירה (והשרת בודק זאת), ושם המקום שציינתם. אנחנו לא שומרים את המיקום המדויק. מידע מיקום (GPS) ושאר המטא־דאטה מוסרים מהתמונות בדפדפן לפני ההעלאה; תמונה שלא ניתן לנקות לא מצורפת.</li>
             <li>התאריך והשעה.</li>
           </ul>
           <p>
@@ -829,6 +913,31 @@
               <strong>ניהול תגובות</strong> — המנהלים האחראים על מעבדה יכולים להסתיר או למחוק תגובות בה. אנחנו רושמים
               איזה מנהל/ת עשה זאת, לתגובה של מי ומתי — <strong>בלי הטקסט</strong>. רק מנהלים רואים את הרישום הזה.
             </li>
+          </ul>
+
+          <h3>תמונות של מדידות</h3>
+          <ul>
+            <li>
+              <strong>מה אנחנו שומרים</strong> — את התמונה שצירפתם למדידה, אחרי שהדפדפן שלכם מחק ממנה את מידע המיקום (GPS)
+              ושאר המטא־דאטה והקטין אותה (עד 1600 פיקסלים בצלע הארוכה). היא נשמרת באחסון <strong>פרטי</strong>: אין אליה
+              קישור ציבורי.
+            </li>
+            <li>
+              <strong>מי רואה אותה</strong> — בהתחלה רק אתם והמנהלים האחראים על המעבדה. מורה (אחד/ת מהמנהלים האלה)
+              מאשר/ת אותה, ואחרי זה <strong>משתמשים מחוברים</strong> יכולים לראות אותה. מבקרים בלי חשבון אף פעם לא רואים
+              תמונות. האתר מציג תמונה דרך קישור זמני שמפסיק לעבוד אחרי 15 דקות.
+            </li>
+            <li>
+              <strong>כללים</strong> — צלמו רק את המכשיר ואת המקום: בלי אנשים ובלי פנים, בלי מספרי בתים, כתובות או לוחיות
+              רישוי. מנהל/ת מוחק/ת תמונה שלא עומדת בכללים ומסביר/ה למה.
+            </li>
+            <li>
+              <strong>דיווחים וניהול</strong> — כמו בתגובות: כל משתמש מחובר יכול לדווח על תמונה (אנחנו שומרים את הסיבה ואת
+              הזמן, ואף אחד לא רואה מי דיווח), ותמונה עם 3 דיווחים מוסתרת עד שמנהל/ת בודקים אותה. אנחנו רושמים איזה
+              מנהל/ת אישר/ה, הסתיר/ה או מחק/ה את התמונה של מי, מתי ולמה — <strong>בלי התמונה עצמה</strong>. רק מנהלים
+              רואים את הרישום הזה.
+            </li>
+            <li>אפשר למחוק את התמונה שלכם בכל זמן; המדידה נשארת.</li>
           </ul>
 
           <h3>מידע טכני</h3>
@@ -865,19 +974,22 @@
             <strong>התגובות לא גלויות לכולם:</strong> רק משתמשים מחוברים יכולים לקרוא אותן, יחד עם שם המשתמש של הכותב/ת.
             תגובה מוסתרת גלויה רק לכותב/ת שלה ולמנהלים האחראים על המעבדה.
           </p>
+          <p>
+            <strong>גם התמונות לא גלויות לכולם:</strong> רק משתמשים מחוברים רואים אותן, ורק אחרי שמורה אישר/ה אותן.
+            בקובץ שמורידים כתוב רק אם יש למדידה תמונה.
+          </p>
 
           <h2>מה אנחנו לא שומרים (כרגע)</h2>
           <p>
-            תמונות שאתם מוסיפים למדידה והודעות בפורום נשארים כרגע
-            <strong>רק בדפדפן שלכם</strong> ונעלמים כשמרעננים את הדף. הם לא נשלחים לשרת שלנו. זה עשוי להשתנות — ואם
-            כן, נעדכן את הדף הזה לפני כן.
+            הודעות בפורום נשארות כרגע <strong>רק בדפדפן שלכם</strong> ונעלמות כשמרעננים את הדף. הן לא נשלחות לשרת
+            שלנו. זה עשוי להשתנות — ואם כן, נעדכן את הדף הזה לפני כן.
           </p>
 
           <h2>מי עוד מקבל מידע</h2>
           <p>כדי להפעיל את מצפה אנחנו משתמשים בכמה שירותים:</p>
           <ul>
             <li>
-              <strong>Supabase</strong> — מסד הנתונים ומערכת הכניסה. שומרת את כל מה שמתואר למעלה, בשרתים
+              <strong>Supabase</strong> — מסד הנתונים, אחסון הקבצים (תמונות) ומערכת הכניסה. שומרת את כל מה שמתואר למעלה, בשרתים
               <strong>בפרנקפורט, גרמניה (האיחוד האירופי)</strong>. בקשות הרשמה וכניסה עוברות דרך השרת של Supabase הקרוב
               אליכם. בינתיים Supabase גם שולחת את המיילים שלנו (איפוס סיסמה, אישור אימייל).
             </li>
@@ -928,6 +1040,12 @@
               <strong>יומן ניהול התגובות</strong> (בלי טקסט) — נשמר; כשחשבון נמחק, היומן כבר לא מצביע על המשתמש.
             </li>
             <li><strong>רישומים להגבלת מספר התגובות</strong> — נמחקים אחרי יום.</li>
+            <li>
+              <strong>תמונות של מדידות</strong> — עד שתמחקו אותן, מנהל/ת ימחקו אותן או שהחשבון שלכם יימחק. תמונות מוסתרות
+              נמחקות אוטומטית <strong>90 יום</strong> אחרי שהוסתרו. תמונה שהועלתה אבל לא צורפה למדידה (למשל כשהשליחה
+              נכשלה) נמחקת אחרי יום. הקובץ של תמונה שנמחקה מוסר מהאחסון תוך יום. דיווחים על תמונות — עד שמנהל/ת מחליטים,
+              ועוד 90 יום. יומן ניהול התמונות (בלי התמונות) נשמר כמו יומן התגובות.
+            </li>
             <li><strong>יומני האחסון</strong> של Vercel ו־Supabase — זמן קצר (כמה ימים), לפי הכללים שלהן.</li>
           </ul>
 
@@ -948,7 +1066,8 @@
             אפשר למחוק את החשבון בעצמכם: פרופיל ← חשבון ← „מחיקת החשבון”. לאישור יש להקליד את שם המשתמש, ואם עברו יותר
             מ־15 דקות מאז הכניסה – להיכנס שוב (בסיסמה או דרך Google). במחיקה נמחקים לצמיתות: הפרופיל ושם המשתמש, כתובת
             האימייל, הסיסמה והחיבור ל־Google, פרופיל המנהל (שם מלא, מקום עבודה, תפקיד) ורישומי הכניסה לחשבון, כולל כתובות
-            IP. כל התגובות שלכם והדיווחים שלכם על תגובות נמחקים תמיד. את המדידות אפשר למחוק או להשאיר כנתונים מדעיים משותפים; מדידות שנשארות מוצגות כ„משתתף/ת לא ידוע/ה”
+            IP. כל התגובות שלכם והדיווחים שלכם על תגובות ותמונות נמחקים תמיד, וגם <strong>כל התמונות שלכם</strong> —
+            גם אם אתם משאירים את המדידות. את המדידות אפשר למחוק או להשאיר כנתונים מדעיים משותפים; מדידות שנשארות מוצגות כ„משתתף/ת לא ידוע/ה”
             ומקבלות מזהה אקראי חדש, כך שאי אפשר לקשר אותן לחשבון. אם מוחקים את המדידות, נמחקות גם התגובות של אחרים עליהן. מעבדות שיצר/ה או אישר/ה מנהל/ת נשארות, ובמקום השם מופיע
             „איש/אשת צוות לשעבר”; ביומני הניהול לא נשארים שם או מזהה. שם המשתמש מתפנה מיד. עותקים טכניים אצל ספק האחסון
             (יומני שרת וגיבויים) נמחקים לפי מדיניות השמירה שלו. עדיין אפשר לבקש מחיקה גם באימייל: <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
@@ -963,6 +1082,7 @@
               <strong>אל תמדדו בבית שלכם.</strong> המפה מציגה את המקום בדיוק של כ־100 מטר — מספיק כדי למצוא בית. מדדו בבית הספר, בפארק או במקום ציבורי אחר.
             </li>
             <li><strong>אל תכתבו פרטים אישיים</strong> (טלפון, כתובת, שם מלא) בשדות הטקסט ובתגובות — לא שלכם ולא של תלמידים אחרים.</li>
+            <li><strong>אל תצלמו אנשים</strong> (גם לא את עצמכם), מספרי בתים, כתובות או לוחיות רישוי. צלמו רק את המכשיר ואת המקום.</li>
             <li>כתבו תגובות בכבוד. אם תגובה פוגעת בכם או מדאיגה אתכם, לחצו „דיווח” — מנהל/ת יבדקו אותה.</li>
             <li>אל תגלו את הסיסמה שלכם לאף אחד, גם לא לחברים.</li>
             <li>אם משהו מדאיג אתכם — דברו עם המורה או עם ההורים, או כתבו לנו.</li>
@@ -972,7 +1092,9 @@
           <p>
             במצפה משתמשים תלמידי בית ספר, רבים מהם מתחת לגיל 18. אנחנו אוספים כמה שפחות: שם משתמש, סיסמה, ואם רוצים —
             אימייל. אנחנו לא מבקשים את השם האמיתי של התלמיד, את בית הספר, הגיל, מספר הטלפון או תמונה (אם התלמיד נכנס
-            עם Google, חברת Google שולחת לנו את השם והאימייל שלו — ראו למעלה). אין פרסומות, אין מעקב ואין מכירת מידע.
+            עם Google, חברת Google שולחת לנו את השם והאימייל שלו — ראו למעלה). בתמונה שמצורפת למדידה צריכים להופיע רק
+            המכשיר והמקום; מורה מאשר/ת כל תמונה לפני שמשתמשים אחרים יכולים לראות אותה, ומבקרים בלי חשבון אף פעם לא רואים
+            תמונות. אין פרסומות, אין מעקב ואין מכירת מידע.
             כדי לראות, לתקן או למחוק את המידע של ילדכם, כתבו ל־<strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
 

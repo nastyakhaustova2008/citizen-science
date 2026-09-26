@@ -10,6 +10,7 @@ import {
   linkDomainPendingCount,
   reportQueue as fetchCommentReports,
 } from '../lib/commentsApi';
+import { photoQueue as fetchPhotoQueue } from '../lib/photosApi';
 import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
 
 /**
@@ -27,7 +28,9 @@ import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
  * Comments on measurements (and "problem" reports = kind 'issue') are in Supabase too (015),
  * read per point by useComments(); here: the flagged mark, the allowed link domains and the
  * admins' counts (reported comments, link domain proposals).
- * Everything else (topics, posts, joins, photos)
+ * Measurement photos are files in Supabase Storage (016): the measurement stores the path, the
+ * point panel reads who may see what (photosApi.listPhotos); here: the admins' photo queue.
+ * Everything else (topics, posts, joins)
  * still lives in memory over the mock dataset for the session only.
  */
 const CAMPAIGN_COLUMNS =
@@ -110,7 +113,6 @@ function fromRow(row) {
     formVersion: row.form_version,
     verification: row.verification,
     photoSeed: row.photo_seed,
-    photos: {},
   };
 }
 
@@ -307,6 +309,15 @@ export function AppDataProvider({ children }) {
       setCommentReports([]);
     }
   }, []);
+  // Admins: measurement photos waiting for approval / reported, on labs I moderate (016).
+  const [photoQueue, setPhotoQueue] = useState([]);
+  const reloadPhotoQueue = useCallback(async () => {
+    try {
+      setPhotoQueue(await fetchPhotoQueue());
+    } catch {
+      setPhotoQueue([]);
+    }
+  }, []);
   const [linkProposalCount, setLinkProposalCount] = useState(0);
   const reloadLinkProposals = useCallback(async () => {
     try {
@@ -318,15 +329,18 @@ export function AppDataProvider({ children }) {
   useEffect(() => {
     if (seesDrafts) {
       reloadCommentReports();
+      reloadPhotoQueue();
       reloadLinkProposals();
     } else {
       setCommentReports([]);
+      setPhotoQueue([]);
       setLinkProposalCount(0);
     }
-  }, [seesDrafts, currentUserId, reloadCommentReports, reloadLinkProposals]);
+  }, [seesDrafts, currentUserId, reloadCommentReports, reloadPhotoQueue, reloadLinkProposals]);
   const commentReportCount = commentReports.length;
+  const photoQueueCount = photoQueue.length;
   // Everything waiting for this admin (header badge).
-  const adminTodoCount = reviewCount + commentReportCount + linkProposalCount;
+  const adminTodoCount = reviewCount + commentReportCount + photoQueueCount + linkProposalCount;
 
   useEffect(() => {
     let alive = true;
@@ -341,15 +355,7 @@ export function AppDataProvider({ children }) {
           .order('measured_at', { ascending: false });
         if (error) throw error;
         if (!alive) return;
-        // Keep in-memory photos for rows already on screen.
-        setMeasurements((prev) => {
-          const local = new Map(prev.map((m) => [m.id, m]));
-          return data.map((row) => {
-            const m = fromRow(row);
-            const old = local.get(m.id);
-            return old ? { ...m, photos: old.photos } : m;
-          });
-        });
+        setMeasurements(data.map(fromRow));
       } catch (err) {
         if (!alive) return;
         console.error('[measurements] load failed', err);
@@ -367,7 +373,8 @@ export function AppDataProvider({ children }) {
 
   /**
    * Insert into Supabase; resolves with the saved record.
-   * draft: { observationId, lat, lng, placeLabel, timestamp, values, photos }
+   * draft: { observationId, lat, lng, placeLabel, timestamp, values } — photo values are
+   * Storage paths already uploaded by the wizard.
    * The database validates `values` against the campaign's CURRENT fields and stores the
    * current form_version. If it rejects them, the campaign is re-read and an
    * InvalidValuesError with per-field codes is thrown.
@@ -396,8 +403,7 @@ export function AppDataProvider({ children }) {
         }
         throw error;
       }
-      // Photos are not stored in the database yet — keep them in memory only.
-      const record = { ...fromRow(data), photos: draft.photos || {} };
+      const record = fromRow(data);
       setMeasurements((prev) => [record, ...prev]);
       return record;
     },
@@ -563,6 +569,9 @@ export function AppDataProvider({ children }) {
       commentReports,
       commentReportCount,
       reloadCommentReports,
+      photoQueue,
+      photoQueueCount,
+      reloadPhotoQueue,
       linkProposalCount,
       reloadLinkProposals,
       adminTodoCount,
@@ -606,6 +615,9 @@ export function AppDataProvider({ children }) {
       commentReports,
       commentReportCount,
       reloadCommentReports,
+      photoQueue,
+      photoQueueCount,
+      reloadPhotoQueue,
       linkProposalCount,
       reloadLinkProposals,
       adminTodoCount,

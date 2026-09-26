@@ -10,13 +10,16 @@ import { fieldLabel, formatFieldValue, hasValue, visibleFields } from '../../lib
 import { photoDataUri } from '../../lib/media';
 import { Avatar, AuthorName, LoginPrompt, VerificationBadge } from '../primitives';
 import useComments from '../../hooks/useComments';
+import usePhotos from '../../hooks/usePhotos';
 import CommentThread from '../comments/CommentThread';
+import MeasurementPhoto from '../photos/MeasurementPhoto';
 import CommentForm from '../comments/CommentForm';
 
 export default function PointPanel({ measurement, observation, onClose }) {
   const { t, locale } = useI18n();
   const { getAuthor, currentUser } = useAppData();
   const thread = useComments(measurement?.id);
+  const photoThread = usePhotos(measurement?.id);
   const [flagOpen, setFlagOpen] = useState(false);
   const [flagDone, setFlagDone] = useState(false);
   const closeRef = useRef(null);
@@ -43,14 +46,9 @@ export default function PointPanel({ measurement, observation, onClose }) {
   const fields = visibleFields(observation, [measurement]).filter(
     (f) => f.key !== primary?.key && hasValue(measurement.values[f.key]),
   );
-  const photos = [
-    ...fields
-      .filter((f) => f.type === 'photo' && measurement.photos?.[f.key])
-      .map((f) => ({ key: f.key, src: measurement.photos[f.key], label: fieldLabel(f, locale) })),
-    ...(measurement.photoSeed
-      ? [{ key: '_seed', src: photoDataUri(measurement.photoSeed), label: t('map.panel.photo') }]
-      : []),
-  ];
+  // Photo fields are shown below the list (stored photos, 016); demo rows have a generated image.
+  const photoFields = fields.filter((f) => f.type === 'photo');
+  const photoAlt = (label) => [label, measurement.placeLabel].filter(Boolean).join(' — ');
 
   return (
     <aside
@@ -118,7 +116,7 @@ export default function PointPanel({ measurement, observation, onClose }) {
             </div>
           )}
           {fields
-            .filter((f) => f.type !== 'photo' || !measurement.photos?.[f.key])
+            .filter((f) => f.type !== 'photo')
             .map((f) => (
               <div key={f.key} className="col-span-2">
                 <dt className="text-xs text-ink-faint">
@@ -148,16 +146,26 @@ export default function PointPanel({ measurement, observation, onClose }) {
           </div>
         </dl>
 
-        {photos.map((p) => (
-          <figure key={p.key}>
+        {photoFields.map((f) => (
+          <MeasurementPhoto
+            key={f.key}
+            field={f}
+            label={fieldLabel(f, locale)}
+            value={measurement.values[f.key]}
+            alt={photoAlt(fieldLabel(f, locale))}
+            photos={photoThread}
+          />
+        ))}
+        {measurement.photoSeed && (
+          <figure>
             <img
-              src={p.src}
-              alt={[p.label, measurement.placeLabel].filter(Boolean).join(' — ')}
+              src={photoDataUri(measurement.photoSeed)}
+              alt={photoAlt(t('map.panel.photo'))}
               className="w-full rounded-lg border border-edge dark:border-white/10"
               loading="lazy"
             />
           </figure>
-        ))}
+        )}
 
         <CommentThread thread={thread} />
       </div>

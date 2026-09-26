@@ -84,6 +84,30 @@ export function visibleFields(campaign, measurements) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Photo values (016)                                                  */
+/* ------------------------------------------------------------------ */
+
+/** A photo value that was deleted (moderator, its author, expiry, account deletion). */
+export const PHOTO_REMOVED = 'removed';
+
+const PHOTO_PATH_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.jpg$/;
+
+/** A file name in the measurement-photos bucket. */
+export function isPhotoPath(v) {
+  return typeof v === 'string' && PHOTO_PATH_RE.test(v);
+}
+
+/**
+ * 'stored' (a file in Storage), 'removed', or 'legacy' (true: attached before photos were
+ * stored — there is no file).
+ */
+export function photoState(v) {
+  if (isPhotoPath(v)) return 'stored';
+  if (v === PHOTO_REMOVED) return 'removed';
+  return 'legacy';
+}
+
+/* ------------------------------------------------------------------ */
 /* Form input ↔ stored value                                           */
 /* ------------------------------------------------------------------ */
 
@@ -98,7 +122,8 @@ export function emptyInput(field) {
  * Convert what the form holds into the value stored in field_values.
  * Returns undefined for "not filled".
  * number: string from <input type=number> → Number (NaN is kept, so it fails validation).
- * datetime: local "yyyy-mm-ddThh:mm" → ISO string. photo: data URI → true (see 004 migration).
+ * datetime: local "yyyy-mm-ddThh:mm" → ISO string. photo: a picked image → true ("attached");
+ * the wizard replaces it with the Storage path after the upload (016).
  */
 export function inputToValue(field, raw) {
   switch (field.type) {
@@ -153,7 +178,7 @@ export function validateValue(field, value) {
     case 'datetime':
       return typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? null : 'type';
     case 'photo':
-      return value === true ? null : 'type';
+      return value === true || isPhotoPath(value) ? null : 'type';
     default:
       return 'type';
   }
@@ -183,7 +208,7 @@ export function formatFieldValue(field, value, { locale, t }) {
     case 'datetime':
       return `${formatDate(value, locale)} ${formatTime(value, locale)}`;
     case 'photo':
-      return t('fields.photoAttached');
+      return t(`fields.photo.${photoState(value)}`);
     default:
       return String(value);
   }
@@ -193,7 +218,7 @@ export function formatFieldValue(field, value, { locale, t }) {
 export function exportFieldValue(field, value) {
   if (!hasValue(value)) return null;
   if (field.type === 'multi_choice') return value.join(';');
-  if (field.type === 'photo') return 'yes';
+  if (field.type === 'photo') return photoState(value) === 'removed' ? 'removed' : 'yes';
   return value;
 }
 

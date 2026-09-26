@@ -20,10 +20,15 @@ export default function FieldInput({ field, value, onChange, onBlur, error, warn
   const label = fieldLabel(field, locale);
   const help = fieldHelp(field, locale);
   const invalid = !!error;
-  // Photo fields: the file is redrawn without EXIF (GPS) before it becomes the value.
+  // Photo fields: the file is redrawn without EXIF (GPS), shrunk and compressed before it
+  // becomes the value (uploaded by the wizard on submit).
   const [photoUnsupported, setPhotoUnsupported] = useState(false);
   const photoPick = useRef(0);
-  const describedBy = [help && helpId, (error || warning || photoUnsupported) && msgId].filter(Boolean).join(' ') || undefined;
+  const rulesId = `${id}-rules`;
+  const describedBy =
+    [help && helpId, field.type === 'photo' && rulesId, (error || warning || photoUnsupported) && msgId]
+      .filter(Boolean)
+      .join(' ') || undefined;
 
   const labelText = (
     <>
@@ -158,6 +163,10 @@ export default function FieldInput({ field, value, onChange, onBlur, error, warn
             </label>
           )}
         </div>
+        <p id={rulesId} className="mt-1.5 flex items-start gap-1.5 text-xs text-bark dark:text-bark-light">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {t('wizard.step3.photoRules')}
+        </p>
         {photoUnsupported && !value ? (
           <p id={msgId} role="alert" className="mt-1 flex items-start gap-1.5 text-sm text-danger">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
