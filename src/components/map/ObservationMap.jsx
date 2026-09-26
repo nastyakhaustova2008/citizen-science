@@ -46,7 +46,7 @@ function InvalidateOnMount() {
   return null;
 }
 
-export default function ObservationMap({ observation, measurements, height = 520 }) {
+export default function ObservationMap({ observation, measurements, height = 520, initialPointId = null }) {
   const { t } = useI18n();
   const scale = observation.scale;
 
@@ -57,7 +57,8 @@ export default function ObservationMap({ observation, measurements, height = 520
   const [dateIdx, setDateIdx] = useState(0);
   useEffect(() => setDateIdx(sortedDates.length ? sortedDates.length - 1 : 0), [sortedDates.length]);
 
-  const [selectedId, setSelectedId] = useState(null);
+  // ?point=<id> (links from the admin comment lists) opens that point's panel.
+  const [selectedId, setSelectedId] = useState(initialPointId || null);
 
   const cutoff = sortedDates[dateIdx];
   const visible = useMemo(() => {

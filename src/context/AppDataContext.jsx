@@ -4,6 +4,12 @@ import { METRICS } from '../data/metrics';
 import { fieldFromRow, buildScale } from '../lib/fields';
 import { supabase } from '../lib/supabase';
 import { allCredits, reviewQueue as fetchReviewQueue } from '../lib/labsApi';
+import {
+  issueMeasurements,
+  linkDomains as fetchLinkDomains,
+  linkDomainPendingCount,
+  reportQueue as fetchCommentReports,
+} from '../lib/commentsApi';
 import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
 
 /**
@@ -18,7 +24,10 @@ import { useAuth, authorFromProfile, PROFILE_COLUMNS } from './AuthContext';
  * requires login and stores the real user id.
  * Authors: real users → profiles (loaded for the ids on screen); seeded demo rows keep mock ids
  * ('u-noa', …) → mock users from mockData, marked kind: 'demo'.
- * Everything else (topics, posts, joins, point comments, flags, photos)
+ * Comments on measurements (and "problem" reports = kind 'issue') are in Supabase too (015),
+ * read per point by useComments(); here: the flagged mark, the allowed link domains and the
+ * admins' counts (reported comments, link domain proposals).
+ * Everything else (topics, posts, joins, photos)
  * still lives in memory over the mock dataset for the session only.
  */
 const CAMPAIGN_COLUMNS =
@@ -102,7 +111,6 @@ function fromRow(row) {
     verification: row.verification,
     photoSeed: row.photo_seed,
     photos: {},
-    comments: [],
   };
 }
 
@@ -262,6 +270,64 @@ export function AppDataProvider({ children }) {
   }, [seesDrafts, reloadReviewQueue]);
   const reviewCount = reviewQueue.filter((r) => r.myState === 'can_review').length;
 
+  // Comments (015). Logged-in users: allowed link domains (null = not loaded: no link is
+  // clickable, the form leaves the domain check to the server) + measurements with a "problem" report.
+  const [linkDomains, setLinkDomains] = useState(null);
+  const reloadLinkDomains = useCallback(async () => {
+    try {
+      setLinkDomains(await fetchLinkDomains());
+    } catch {
+      setLinkDomains(null);
+    }
+  }, []);
+  const [issueIds, setIssueIds] = useState(() => new Set());
+  const reloadIssues = useCallback(async () => {
+    try {
+      setIssueIds(new Set(await issueMeasurements()));
+    } catch {
+      setIssueIds(new Set());
+    }
+  }, []);
+  useEffect(() => {
+    if (currentUserId) {
+      reloadLinkDomains();
+      reloadIssues();
+    } else {
+      setLinkDomains(null);
+      setIssueIds(new Set());
+    }
+  }, [currentUserId, reloadLinkDomains, reloadIssues]);
+
+  // Admins: reported comments I may moderate; main admins / owner: pending link domain proposals.
+  const [commentReports, setCommentReports] = useState([]);
+  const reloadCommentReports = useCallback(async () => {
+    try {
+      setCommentReports(await fetchCommentReports());
+    } catch {
+      setCommentReports([]);
+    }
+  }, []);
+  const [linkProposalCount, setLinkProposalCount] = useState(0);
+  const reloadLinkProposals = useCallback(async () => {
+    try {
+      setLinkProposalCount(await linkDomainPendingCount());
+    } catch {
+      setLinkProposalCount(0);
+    }
+  }, []);
+  useEffect(() => {
+    if (seesDrafts) {
+      reloadCommentReports();
+      reloadLinkProposals();
+    } else {
+      setCommentReports([]);
+      setLinkProposalCount(0);
+    }
+  }, [seesDrafts, currentUserId, reloadCommentReports, reloadLinkProposals]);
+  const commentReportCount = commentReports.length;
+  // Everything waiting for this admin (header badge).
+  const adminTodoCount = reviewCount + commentReportCount + linkProposalCount;
+
   useEffect(() => {
     let alive = true;
     setMeasurementsLoading(true);
@@ -275,20 +341,13 @@ export function AppDataProvider({ children }) {
           .order('measured_at', { ascending: false });
         if (error) throw error;
         if (!alive) return;
-        // Keep in-memory extras (photos, comments, flags) for rows already on screen.
+        // Keep in-memory photos for rows already on screen.
         setMeasurements((prev) => {
           const local = new Map(prev.map((m) => [m.id, m]));
           return data.map((row) => {
             const m = fromRow(row);
             const old = local.get(m.id);
-            return old
-              ? {
-                  ...m,
-                  photos: old.photos,
-                  comments: old.comments,
-                  verification: old.verification === 'flagged' ? 'flagged' : m.verification,
-                }
-              : m;
+            return old ? { ...m, photos: old.photos } : m;
           });
         });
       } catch (err) {
@@ -345,53 +404,7 @@ export function AppDataProvider({ children }) {
     [refreshCampaigns, currentUserId],
   );
 
-  // Comments, flags and forum posts are still in memory only; they need a logged-in author.
-  const addComment = useCallback((measurementId, body) => {
-    if (!currentUserId) return;
-    setMeasurements((prev) =>
-      prev.map((m) =>
-        m.id === measurementId
-          ? {
-              ...m,
-              comments: [
-                ...m.comments,
-                {
-                  id: `c-${measurementId}-${m.comments.length + 1}`,
-                  authorId: currentUserId,
-                  createdAt: new Date().toISOString(),
-                  body,
-                },
-              ],
-            }
-          : m,
-      ),
-    );
-  }, [currentUserId]);
-
-  const flagMeasurement = useCallback((measurementId, reason) => {
-    if (!currentUserId) return;
-    setMeasurements((prev) =>
-      prev.map((m) =>
-        m.id === measurementId
-          ? {
-              ...m,
-              verification: 'flagged',
-              comments: [
-                ...m.comments,
-                {
-                  id: `c-${measurementId}-flag-${Date.now()}`,
-                  authorId: currentUserId,
-                  createdAt: new Date().toISOString(),
-                  body: reason,
-                  isFlag: true,
-                },
-              ],
-            }
-          : m,
-      ),
-    );
-  }, [currentUserId]);
-
+  // Forum posts are still in memory only; they need a logged-in author.
   const addTopic = useCallback(({ observationId, title, body, category }) => {
     if (!currentUserId) return null;
     const id = `t-new-${Date.now()}`;
@@ -496,9 +509,14 @@ export function AppDataProvider({ children }) {
     const primaryKey = new Map(campaigns.map((c) => [c.id, c.primaryField?.key]));
     return measurements.map((m) => {
       const v = m.values[primaryKey.get(m.observationId)];
-      return { ...m, value: typeof v === 'number' ? v : null };
+      return {
+        ...m,
+        value: typeof v === 'number' ? v : null,
+        // A visible "problem" comment marks the point as flagged (logged-in users).
+        verification: issueIds.has(m.id) ? 'flagged' : m.verification,
+      };
     });
-  }, [measurements, campaigns]);
+  }, [measurements, campaigns, issueIds]);
 
   /** Campaigns with their colour scale (needs the data when the field has no min/max). */
   const campaignsView = useMemo(
@@ -539,6 +557,15 @@ export function AppDataProvider({ children }) {
       reviewQueue,
       reviewCount,
       reloadReviewQueue,
+      linkDomains,
+      reloadLinkDomains,
+      reloadIssues,
+      commentReports,
+      commentReportCount,
+      reloadCommentReports,
+      linkProposalCount,
+      reloadLinkProposals,
+      adminTodoCount,
       campaignsLoading,
       campaignsError,
       reloadCampaigns,
@@ -556,8 +583,6 @@ export function AppDataProvider({ children }) {
       getMeasurement: (id) => measurementsView.find((m) => m.id === id) || null,
       getObservation,
       addMeasurement,
-      addComment,
-      flagMeasurement,
       addTopic,
       addPost,
       toggleReaction,
@@ -575,6 +600,15 @@ export function AppDataProvider({ children }) {
       reviewQueue,
       reviewCount,
       reloadReviewQueue,
+      linkDomains,
+      reloadLinkDomains,
+      reloadIssues,
+      commentReports,
+      commentReportCount,
+      reloadCommentReports,
+      linkProposalCount,
+      reloadLinkProposals,
+      adminTodoCount,
       campaignsLoading,
       campaignsError,
       reloadCampaigns,
@@ -587,8 +621,6 @@ export function AppDataProvider({ children }) {
       topics,
       joined,
       addMeasurement,
-      addComment,
-      flagMeasurement,
       addTopic,
       addPost,
       toggleReaction,

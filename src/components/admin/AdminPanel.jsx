@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { History, Users, FlaskConical } from 'lucide-react';
+import { History, Users, FlaskConical, MessageSquareWarning } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { SectionHeading } from '../primitives';
 import Tabs from '../Tabs';
@@ -7,19 +7,30 @@ import UserList from './UserList';
 import RoleLog from './RoleLog';
 import LabList from '../labs/LabList';
 import LabLog from '../labs/LabLog';
+import ReportQueue from '../comments/ReportQueue';
+import LinkDomains from '../comments/LinkDomains';
+import CommentLog from '../comments/CommentLog';
+import LinkDomainLog from '../comments/LinkDomainLog';
 import { useAppData } from '../../context/AppDataContext';
 
 /**
- * Own profile of an admin → "Administration": users (roles, renames), labs (editor, step 5a)
- * and the change logs (roles | labs).
+ * Own profile of an admin → "Administration": users (roles, renames), labs (editor, step 5a),
+ * comments (reported comments, allowed link domains — 015) and the change logs.
  */
 export default function AdminPanel() {
   const { t } = useI18n();
   const [tab, setTab] = useState('labs');
   const [logKind, setLogKind] = useState('labs');
-  const { reviewCount } = useAppData(); // labs I can review now → badge on the Labs tab
+  // Badges: labs I can review now; reported comments + link domain proposals waiting for me.
+  const { reviewCount, commentReportCount, linkProposalCount } = useAppData();
   const tabs = [
     { id: 'labs', label: t('admin.tabs.labs'), icon: FlaskConical, count: reviewCount || null },
+    {
+      id: 'comments',
+      label: t('admin.tabs.comments'),
+      icon: MessageSquareWarning,
+      count: commentReportCount + linkProposalCount || null,
+    },
     { id: 'users', label: t('admin.tabs.users'), icon: Users },
     { id: 'log', label: t('admin.tabs.log'), icon: History },
   ];
@@ -29,11 +40,17 @@ export default function AdminPanel() {
       <Tabs tabs={tabs} active={tab} onChange={setTab} idBase="admin" />
       <div role="tabpanel" id={`admin-panel-${tab}`} aria-labelledby={`admin-${tab}`} className="pt-4">
         {tab === 'labs' && <LabList />}
+        {tab === 'comments' && (
+          <div className="space-y-8">
+            <ReportQueue />
+            <LinkDomains />
+          </div>
+        )}
         {tab === 'users' && <UserList />}
         {tab === 'log' && (
           <div className="space-y-3">
-            <div className="flex gap-2" role="group" aria-label={t('admin.tabs.log')}>
-              {['labs', 'roles'].map((k) => (
+            <div className="flex flex-wrap gap-2" role="group" aria-label={t('admin.tabs.log')}>
+              {['labs', 'roles', 'comments', 'links'].map((k) => (
                 <button
                   key={k}
                   type="button"
@@ -45,7 +62,10 @@ export default function AdminPanel() {
                 </button>
               ))}
             </div>
-            {logKind === 'labs' ? <LabLog /> : <RoleLog />}
+            {logKind === 'labs' && <LabLog />}
+            {logKind === 'roles' && <RoleLog />}
+            {logKind === 'comments' && <CommentLog />}
+            {logKind === 'links' && <LinkDomainLog />}
           </div>
         )}
       </div>

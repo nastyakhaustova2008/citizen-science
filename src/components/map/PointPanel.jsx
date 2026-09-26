@@ -1,27 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Flag, Send } from 'lucide-react';
+import { X, Flag } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { useAppData } from '../../context/AppDataContext';
 import { colorForValue } from '../../data/metrics';
-import { formatDate, formatTime, formatNumber, relativeTime } from '../../lib/format';
+import { formatDate, formatTime, formatNumber } from '../../lib/format';
 import { locationLabel } from '../../lib/location';
 import { fieldLabel, formatFieldValue, hasValue, visibleFields } from '../../lib/fields';
 import { photoDataUri } from '../../lib/media';
 import { Avatar, AuthorName, LoginPrompt, VerificationBadge } from '../primitives';
-
-function relText(t, iso) {
-  const r = relativeTime(iso);
-  return t(r.key, r.count != null ? { count: r.count } : undefined);
-}
+import useComments from '../../hooks/useComments';
+import CommentThread from '../comments/CommentThread';
+import CommentForm from '../comments/CommentForm';
 
 export default function PointPanel({ measurement, observation, onClose }) {
   const { t, locale } = useI18n();
-  const { addComment, flagMeasurement, getAuthor, currentUser } = useAppData();
-  const [comment, setComment] = useState('');
+  const { getAuthor, currentUser } = useAppData();
+  const thread = useComments(measurement?.id);
   const [flagOpen, setFlagOpen] = useState(false);
-  const [flagReason, setFlagReason] = useState('');
+  const [flagDone, setFlagDone] = useState(false);
   const closeRef = useRef(null);
+
+  useEffect(() => {
+    setFlagOpen(false);
+    setFlagDone(false);
+  }, [measurement?.id]);
 
   useEffect(() => {
     closeRef.current?.focus();
@@ -156,106 +159,30 @@ export default function PointPanel({ measurement, observation, onClose }) {
           </figure>
         ))}
 
-        {/* Comments */}
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">
-            {t('map.panel.comments')} ({measurement.comments.length})
-          </h3>
-          {measurement.comments.length === 0 ? (
-            <p className="text-xs text-ink-faint">{t('map.panel.noComments')}</p>
-          ) : (
-            <ul className="space-y-2.5">
-              {measurement.comments.map((c) => {
-                const cu = getAuthor(c.authorId);
-                return (
-                  <li key={c.id} className="flex gap-2">
-                    <Avatar user={cu} size={24} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs">
-                        <AuthorName user={cu} className="font-semibold" />{' '}
-                        {c.verifiedExpert && (
-                          <span className="chip chip-active !py-0 text-[10px]">
-                            {t('discussion.expertBadge')}
-                          </span>
-                        )}
-                        <span className="text-ink-faint"> · {relText(t, c.createdAt)}</span>
-                      </p>
-                      <p
-                        className={`mt-0.5 text-sm ${
-                          c.isFlag || c.verifiedExpert ? 'text-danger' : ''
-                        }`}
-                      >
-                        {c.body}
-                      </p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
-          {!currentUser ? (
-            <LoginPrompt className="mt-3 text-xs" message={t('auth.loginToParticipate')} />
-          ) : (
-            <form
-              className="mt-3 flex items-start gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!comment.trim()) return;
-                addComment(measurement.id, comment.trim());
-                setComment('');
-              }}
-            >
-              <label className="sr-only" htmlFor="pp-comment">
-                {t('map.panel.addComment')}
-              </label>
-              <textarea
-                id="pp-comment"
-                rows={2}
-                className="input flex-1 py-2 text-sm"
-                placeholder={t('map.panel.addComment')}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-              />
-              <button type="submit" className="btn-secondary mt-0.5 px-2.5" disabled={!comment.trim()}>
-                <Send className="h-4 w-4" aria-hidden="true" />
-                <span className="sr-only">{t('discussion.send')}</span>
-              </button>
-            </form>
-          )}
-        </section>
+        <CommentThread thread={thread} />
       </div>
 
       <footer className="border-t border-edge p-3 dark:border-white/10">
         {!currentUser ? (
           <LoginPrompt className="text-xs" message={t('auth.loginToParticipate')} />
         ) : flagOpen ? (
-          <form
-            className="space-y-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              flagMeasurement(measurement.id, flagReason.trim() || t('map.panel.reportIssue'));
+          <CommentForm
+            id="pp-issue"
+            autoFocus
+            danger
+            placeholder={t('comments.issuePlaceholder')}
+            submitLabel={t('common.submit')}
+            onSubmit={async (body) => {
+              await thread.add(body, locale, 'issue');
               setFlagOpen(false);
-              setFlagReason('');
+              setFlagDone(true);
             }}
-          >
-            <textarea
-              rows={2}
-              autoFocus
-              className="input py-2 text-sm"
-              placeholder={t('map.panel.reportIssue')}
-              value={flagReason}
-              onChange={(e) => setFlagReason(e.target.value)}
-            />
-            <div className="flex gap-2">
-              <button type="submit" className="btn-primary flex-1 !bg-danger">
-                {t('common.submit')}
-              </button>
-              <button type="button" className="btn-ghost" onClick={() => setFlagOpen(false)}>
-                {t('common.cancel')}
-              </button>
-            </div>
-          </form>
+            onCancel={() => setFlagOpen(false)}
+          />
+        ) : flagDone ? (
+          <p className="text-center text-xs text-ink-faint" role="status">
+            {t('comments.issueDone')}
+          </p>
         ) : (
           <button
             type="button"

@@ -119,6 +119,7 @@ function DeletePanel({ onCancel }) {
             <li>{t('auth.deleteAccount.itemProfile', { name: isolate(username) })}</li>
             <li>{t('auth.deleteAccount.itemSignIn')}</li>
             {isAdmin && <li>{t('auth.deleteAccount.itemAdminProfile')}</li>}
+            <li>{t('auth.deleteAccount.itemComments', { count: preview.comments })}</li>
             <li>{t('auth.deleteAccount.itemLogs')}</li>
           </ul>
         </div>
@@ -169,6 +170,11 @@ function DeletePanel({ onCancel }) {
               <span>
                 <span className="font-semibold">{t(`auth.deleteAccount.${opt}`)}</span>
                 <span className="block text-xs text-ink-faint">{t(`auth.deleteAccount.${opt}Hint`)}</span>
+                {value && preview.commentsOnMeasurements > 0 && (
+                  <span className="block text-xs text-ink-faint">
+                    {t('auth.deleteAccount.commentsOnMeasurements', { count: preview.commentsOnMeasurements })}
+                  </span>
+                )}
               </span>
             </label>
           ))}
