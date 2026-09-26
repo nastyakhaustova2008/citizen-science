@@ -2,7 +2,17 @@ import { useState } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
-import { AuthCard, Field, FormError, GoogleButton, Notice, OrDivider, safeNext } from '../../components/auth/AuthUI';
+import {
+  AuthCard,
+  Field,
+  FormError,
+  GoogleButton,
+  Notice,
+  OrDivider,
+  SharedDeviceCheckbox,
+  safeNext,
+} from '../../components/auth/AuthUI';
+import { sharedPreference } from '../../lib/session';
 
 export default function LoginPage() {
   const { t } = useI18n();
@@ -14,6 +24,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [shared, setShared] = useState(sharedPreference);
 
   if (!authLoading && session && !busy) return <Navigate to={next} replace />;
 
@@ -22,7 +33,7 @@ export default function LoginPage() {
     setError(null);
     setBusy(true);
     try {
-      await logIn({ username, password });
+      await logIn({ username, password, shared });
       navigate(next, { replace: true });
     } catch (err) {
       setError(err.code || 'generic');
@@ -78,13 +89,14 @@ export default function LoginPage() {
             required
           />
         </Field>
+        <SharedDeviceCheckbox id="login-shared" checked={shared} onChange={setShared} />
         <FormError code={error} />
         <button type="submit" className="btn-primary w-full" disabled={busy || !username.trim() || !password}>
           {busy ? t('auth.working') : t('auth.submitLogin')}
         </button>
       </form>
       <OrDivider />
-      <GoogleButton next={next} />
+      <GoogleButton next={next} shared={shared} />
     </AuthCard>
   );
 }

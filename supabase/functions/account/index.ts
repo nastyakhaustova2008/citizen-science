@@ -26,6 +26,23 @@
 //             session must have signed in within REAUTH_MAX_AGE_MINUTES (shared school computers).
 //             All their files in Storage are removed before the auth user (016); if that fails
 //             → { error: 'storage_failed' } and nothing else has happened that can't be repeated.
+//   change-password { password } + header Authorization: Bearer <user's access token>
+//             → { ok: true } | { error: 'not_logged_in' | 'reauth_required' | 'too_many_attempts'
+//             | 'password_short' | 'password_long' }
+//             Audit H6. Only when THIS session signed in within REAUTH_MAX_AGE_MINUTES (password,
+//             Google or a password-reset link); otherwise the browser asks for the current password
+//             (action `login`, so wrong passwords count against the per-username limit) or Google.
+//             Then a one-time ticket in the database (migration 021, account_change_ticket) and the
+//             change through the admin API; the trigger on auth.users refuses a new password
+//             without a ticket, so a stolen token can't change it by calling Supabase Auth
+//             directly. Afterwards the user's OTHER sessions are signed out.
+//   change-email { email, redirectTo } + Bearer token
+//             → { ok: true } | { error: 'not_logged_in' | 'reauth_required' | 'too_many_attempts'
+//             | 'email_invalid' | 'email_in_use' | 'generic' }
+//             Same rule; ticket for exactly this address, then PUT /auth/v1/user with the user's own
+//             token, so Supabase Auth sends the confirmation link to the new address (needs working
+//             email — the UI keeps this hidden until then, src/lib/authConfig.js).
+//             Both work before migration 021 too (the ticket is skipped while the function is missing).
 //   sweep     {} + header x-mitzpe-cron: <CRON_SECRET> → { ok, removed, left } | 401
 //             Removes the files queued in private.storage_trash through the Storage API (the
 //             database cannot delete Storage files itself). Called daily by pg_cron + pg_net
@@ -38,6 +55,7 @@
 //   login:  10 failed attempts per username per 15 min (IP-independent) + Supabase Auth's own
 //           per-IP limit (the client IP is forwarded with Sb-Forwarded-For).
 //   recover: 20 per IP and 3 per username per hour.
+//   change-password / change-email: CHANGE_LIMIT_PER_USER (default 10) per account per hour.
 //   delete:  DELETE_LIMIT_PER_USER (default 10) per account and DELETE_LIMIT_PER_IP (default 30)
 //            per IP per hour, every attempt counts.
 // Limits are Edge Function secrets (Dashboard → Edge Functions → Secrets), no redeploy needed.
@@ -50,6 +68,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 // Sb-Forwarded-For only works with a secret key (sb_secret_…), not the legacy service_role key.
 const SECRET_KEY = readKeyMap('SUPABASE_SECRET_KEYS') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+// For calls made AS the user (their access token), e.g. change-email.
+const PUBLIC_KEY = readKeyMap('SUPABASE_PUBLISHABLE_KEYS') || Deno.env.get('SUPABASE_ANON_KEY') || SECRET_KEY;
 const PLACEHOLDER_DOMAIN = Deno.env.get('PLACEHOLDER_EMAIL_DOMAIN') || 'noemail.mitzpe.invalid';
 // Which request header carries the real client IP: 'auto' (default), 'cf-connecting-ip',
 // 'x-real-ip', 'x-forwarded-for-last' or 'none'. Never the left-most X-Forwarded-For entry —
@@ -64,7 +84,9 @@ const LIMITS = {
   recoverPerUser: envInt('RECOVER_LIMIT_PER_USER', 3),
   deletePerUser: envInt('DELETE_LIMIT_PER_USER', 10),
   deletePerIp: envInt('DELETE_LIMIT_PER_IP', 30),
-  // "Delete my account" needs a sign-in (password or Google) at most this long ago.
+  changePerUser: envInt('CHANGE_LIMIT_PER_USER', 10),
+  // "Delete my account", password and email changes need a sign-in (password, Google or a reset
+  // link) of THIS session at most this long ago.
   reauthMaxAgeMinutes: envInt('REAUTH_MAX_AGE_MINUTES', 15),
 };
 // Shared with the pg_cron job that calls `sweep` (stored in Vault on the database side).
@@ -370,6 +392,95 @@ function sessionSignedInAt(token, user) {
   return Number.isFinite(last) ? last : null;
 }
 
+/** Signed in (password / Google / reset link) within REAUTH_MAX_AGE_MINUTES in THIS session. */
+function signedInRecently(token, user) {
+  const signedInAt = sessionSignedInAt(token, user);
+  return Boolean(signedInAt) && Date.now() - signedInAt <= LIMITS.reauthMaxAgeMinutes * 60 * 1000;
+}
+
+/** The caller from the Authorization header → { user, token } or null. */
+async function caller(req) {
+  const token = bearer(req);
+  if (!token) return null;
+  const { data, error } = await admin.auth.getUser(token);
+  return error || !data?.user ? null : { user: data.user, token };
+}
+
+/* ------------------------------------------------------ password and email (H6) */
+
+/**
+ * One-time permission for the next password / pending-email change of this user (migration 021).
+ * Before 021 the function does not exist yet → nothing to do (there is no guard either).
+ */
+async function changeTicket(userId, kind, email = null) {
+  const { error } = await admin.rpc('account_change_ticket', { p_user: userId, p_kind: kind, p_email: email });
+  if (!error) return;
+  if (error.code === 'PGRST202' || /could not find the function/i.test(error.message || '')) {
+    console.warn('[account] account_change_ticket missing (migration 021 not run yet)');
+    return;
+  }
+  throw error;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function changeGate(req) {
+  const who = await caller(req);
+  if (!who) return { response: json({ error: 'not_logged_in' }) };
+  if (!(await take(`change:user:${who.user.id}`, LIMITS.changePerUser, HOUR))) {
+    return { response: json({ error: 'too_many_attempts' }) };
+  }
+  if (!signedInRecently(who.token, who.user)) return { response: json({ error: 'reauth_required' }) };
+  return who;
+}
+
+async function changePassword(req, body) {
+  const pErr = passwordError(body.password);
+  if (pErr) return json({ error: pErr });
+  const who = await changeGate(req);
+  if (who.response) return who.response;
+
+  await changeTicket(who.user.id, 'password');
+  const { error } = await admin.auth.admin.updateUserById(who.user.id, { password: body.password });
+  if (error) {
+    if (error.code === 'weak_password') return json({ error: 'password_short' });
+    throw error;
+  }
+  // Everywhere else (another browser, a forgotten school computer): signed out. This session stays.
+  const { error: outError } = await admin.auth.admin.signOut(who.token, 'others');
+  if (outError) console.warn('[account] sign out others failed', outError.status || outError.message);
+  return json({ ok: true });
+}
+
+async function changeEmail(req, body) {
+  const email = typeof body.email === 'string' ? body.email.trim() : '';
+  if (!EMAIL_RE.test(email) || email.length > 254 || isPlaceholder(email)) return json({ error: 'email_invalid' });
+  const redirectTo =
+    typeof body.redirectTo === 'string' && /^https?:\/\//.test(body.redirectTo) ? body.redirectTo : null;
+  const who = await changeGate(req);
+  if (who.response) return who.response;
+
+  await changeTicket(who.user.id, 'email', email);
+  const url = new URL(`${SUPABASE_URL}/auth/v1/user`);
+  if (redirectTo) url.searchParams.set('redirect_to', redirectTo);
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { apikey: PUBLIC_KEY, Authorization: `Bearer ${who.token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (res.ok) {
+    await res.body?.cancel();
+    return json({ ok: true });
+  }
+  const data = await res.json().catch(() => null);
+  const code = data?.error_code || data?.code || '';
+  if (code === 'email_exists' || code === 'email_address_not_authorized') return json({ error: 'email_in_use' });
+  if (code === 'email_address_invalid' || code === 'validation_failed') return json({ error: 'email_invalid' });
+  if (res.status === 429 || /rate_limit/.test(code)) return json({ error: 'too_many_attempts' });
+  console.warn('[account] change-email failed', res.status, code);
+  return json({ error: 'generic' });
+}
+
 const DELETE_ERRORS = new Set(['username_mismatch', 'owner_cannot_delete', 'no_username']);
 
 /* ------------------------------------------------------------ storage files */
@@ -423,11 +534,9 @@ async function sweep(req) {
 }
 
 async function deleteAccount(req, body) {
-  const token = bearer(req);
-  if (!token) return json({ error: 'not_logged_in' });
-  const { data: got, error: userError } = await admin.auth.getUser(token);
-  const user = got?.user;
-  if (userError || !user) return json({ error: 'not_logged_in' });
+  const who = await caller(req);
+  if (!who) return json({ error: 'not_logged_in' });
+  const { user, token } = who;
 
   const { ip } = clientIp(req);
   if (!(await take(await ipBucket('delete', ip), LIMITS.deletePerIp, HOUR))) {
@@ -437,10 +546,7 @@ async function deleteAccount(req, body) {
     return json({ error: 'too_many_attempts' });
   }
 
-  const signedInAt = sessionSignedInAt(token, user);
-  if (!signedInAt || Date.now() - signedInAt > LIMITS.reauthMaxAgeMinutes * 60 * 1000) {
-    return json({ error: 'reauth_required' });
-  }
+  if (!signedInRecently(token, user)) return json({ error: 'reauth_required' });
 
   const deleteMeasurements = body.deleteMeasurements === true;
   const { data: prep, error: prepError } = await admin.rpc('account_delete_prepare', {
@@ -509,6 +615,10 @@ Deno.serve(async (req) => {
         return clientIpInfo(req);
       case 'delete':
         return await deleteAccount(req, body);
+      case 'change-password':
+        return await changePassword(req, body);
+      case 'change-email':
+        return await changeEmail(req, body);
       case 'sweep':
         return await sweep(req);
       default:

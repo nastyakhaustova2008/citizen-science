@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Local database tests: a throwaway PostgreSQL cluster with Supabase stand-ins, all migrations in
-# the documented order, then the tests of each migration that has a folder here (018/, 019/, 020/).
+# the documented order, then the tests of each migration that has a folder here (018/ … 021/) and of
+# the Edge Function `account` (account/).
 # See README.md. Usage: supabase/tests/run.sh   (from anywhere; exit code 1 = a test failed)
 set -euo pipefail
 
@@ -87,10 +88,21 @@ node "$WORK/mirror19.mjs" "$WORK/mirror19.json" || MIRROR_OK=0
 apply migrations/020_hide_identities.sql
 apply migrations/020_hide_identities.sql   # safe to re-run
 echo "migration 020: applied twice"
+# 021 before the 020 tests: 020's allow-lists (what anon may read / execute) must still hold.
+apply migrations/021_session_security.sql
+apply migrations/021_session_security.sql   # safe to re-run
+echo "migration 021: applied twice"
 RESULT20="$("${PSQL[@]}" -At -f "$HERE/020/tests.sql" | grep -E '^(PASS|FAIL)')"
 echo "$RESULT20"
 FAILED20=$(grep -c '^FAIL' <<<"$RESULT20" || true)
 echo "020 database: $(grep -c '^PASS' <<<"$RESULT20") passed, $FAILED20 failed"
+OUT21="$("${PSQL[@]}" -At -f "$HERE/021/tests.sql" 2>/dev/null)"
+RESULT21="$(grep -E '^(PASS|FAIL)' <<<"$OUT21")"
+echo "$RESULT21"
+FAILED21=$(grep -c '^FAIL' <<<"$RESULT21" || true)
+# On a failure: the errors of the statements the checks ran (expected ones included).
+[ "$FAILED21" = 0 ] || grep '^LOG' <<<"$OUT21" || true
+echo "021 database: $(grep -c '^PASS' <<<"$RESULT21") passed, $FAILED21 failed"
 # Every user id, username and anonymised id: no anon API response may contain one (020/api.js).
 "${PSQL[@]}" -At -c "select json_build_object(
   'ids', (select json_agg(x) from (select id::text x from auth.users union select id::text from public.profiles
@@ -138,11 +150,24 @@ else
   echo "019 / 020 API tests: SKIPPED (no postgrest binary; set POSTGREST_BIN)"
 fi
 
+# 021 rollback file: guard removed, then 021 again.
+RESULTRB21="$("${PSQL[@]}" -At -f "$HERE/021/rollback.sql" 2>/dev/null | grep -E '^(PASS|FAIL)')"
+echo "$RESULTRB21"
+FAILEDRB21=$(grep -c '^FAIL' <<<"$RESULTRB21" || true)
+echo "021 rollback: $(grep -c '^PASS' <<<"$RESULTRB21") passed, $FAILEDRB21 failed"
+
+# Edge Function `account` (Node, with Deno / Supabase stand-ins): account/test.js.
+ACCOUNT_OK=1
+"$REPO/node_modules/.bin/esbuild" "$HERE/account/test.js" --bundle --platform=node --format=esm --log-level=warning \
+  "--alias:npm:@supabase/supabase-js@2=$HERE/account/supabase-stub.js" --outfile="$WORK/account-test.mjs"
+node "$WORK/account-test.mjs" || ACCOUNT_OK=0
+
 # 020 rollback file: back to the 019 state, then 020 again (runs last: it changes grants).
 RESULTRB="$("${PSQL[@]}" -At -f "$HERE/020/rollback.sql" | grep -E '^(PASS|FAIL)')"
 echo "$RESULTRB"
 FAILEDRB=$(grep -c '^FAIL' <<<"$RESULTRB" || true)
 echo "020 rollback: $(grep -c '^PASS' <<<"$RESULTRB") passed, $FAILEDRB failed"
 
-[ "$FAILED" = 0 ] && [ "$FAILED19" = 0 ] && [ "$FAILED20" = 0 ] && [ "$FAILEDRB" = 0 ] && [ "$MIRROR_OK" = 1 ] && [ "$API_OK" = 1 ] \
+[ "$FAILED" = 0 ] && [ "$FAILED19" = 0 ] && [ "$FAILED20" = 0 ] && [ "$FAILEDRB" = 0 ] \
+  && [ "$FAILED21" = 0 ] && [ "$FAILEDRB21" = 0 ] && [ "$ACCOUNT_OK" = 1 ] && [ "$MIRROR_OK" = 1 ] && [ "$API_OK" = 1 ] \
   && echo "ALL TESTS PASSED" || { echo "SOME TESTS FAILED"; exit 1; }

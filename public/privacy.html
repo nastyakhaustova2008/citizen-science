@@ -208,7 +208,8 @@
             <li><strong>Password</strong> — stored only in scrambled form (a “hash”). Nobody, including us, can read it.</li>
             <li>
               <strong>Email (optional)</strong> — used only to reset your password and to confirm the address itself.
-              We never show it to anyone and never send newsletters.
+              We never show it to anyone and never send newsletters. For now you can't add an email: our emails don't
+              reach users yet, so this is turned off until they do.
             </li>
             <li><strong>When you joined and your role</strong> (student, admin, main admin or owner) — shown on your profile page, to logged-in users only.</li>
             <li>
@@ -362,8 +363,10 @@
               up to 10 a minute, 60 an hour, 200 a day).
             </li>
             <li>
-              <strong>Your browser's local storage</strong> keeps your language, light/dark theme and your login, so you
-              stay logged in. This stays on your device.
+              <strong>Your browser's local storage</strong> keeps your language, light/dark theme, whether this is a
+              shared computer, and your login, so you stay logged in. This stays on your device. If you tick “This is a
+              shared computer” when you log in, your login is kept only until the browser is closed (session storage)
+              and is removed after 30 minutes without use.
             </li>
           </ul>
 
@@ -513,6 +516,32 @@
             <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
 
+          <h2>Logging in safely and forgotten passwords</h2>
+          <ul>
+            <li>
+              <strong>Shared computers.</strong> When you log in, you can tick “This is a shared computer” (it is ticked
+              by default on computers, not on phones and tablets). Then your login is forgotten when the browser is
+              closed, and you are logged out after 30 minutes without use (with a one-minute warning; a measurement that
+              was not sent yet is lost). Logging out removes your login and everything the page loaded for you from this
+              browser. If you logged in with Google, also log out of Google on a shared computer.
+            </li>
+            <li>
+              <strong>Log out on all devices.</strong> Profile → Account → “Log out on all devices” ends your login
+              everywhere; another device may stay logged in for up to an hour until its access expires.
+            </li>
+            <li>
+              <strong>Changing your password.</strong> If you logged in more than 15 minutes ago, you are asked for your
+              current password (or Google) again first. Wrong passwords count toward the same limit as logging in. After
+              the change you are logged out on all your other devices. Our server checks this, not only the page.
+            </li>
+            <li>
+              <strong>Forgotten password.</strong> Nobody can reset another person's password — not the site admins
+              either. Resetting by email will work once our emails reach users. Until then, and for accounts without an
+              email: log in with Google if you used it, or create a new account. Your old measurements stay on the map
+              without your name, and if you remember the old password later you can delete the old account.
+            </li>
+          </ul>
+
           <h2>Tips for students</h2>
           <ul>
             <li><strong>Don't use your real full name as your username.</strong> A nickname, or a first name plus a letter, is enough.</li>
@@ -524,7 +553,8 @@
             <li><strong>Don't photograph people</strong> (yourself included), house numbers, addresses or car plates. Photograph only the instrument and the site.</li>
             <li><strong>For your profile picture</strong>, use a drawing or an avatar rather than a photo of yourself.</li>
             <li>Be kind in comments. If a comment hurts or worries you, press “Report” — an admin will check it.</li>
-            <li>Don't share your password with anyone, not even friends.</li>
+            <li>Don't share your password with anyone, not even friends. Write it down somewhere safe — we can't recover it.</li>
+            <li>On a school or library computer, tick “This is a shared computer” and log out when you finish.</li>
             <li>If something worries you, talk to your teacher or a parent, or write to us.</li>
           </ul>
 
@@ -583,7 +613,8 @@
             </li>
             <li>
               <strong>Email (необязательно)</strong> — нужен только для сброса пароля и для подтверждения самого адреса.
-              Мы никому его не показываем и не присылаем рассылок.
+              Мы никому его не показываем и не присылаем рассылок. Пока добавить email нельзя: наши письма ещё не доходят
+              до пользователей, поэтому это выключено, пока не заработает.
             </li>
             <li><strong>Когда вы зарегистрировались и ваша роль</strong> (ученик, администратор, главный администратор или владелец) — видны на странице профиля, только вошедшим пользователям.</li>
             <li>
@@ -739,8 +770,10 @@
               измерения: до 10 в минуту, 60 в час, 200 в день).
             </li>
             <li>
-              <strong>Локальное хранилище браузера</strong> хранит язык, светлую/тёмную тему и ваш вход, чтобы не входить
-              каждый раз. Это остаётся на вашем устройстве.
+              <strong>Локальное хранилище браузера</strong> хранит язык, светлую/тёмную тему, отметку «общий компьютер» и
+              ваш вход, чтобы не входить каждый раз. Это остаётся на вашем устройстве. Если при входе отметить «Это общий
+              компьютер», вход хранится только до закрытия браузера (хранилище сеанса) и удаляется через 30 минут без
+              действий.
             </li>
           </ul>
 
@@ -887,6 +920,32 @@
             Удаление по-прежнему можно запросить и по письму: <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
 
+          <h2>Безопасный вход и забытый пароль</h2>
+          <ul>
+            <li>
+              <strong>Общие компьютеры.</strong> При входе можно отметить «Это общий компьютер» (на компьютерах отмечено
+              по умолчанию, на телефонах и планшетах — нет). Тогда вход забывается при закрытии браузера, а через 30
+              минут без действий вы выходите из аккаунта (с предупреждением за минуту; ещё не отправленное измерение
+              пропадает). Выход из аккаунта стирает из браузера ваш вход и всё, что страница загрузила для вас. Если вы
+              входили через Google, на общем компьютере выйдите и из Google.
+            </li>
+            <li>
+              <strong>Выйти на всех устройствах.</strong> Профиль → Аккаунт → «Выйти на всех устройствах» завершает вход
+              везде; другое устройство может оставаться в аккаунте до часа, пока не истечёт его доступ.
+            </li>
+            <li>
+              <strong>Смена пароля.</strong> Если вы вошли больше 15 минут назад, сначала нужно ещё раз ввести текущий
+              пароль (или войти через Google). Неверные пароли считаются в том же лимите, что и при входе. После смены вы
+              выходите из аккаунта на всех остальных устройствах. Это проверяет наш сервер, а не только страница.
+            </li>
+            <li>
+              <strong>Забытый пароль.</strong> Никто не может сбросить чужой пароль — даже администраторы сайта. Сброс по
+              email заработает, когда наши письма начнут доходить до пользователей. До тех пор, и для аккаунтов без email:
+              войдите через Google, если пользовались им, или создайте новый аккаунт. Старые измерения останутся на карте
+              без вашего имени, а если вы потом вспомните старый пароль, старый аккаунт можно удалить.
+            </li>
+          </ul>
+
           <h2>Советы ученикам</h2>
           <ul>
             <li>
@@ -901,7 +960,8 @@
             <li><strong>Не фотографируйте людей</strong> (и себя тоже), номера домов, адреса и автомобильные номера. Снимайте только прибор и место.</li>
             <li><strong>Для фото профиля</strong> лучше выберите рисунок или аватар, а не своё фото.</li>
             <li>Будьте вежливы в комментариях. Если комментарий обижает или тревожит вас, нажмите «Пожаловаться» — администратор проверит.</li>
-            <li>Никому не говорите свой пароль, даже друзьям.</li>
+            <li>Никому не говорите свой пароль, даже друзьям. Запишите его в надёжном месте — восстановить его мы не можем.</li>
+            <li>На школьном или библиотечном компьютере отмечайте «Это общий компьютер» и выходите из аккаунта в конце.</li>
             <li>Если что-то беспокоит — поговорите с учителем или родителями или напишите нам.</li>
           </ul>
 
@@ -958,7 +1018,8 @@
             <li><strong>סיסמה</strong> — נשמרת רק בצורה מוצפנת (hash). אף אחד, גם לא אנחנו, לא יכול לקרוא אותה.</li>
             <li>
               <strong>אימייל (לא חובה)</strong> — משמש רק לאיפוס סיסמה ולאישור הכתובת עצמה. אנחנו לא מציגים אותו לאף אחד
-              ולא שולחים ניוזלטרים.
+              ולא שולחים ניוזלטרים. כרגע אי אפשר להוסיף אימייל: המיילים שלנו עוד לא מגיעים למשתמשים, ולכן האפשרות
+              כבויה עד שזה יעבוד.
             </li>
             <li><strong>מתי הצטרפתם והתפקיד שלכם</strong> (תלמיד, מנהל, מנהל ראשי או בעלים) — מוצגים בדף הפרופיל שלכם, רק למשתמשים מחוברים.</li>
             <li>
@@ -1099,8 +1160,9 @@
               (תגובות: עד 5 בדקה, 30 בשעה, 100 ביום; מדידות: עד 10 בדקה, 60 בשעה, 200 ביום).
             </li>
             <li>
-              <strong>האחסון המקומי בדפדפן</strong> שומר את השפה, את המצב הבהיר/הכהה ואת הכניסה שלכם, כדי שלא תצטרכו
-              להיכנס בכל פעם. המידע הזה נשאר במכשיר שלכם.
+              <strong>האחסון המקומי בדפדפן</strong> שומר את השפה, את המצב הבהיר/הכהה, את הסימון „מחשב משותף” ואת הכניסה
+              שלכם, כדי שלא תצטרכו להיכנס בכל פעם. המידע הזה נשאר במכשיר שלכם. אם מסמנים בכניסה „זה מחשב משותף”, הכניסה
+              נשמרת רק עד שסוגרים את הדפדפן (אחסון הסשן) ונמחקת אחרי 30 דקות בלי שימוש.
             </li>
           </ul>
 
@@ -1233,6 +1295,31 @@
             (יומני שרת וגיבויים) נמחקים לפי מדיניות השמירה שלו. עדיין אפשר לבקש מחיקה גם באימייל: <strong class="ltr"><a href="mailto:nastyakhaustova2008@gmail.com">nastyakhaustova2008@gmail.com</a></strong>.
           </p>
 
+          <h2>כניסה בטוחה וסיסמה שנשכחה</h2>
+          <ul>
+            <li>
+              <strong>מחשבים משותפים.</strong> בכניסה אפשר לסמן „זה מחשב משותף” (במחשבים זה מסומן מראש, בטלפונים
+              ובטאבלטים — לא). אז הכניסה נשכחת כשסוגרים את הדפדפן, ואחרי 30 דקות בלי שימוש יוצאים מהחשבון (עם אזהרה
+              דקה לפני; מדידה שעוד לא נשלחה נמחקת). יציאה מהחשבון מוחקת מהדפדפן את הכניסה ואת כל מה שהדף טען בשבילכם.
+              אם נכנסתם עם Google, במחשב משותף צאו גם מ־Google.
+            </li>
+            <li>
+              <strong>יציאה בכל המכשירים.</strong> פרופיל ← חשבון ← „יציאה בכל המכשירים” מסיימת את הכניסה בכל מקום;
+              מכשיר אחר יכול להישאר מחובר עד שעה, עד שהגישה שלו פגה.
+            </li>
+            <li>
+              <strong>שינוי סיסמה.</strong> אם נכנסתם לפני יותר מ־15 דקות, קודם צריך להקליד שוב את הסיסמה הנוכחית (או
+              להיכנס שוב עם Google). סיסמאות שגויות נספרות באותה מגבלה כמו בכניסה. אחרי השינוי יוצאים מהחשבון בכל שאר
+              המכשירים. את זה בודק השרת שלנו, לא רק הדף.
+            </li>
+            <li>
+              <strong>סיסמה שנשכחה.</strong> אף אחד לא יכול לאפס סיסמה של מישהו אחר — גם לא מנהלי האתר. איפוס באימייל
+              יעבוד כשהמיילים שלנו יגיעו למשתמשים. עד אז, ובחשבונות בלי אימייל: היכנסו עם Google אם השתמשתם בו, או צרו
+              חשבון חדש. המדידות הישנות יישארו במפה בלי השם שלכם, ואם תיזכרו אחר כך בסיסמה הישנה, תוכלו למחוק את החשבון
+              הישן.
+            </li>
+          </ul>
+
           <h2>טיפים לתלמידים</h2>
           <ul>
             <li>
@@ -1245,7 +1332,8 @@
             <li><strong>אל תצלמו אנשים</strong> (גם לא את עצמכם), מספרי בתים, כתובות או לוחיות רישוי. צלמו רק את המכשיר ואת המקום.</li>
             <li><strong>לתמונת הפרופיל</strong> עדיף ציור או אווטאר ולא תמונה שלכם.</li>
             <li>כתבו תגובות בכבוד. אם תגובה פוגעת בכם או מדאיגה אתכם, לחצו „דיווח” — מנהל/ת יבדקו אותה.</li>
-            <li>אל תגלו את הסיסמה שלכם לאף אחד, גם לא לחברים.</li>
+            <li>אל תגלו את הסיסמה שלכם לאף אחד, גם לא לחברים. כתבו אותה במקום בטוח — אנחנו לא יכולים לשחזר אותה.</li>
+            <li>במחשב של בית הספר או של הספרייה סמנו „זה מחשב משותף” וצאו מהחשבון בסוף.</li>
             <li>אם משהו מדאיג אתכם — דברו עם המורה או עם ההורים, או כתבו לנו.</li>
           </ul>
 

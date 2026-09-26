@@ -183,3 +183,26 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
   see everything as before. Accepted residual: `username_available` still says whether a guessed
   username is taken (needed for sign-up) — consider a rate limit in the hardening task (M9).
   Deploy order: code first, then 020 (`SETUP_AUTH.md` → 23).
+* **Account security on shared computers + honest password recovery (H6) — done (migration 021,
+  Edge Function `account`).** Most users are minors on shared school computers.
+  * Changing the password or the email needs a log-in of *this* session within the last 15 minutes
+    (as for deleting the account); otherwise the page asks for the current password (it counts
+    toward the per-username log-in limit) or Google. Enforced by the Edge Function (`change-password`,
+    `change-email`) **and** by the database: migration 021 guards `auth.users` so a stolen session
+    token can't change the password or the pending email by calling Supabase Auth directly (a
+    one-time ticket from the Edge Function is needed). After a password change the other sessions
+    are logged out.
+  * "This is a shared computer" at log-in (ON on computers, OFF on phones / tablets, remembered per
+    device): the login is kept only until the browser is closed, auto log-out after 30 minutes
+    without use (warning 1 minute before, says an unsent measurement will be lost). Every log-out
+    clears the stored login and reloads the page (nothing of the user stays in memory). "Log out on
+    all devices" in the profile. Visible log-out in the header on desktop.
+  * Honest recovery: the sign-up page says to write the password down (no email = no recovery,
+    Google as an alternative). "Forgot password" by email and adding/changing an email are hidden
+    until emails reach users (`EMAIL_FLOWS_ENABLED` in `src/lib/authConfig.js` — N2 turns it on);
+    until then the page explains: Google, or a new account (old measurements stay on the map
+    without a name). Nobody resets passwords for others, admins included (decided).
+  * Residual: an access token stays valid until it expires (JWT expiry, default 1 hour) even after
+    log-out; a token stolen within 15 minutes of a log-in passes the recency check; browsers that
+    restore the last session can bring back a "shared computer" login. Deploy order: Edge Function
+    → code → 021 (`SETUP_AUTH.md` → 24).

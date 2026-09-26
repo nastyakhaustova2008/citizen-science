@@ -10,11 +10,14 @@ import {
   GoogleButton,
   PrivacyConsent,
   Notice,
+  SharedDeviceCheckbox,
   OrDivider,
   isolate,
   UsernameField,
   safeNext,
 } from '../../components/auth/AuthUI';
+import { sharedPreference } from '../../lib/session';
+import { EMAIL_FLOWS_ENABLED } from '../../lib/authConfig';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,6 +36,7 @@ export default function SignUpPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(null); // { emailSent, emailError }
+  const [shared, setShared] = useState(sharedPreference);
 
   if (done) {
     return (
@@ -56,7 +60,7 @@ export default function SignUpPage() {
 
   const pwError = touched && password ? passwordError(password) : null;
   const mismatch = touched && password2 && password !== password2;
-  const emailError = touched && email.trim() && !EMAIL_RE.test(email.trim());
+  const emailError = EMAIL_FLOWS_ENABLED && touched && email.trim() && !EMAIL_RE.test(email.trim());
   const canSubmit =
     usernameStatus === 'available' && !passwordError(password) && password === password2 && !emailError;
 
@@ -67,8 +71,9 @@ export default function SignUpPage() {
     setError(null);
     setBusy(true);
     try {
-      const result = await signUp({ username, password, email: email.trim() || null });
-      if (email.trim()) {
+      const withEmail = EMAIL_FLOWS_ENABLED && email.trim();
+      const result = await signUp({ username, password, email: withEmail || null, shared });
+      if (withEmail) {
         setDone(result);
       } else {
         navigate(next, { replace: true });
@@ -140,30 +145,47 @@ export default function SignUpPage() {
             required
           />
         </Field>
-        <Field
-          id="signup-email"
-          label={t('auth.emailOptional')}
-          hint={t('auth.emailHint')}
-          error={emailError ? t('auth.errors.email_invalid') : null}
-        >
-          <input
+        {EMAIL_FLOWS_ENABLED && (
+          <Field
             id="signup-email"
-            type="email"
-            className="input"
-            dir="ltr"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </Field>
+            label={t('auth.emailOptional')}
+            hint={t('auth.emailHint')}
+            error={emailError ? t('auth.errors.email_invalid') : null}
+          >
+            <input
+              id="signup-email"
+              type="email"
+              className="input"
+              dir="ltr"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </Field>
+        )}
+        <PasswordRecoveryHint />
+        <SharedDeviceCheckbox id="signup-shared" checked={shared} onChange={setShared} />
         <FormError code={error} />
         <button type="submit" className="btn-primary w-full" disabled={busy || !canSubmit}>
           {busy ? t('auth.working') : t('auth.submitSignup')}
         </button>
       </form>
       <OrDivider />
-      <GoogleButton next={next} />
+      <GoogleButton next={next} shared={shared} />
       <PrivacyConsent />
     </AuthCard>
+  );
+}
+
+/** Honest recovery (H6): write the password down; without an email it can't be reset; or Google. */
+function PasswordRecoveryHint() {
+  const { t } = useI18n();
+  return (
+    <div className="rounded-lg border border-bark/40 bg-bark/5 p-3 text-sm" role="note">
+      <p className="font-semibold">{t('auth.recoveryHint.title')}</p>
+      <p className="mt-1 text-ink-faint">
+        {t(EMAIL_FLOWS_ENABLED ? 'auth.recoveryHint.bodyEmail' : 'auth.recoveryHint.body')}
+      </p>
+    </div>
   );
 }

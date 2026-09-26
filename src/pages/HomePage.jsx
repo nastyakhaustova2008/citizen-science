@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import { MapPin, School, Radio, Search } from 'lucide-react';
 import { useI18n } from '../i18n';
 import { useAppData } from '../context/AppDataContext';
@@ -17,13 +16,11 @@ import FilterBar from '../components/FilterBar';
 import ObservationCard from '../components/ObservationCard';
 import ActivityFeed from '../components/ActivityFeed';
 import { CardSkeleton, EmptyState, ErrorBlock, SectionHeading, Skeleton } from '../components/primitives';
-import { Notice } from '../components/auth/AuthUI';
 
 const ALL = '__all__';
 
 export default function HomePage() {
   const { t, locale } = useI18n();
-  const accountDeleted = Boolean(useLocation().state?.accountDeleted);
   const {
     campaigns,
     campaignsLoading,
@@ -114,7 +111,6 @@ export default function HomePage() {
 
   return (
     <div className="space-y-10">
-      {accountDeleted && <Notice>{t('auth.deleteAccount.done')}</Notice>}
       {/* Intro */}
       <section>
         <h1 className="font-serif text-2xl font-bold text-ink sm:text-3xl dark:text-paper">

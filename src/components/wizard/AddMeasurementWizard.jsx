@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Crosshair,
@@ -28,6 +28,7 @@ import {
 import { uploadPhoto, UploadError } from '../../lib/storage';
 import { roundLatLng, locationLabel } from '../../lib/location';
 import LocationPicker from './LocationPicker';
+import { setUnsavedWork } from '../../lib/session';
 import FieldInput from './FieldInput';
 
 const STEPS = ['location', 'values', 'photo'];
@@ -93,6 +94,14 @@ export default function AddMeasurementWizard({ observation }) {
   const [savedWithPhoto, setSavedWithPhoto] = useState(false);
   // field key → { src: the data URL that was uploaded, path }
   const uploads = useRef({});
+
+  // Shared computers sign out after inactivity: the warning says an unsent measurement is lost.
+  const started = !done && (step > 0 || Boolean(coords) || Boolean(placeLabel) || Object.keys(inputs).length > 0);
+  useEffect(() => {
+    if (!started) return undefined;
+    setUnsavedWork('measurement-wizard', 'measurement');
+    return () => setUnsavedWork('measurement-wizard', null);
+  }, [started]);
 
   // Re-derived on every render, so a refreshed definition applies immediately.
   const fields = activeFields(observation);
