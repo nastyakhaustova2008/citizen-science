@@ -17,8 +17,6 @@ import Tabs, { TabPanel } from '../components/Tabs';
 import ObservationMap from '../components/map/ObservationMap';
 import DataTable from '../components/data/DataTable';
 import StatsSummary from '../components/data/StatsSummary';
-import ObservationCharts from '../components/charts/ObservationCharts';
-import Discussion from '../components/discussion/Discussion';
 import {
   StatusBadge,
   DifficultyBadge,
@@ -29,6 +27,11 @@ import {
 import ObsIcon from '../components/ObsIcon';
 import { useLabStats } from '../hooks/useMeasurements';
 import { FEATURES } from '../lib/features';
+import { lazyPart } from '../lib/lazy';
+
+// Loaded when their tab is opened (audit L8): recharts is the largest library; the forum is a demo.
+const ObservationCharts = lazyPart(() => import('../components/charts/ObservationCharts'));
+const Discussion = lazyPart(() => import('../components/discussion/Discussion'));
 
 /** Data tab: stats of ALL measurements (server aggregate) + the paged table. */
 function LabData({ observation }) {

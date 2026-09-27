@@ -99,7 +99,7 @@ function QueuedPhoto({ photo: p }) {
           {t(p.hiddenReason === 'reports' ? 'photos.hiddenByReports' : 'photos.hiddenByModerator')}
         </p>
       )}
-      <PhotoImage path={p.path} alt={t('photos.alt')} />
+      <PhotoImage path={p.path} alt={t('photos.alt')} className="max-h-64 object-contain" />
       <FileCheckNotice check={check}>
         <button
           type="button"

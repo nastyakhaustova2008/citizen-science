@@ -13,7 +13,12 @@ export const isolate = (value) => `\u2068${value}\u2069`;
 
 /** Only same-app paths ("/…", not "//host") — never redirect to another site. */
 export function safeNext(next) {
-  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+  // Only an in-app path: "/…", not "//host", and no backslash or control character anywhere
+  // ("/\\evil.com" is read as "//evil.com" by some URL parsers — React Router advisory
+  // GHSA-wrjc-x8rr-h8h6; audit L7).
+  return typeof next === 'string' && next.startsWith('/') && !next.startsWith('//') && !/[\\\u0000-\u001f]/.test(next)
+    ? next
+    : '/';
 }
 
 export function loginPath(next, why) {

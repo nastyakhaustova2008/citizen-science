@@ -41,6 +41,7 @@ export default function PhotoImage({ path, alt, className = '', dim = false }) {
       src={url}
       alt={alt}
       loading="lazy"
+      decoding="async"
       referrerPolicy="no-referrer"
       onError={() => setState('error')}
       className={`w-full rounded-lg border border-edge dark:border-white/10 ${dim ? 'opacity-60' : ''} ${className}`}

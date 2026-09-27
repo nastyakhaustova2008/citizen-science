@@ -20,7 +20,7 @@ import { Avatar, EmptyState, SectionHeading, Skeleton, LoadingBlock, ErrorBlock 
 import MiniMap from '../components/MiniMap';
 import ContributionGraph from '../components/ContributionGraph';
 import AccountSettings from '../components/auth/AccountSettings';
-import AdminPanel from '../components/admin/AdminPanel';
+import { lazyPart } from '../lib/lazy';
 import AdminProfileForm from '../components/labs/AdminProfileForm';
 import AvatarUpload from '../components/avatars/AvatarUpload';
 import AvatarActions from '../components/avatars/AvatarActions';
@@ -29,6 +29,9 @@ import { formatDate } from '../lib/format';
 import { monthlyCounts } from '../lib/stats';
 import { isAdminRole } from '../lib/roles';
 import { useUserPoints } from '../hooks/useMeasurements';
+
+// Admins only — loaded when shown (audit L8).
+const AdminPanel = lazyPart(() => import('../components/admin/AdminPanel'));
 
 const BADGE_ICON = {
   firstMeasurement: MapPin,

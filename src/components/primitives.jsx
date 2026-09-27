@@ -116,6 +116,8 @@ export function Avatar({ user, size = 32, className = '', path }) {
     <img
       src={real || avatarDataUri(user.avatarSeed, user.displayName)}
       onError={real ? () => setFailed(real) : undefined}
+      loading="lazy"
+      decoding="async"
       referrerPolicy="no-referrer"
       alt={user.displayName}
       width={size}
