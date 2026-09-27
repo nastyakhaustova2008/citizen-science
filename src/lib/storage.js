@@ -10,8 +10,12 @@ import { dataUrlToBlob } from './image';
 export const PHOTO_BUCKET = 'measurement-photos';
 export const AVATAR_BUCKET = 'avatars';
 
-// Signed URLs live 15 minutes; a cached one is reused while it has at least a minute left.
-const SIGNED_TTL = 15 * 60;
+// Signed URLs live 1 hour and a cached one is reused while it has at least 5 minutes left (~55 min
+// per URL, audit M8): the same URL for the same file means the browser's HTTP cache (files are
+// uploaded with cache-control 3600) serves it again instead of downloading it — less egress on the
+// free plan. The cache is in memory only: gone on reload and on sign-out (which reloads).
+const SIGNED_TTL = 60 * 60;
+const REUSE_MARGIN_MS = 5 * 60 * 1000;
 const signed = new Map(); // `${bucket}/${path}` → { url, until }
 
 export class UploadError extends Error {
@@ -94,7 +98,7 @@ export function signedUrl(path, bucket = PHOTO_BUCKET) {
   if (!supabase || !path) return Promise.resolve(null);
   const key = `${bucket}/${path}`;
   const hit = signed.get(key);
-  if (hit && hit.until - Date.now() > 60_000) return Promise.resolve(hit.url);
+  if (hit && hit.until - Date.now() > REUSE_MARGIN_MS) return Promise.resolve(hit.url);
   if (inFlight.has(key)) return inFlight.get(key);
   const promise = new Promise((resolve) => {
     if (!waiting.has(bucket)) {

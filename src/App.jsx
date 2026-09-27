@@ -11,8 +11,7 @@ import ProfilePage from './pages/ProfilePage';
 import ProtocolPage from './pages/ProtocolPage';
 import NotFoundPage from './pages/NotFoundPage';
 import PrivacyPage from './pages/PrivacyPage';
-import LabEditorPage from './pages/LabEditorPage';
-import LabReviewPage from './pages/LabReviewPage';
+import { lazyPart } from './lib/lazy';
 import AdminProfilePrompt from './components/labs/AdminProfilePrompt';
 import LoginPage from './pages/auth/LoginPage';
 import SignUpPage from './pages/auth/SignUpPage';
@@ -21,6 +20,10 @@ import ConfirmPage from './pages/auth/ConfirmPage';
 import ChooseUsernamePage from './pages/auth/ChooseUsernamePage';
 import { RequireAuth, UsernameGate, OAuthErrorBanner } from './components/auth/AuthUI';
 import { IdleSignOut, SharedReminder, SignedOutNotice } from './components/auth/SessionUI';
+
+// Admins only — loaded when opened (audit L8).
+const LabEditorPage = lazyPart(() => import('./pages/LabEditorPage'));
+const LabReviewPage = lazyPart(() => import('./pages/LabReviewPage'));
 
 function ScrollToTop() {
   const { pathname } = useLocation();

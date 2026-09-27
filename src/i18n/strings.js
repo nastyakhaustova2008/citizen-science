@@ -403,6 +403,8 @@ const he = {
   states: {
     loadingTitle: 'טוען נתונים…',
     errorTitle: 'שגיאה בטעינת הנתונים',
+    partLoadFailed: 'החלק הזה של האתר לא נטען — אולי האתר התעדכן בינתיים. טענו את הדף מחדש.',
+    reloadPage: 'טעינת הדף מחדש',
     errorBody: 'משהו השתבש. אפשר לנסות שוב.',
     emptyTitle: 'אין מה להציג',
     offlineHint: 'הנתונים כאן הם נתוני הדגמה בלבד.',
@@ -1757,6 +1759,8 @@ const en = {
   states: {
     loadingTitle: 'Loading data…',
     errorTitle: 'Failed to load data',
+    partLoadFailed: 'This part of the site didn’t load — maybe the site was just updated. Reload the page.',
+    reloadPage: 'Reload the page',
     errorBody: 'Something went wrong. You can try again.',
     emptyTitle: 'Nothing to show',
     offlineHint: 'All data here is demo data only.',
@@ -3107,6 +3111,8 @@ const ru = {
   states: {
     loadingTitle: 'Загрузка данных…',
     errorTitle: 'Не удалось загрузить данные',
+    partLoadFailed: 'Эта часть сайта не загрузилась — возможно, сайт только что обновился. Обновите страницу.',
+    reloadPage: 'Обновить страницу',
     errorBody: 'Что-то пошло не так. Можно повторить попытку.',
     emptyTitle: 'Нечего показать',
     offlineHint: 'Все данные здесь — только демонстрационные.',

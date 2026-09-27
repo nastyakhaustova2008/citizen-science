@@ -47,7 +47,7 @@ Photos (goal 8, migration 016): they are **always** deleted on account deletion,
 
 **Goal:** a complete policy and working emails.
 
-* Fill in `[RESPONSIBLE BODY]` and `[PRIVACY EMAIL]` in all languages.
+* ~~Fill in the responsible body and the privacy email~~ — done: Mechina Ofakim LeMada, nastyakhaustova2008@gmail.com (all three languages).
 * Review how the policy describes emails and names (Google name and email, admin full names and workplaces, usernames).
 * Set up Brevo SMTP in Supabase with the mechina's email as sender (not a personal email). Steps are in `supabase/SETUP_AUTH.md`.
 * Replace the email templates (reset password, change email, confirm signup) with the `token_hash` links from `SETUP_AUTH.md`.
@@ -236,5 +236,19 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
   * One id per measurement: a retry after a lost answer doesn't duplicate (L3). Texts / RTL (L9),
     tap targets ≥ 24 px, 44 px on touch (L10).
   * Deploy order: 023 → code (`SETUP_AUTH.md` → 26).
-* **Final hardening, part C** — next: privacy re-check, security headers, dependencies, bundle
-  size, signed-URL reuse, backups, docs.
+* **Final hardening, part C (docs, dependencies, performance) — done (no migration).**
+  * Security headers in `vercel.json` (CSP, no framing, Referrer-Policy, Permissions-Policy),
+    tested with the production build: map, charts, exports, photos, avatars, Google sign-in,
+    privacy page — no CSP violation (L6).
+  * react-router-dom 6.30.6, vite 5.4.21, postcss 8.5.28 (L7). Remaining `npm audit` items need
+    major upgrades (Vite 6+, React Router 7): the esbuild one affects only the local dev server;
+    the React Router open-redirect one is closed in our own `safeNext` (no backslashes).
+  * Code splitting: lab editor, review page, admin panel, charts and forum load when opened —
+    main bundle 1.28 MB → 0.80 MB (L8).
+  * Signed photo links live 1 hour and are reused ~55 minutes (browser cache hits), images load
+    lazily; monthly usage check, project pause / restore and monthly backup in `SETUP_AUTH.md`
+    (M8, L12).
+  * Privacy policy re-checked against 018–023 (links 1 hour, no forum) (M10); README rewritten,
+    dead `netlify.toml` / `useMockLoad.js` removed (L11).
+* **Still open (not in the audit scope):** Brevo / real emails (N2), six languages, automatic
+  translation, deleting the demo data (the owner does it by hand).

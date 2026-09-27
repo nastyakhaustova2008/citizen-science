@@ -1026,3 +1026,111 @@ participants.
 4. **If something breaks:** revert the merge in GitHub (Vercel redeploys the old frontend). 023
    can stay (the old frontend doesn't use it); rollback only if needed:
    `supabase/rollback/023_home_participants_rollback.sql`.
+
+## 27. Final hardening, part C — security headers, dependencies, speed; monthly checks and backups
+
+What changes (no migration, no Edge Function change):
+* **Security headers** (`vercel.json`): Content-Security-Policy (only our own scripts; images,
+  data and fonts only from our site, `*.supabase.co`, OpenStreetMap tiles and Google Fonts; no
+  framing, no plugins), `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`,
+  `Permissions-Policy` (location and camera only for our own page; microphone, payment, USB, … off).
+  The app uses no WebSocket (no Supabase Realtime), so none is allowed; map marker icons are
+  drawn inline (no CDN).
+* react-router-dom 6.30.6, vite 5.4.21, postcss 8.5.28.
+* The lab editor, review page, admin panel, charts and forum load only when opened (the first
+  page is ~40 % smaller). If a tab stays open across a new deploy, opening such a part shows
+  "Reload the page" instead of a blank page.
+* Photo links live 1 hour and are reused, so the browser doesn't download the same photo again
+  (less egress); pictures load only when they scroll into view.
+* Privacy policy: links 1 hour, no forum (he / en / ru).
+
+**Order: preview → merge → production deploy.** Nothing to run in Supabase.
+
+1. **Preview** (360 px, he / en / ru; logged out, student, admin). Open DevTools → Console and
+   keep it open: there must be **no red "Refused to …" / "Content Security Policy" line** from
+   our site. (On a *preview* only, the Vercel toolbar may log CSP errors for `vercel.live` —
+   ignore those; production has no toolbar.)
+   * Home: counters, mini-maps, fonts look as before (Frank Ruhl headings, Assistant text).
+   * A lab: map tiles and markers, clusters; Data tab → export CSV, JSON, GeoJSON (files download);
+     Charts tab (loads a moment later — a short grey skeleton is fine).
+   * Point panel with a photo (logged in): the photo shows; as admin the file check line appears.
+   * Profile: your picture; admin panel tabs open.
+   * Add a measurement with "Use my current location" — the browser asks for location as before.
+   * A photo field → "take photo" on a phone opens the camera / gallery as before.
+   * Log in with Google is **not** testable on a preview (it returns to production) — step 3.
+   * `…/privacy.html#en` opens.
+2. Merge → wait for the production deploy.
+3. **Production:**
+   * PowerShell: `curl.exe -sI https://citizen-science-liart.vercel.app/ | Select-String 'content-security|x-frame|referrer|permissions'`
+     → four lines.
+   * Log in with Google (a test account) → back on the site, logged in, no CSP error in the console.
+   * Step 1 again quickly.
+4. **If something is blocked** (a console line "Refused to load … because it violates the
+   Content Security Policy"): copy that line (it contains no secret) and send it to me. Quick fix
+   without waiting: GitHub → `vercel.json` → edit → delete the whole `Content-Security-Policy`
+   block (the four lines from `{` to `},`) → commit to `main` → Vercel redeploys in ~1 minute
+   without the CSP (the other headers stay).
+
+### Monthly check (first school day of the month, ~10 minutes)
+
+The free Supabase plan has limits; when one is exceeded the project can be restricted.
+
+1. **Supabase → Organization → Usage** (or the project → **Reports**): look at **Database size**,
+   **Storage size**, **Egress** (data sent out), **Monthly active users** and **Edge Function
+   invocations**. Compare with the limit shown next to each. If one is above ~70 %, tell me
+   (egress: photo size / caching; storage: old photos; database: old rows).
+2. **Database → Cron jobs** (Integrations → Cron): the jobs `mitzpe-privacy-cleanup`,
+   `mitzpe-comments-cleanup`, `mitzpe-photos-cleanup`, `mitzpe-avatars-cleanup`,
+   `mitzpe-storage-sweep` ran last night with status *succeeded*. In SQL Editor:
+   `select private.privacy_cleanup();` → numbers only, no `"error"`.
+3. **Advisors** (Security and Performance): nothing new in red. A new warning → send me its title.
+4. **Vercel → Project → Usage**: bandwidth well under the Hobby limit.
+
+### The free project pauses after a week without activity
+
+Supabase pauses a free project when it had no activity for **7 days** — e.g. during school
+holidays. The site then shows error screens ("Failed to load data"), sign-in doesn't work, and the
+nightly cleanups don't run. Data is **not** lost.
+
+* **Restore:** Supabase Dashboard → the project → **Restore project** (or "Resume"). It takes a few
+  minutes; then open the site and check the home page and a sign-in. Restore it a day **before**
+  school starts again.
+* A project paused for more than **90 days** can no longer be restored in the dashboard (only its
+  backup can be downloaded) — don't leave it paused for a whole summer.
+* To avoid the pause, open the site (logged in) at least once a week during holidays.
+
+### Monthly backup (Windows)
+
+The free plan keeps no backup you can download. Once a month, and **before** running any new
+migration:
+
+1. **Data as CSV (no tools needed):** Supabase → **Table Editor** → for each of `campaigns`,
+   `campaign_fields`, `campaign_field_options`, `measurements`, `profiles`, `admin_profiles`,
+   `comments`, `measurement_photos`, `avatars`: open the table → **…** (or *Export*) → **Export to
+   CSV**. These files contain usernames and admins' names — keep them only in a private folder
+   (e.g. an encrypted drive or the mechina's private Google Drive), never in a shared or public place.
+2. **The schema (tables, functions, rules) with `pg_dump`** — once: install the PostgreSQL 17
+   client tools on the laptop (in PowerShell: `winget install PostgreSQL.PostgreSQL.17`, or the
+   installer from postgresql.org; only "Command Line Tools" is needed). Then each month:
+   * Supabase → the project → **Connect** → **Session pooler** → copy the *host*, *port* and
+     *user* (it looks like `postgres.<project-ref>`). Not the password.
+   * In PowerShell (fill in the host and user; the command itself contains no secret — pg_dump
+     asks for the database password, type it, it is not shown and not saved):
+
+     ```powershell
+     $Dir = "$HOME\Documents\mitzpe-backup"; New-Item -ItemType Directory -Force $Dir | Out-Null
+     $Date = Get-Date -Format 'yyyy-MM'
+     & "C:\Program Files\PostgreSQL\17\bin\pg_dump.exe" `
+       "host=<host from Connect> port=5432 dbname=postgres user=<user from Connect> sslmode=require" `
+       --schema-only --no-owner --no-privileges --schema=public --schema=private `
+       --file "$Dir\schema-$Date.sql"
+     Get-Item "$Dir\schema-$Date.sql"   # size should be a few hundred KB
+     ```
+
+   * Optional full data copy of the `public` schema (the same data as the CSV files, in one file
+     that can be restored): replace `--schema-only` with `--data-only --schema=public` and the file
+     name with `data-$Date.sql`. It holds personal data → the same private folder only.
+3. Never paste the database password, the service-role / secret key or an access token into a
+   command, a screenshot, a chat or an issue. If the password was ever shown somewhere, reset it:
+   Supabase → Settings → Database → **Reset database password** (then update nothing else — the app
+   and the Edge Function don't use it).
