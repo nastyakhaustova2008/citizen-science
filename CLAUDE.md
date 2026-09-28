@@ -49,6 +49,7 @@
   * Storage, bucket `measurement-photos` (016): закрытый, JPEG ≤ 1 МБ (лимиты bucket). Загрузка — вошедший с именем, имя файла `<uuid v4>.jpg`, ≤ 30 **загрузок** за 24 ч (022: `photo_upload_take`, `photo_upload:user:<id>`; см. выше), всего в хранилище < 900 МБ. Почему отказ — `upload_quota(bucket)` → `rate_limited` | `storage_full` (`wizard.photoUpload.*`, `avatars.errors.upload_*`). Чтение (подписанные ссылки) — `photo_can_read`. Удаление — `photo_can_delete` (файл в очереди: владелец или модератор; свой неприкреплённый). Политики update нет — перезаписать нельзя.
 * Внешний ключ `measurements.observation_id → campaigns.id` (`on delete restrict`): нельзя добавить измерение к несуществующей кампании и удалить кампанию, у которой есть измерения. Измерение можно добавить только в опубликованную лабораторную (триггер, `lab_not_published`).
 * Деплой: GitHub → Vercel; заголовки безопасности — `vercel.json` (см. «Укрепление (часть C)»).
+* Keep-alive Supabase (free-план не засыпает): `.github/workflows/supabase-keepalive.yml` — 2 раза в день `GET /rest/v1/campaigns?select=id&limit=1` с anon-ключом (секреты репозитория `SUPABASE_URL`, `SUPABASE_ANON_KEY`), см. `SETUP_AUTH.md` → 28.
 
 ## Стек
 

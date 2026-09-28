@@ -250,5 +250,7 @@ homes, school uniforms and car plates, so privacy comes first. Two PRs.
     (M8, L12).
   * Privacy policy re-checked against 018–023 (links 1 hour, no forum) (M10); README rewritten,
     dead `netlify.toml` / `useMockLoad.js` removed (L11).
+* **Done after the audit:** Supabase keep-alive: a GitHub Actions workflow reads one lab id
+  twice a day so the free project doesn't pause during holidays (`SETUP_AUTH.md` → 28).
 * **Still open (not in the audit scope):** Brevo / real emails (N2), six languages, automatic
   translation, deleting the demo data (the owner does it by hand).

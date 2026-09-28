@@ -1097,7 +1097,8 @@ nightly cleanups don't run. Data is **not** lost.
   school starts again.
 * A project paused for more than **90 days** can no longer be restored in the dashboard (only its
   backup can be downloaded) — don't leave it paused for a whole summer.
-* To avoid the pause, open the site (logged in) at least once a week during holidays.
+* To avoid the pause, a GitHub Actions workflow reads the database twice a day (step 28). If it
+  stopped (see the 60-day note there), open the site at least once a week during holidays.
 
 ### Monthly backup (Windows)
 
@@ -1134,3 +1135,30 @@ migration:
    command, a screenshot, a chat or an issue. If the password was ever shown somewhere, reset it:
    Supabase → Settings → Database → **Reset database password** (then update nothing else — the app
    and the Edge Function don't use it).
+
+## 28. Keep-alive: stop the free project from pausing (GitHub Actions)
+
+What it does: the workflow `.github/workflows/supabase-keepalive.yml` runs twice a day
+(04:17 and 16:17 UTC) and makes one small real database read through the Data API:
+`GET /rest/v1/campaigns?select=id&limit=1` with the publishable (anon) key. The answer is one lab
+id, and published labs are public anyway. No personal data is read or sent anywhere. The log
+shows only the HTTP status. A non-2xx answer fails the run, and GitHub emails the repository owner.
+It changes nothing in the app, the database or the privacy policy.
+
+1. **Secrets** (already set): GitHub → the repository → **Settings → Secrets and variables →
+   Actions → Repository secrets** (the *Secrets* tab, **not** *Variables*):
+   * `SUPABASE_URL`: the project URL (the same value as `VITE_SUPABASE_URL` in Vercel);
+   * `SUPABASE_ANON_KEY`: the publishable / anon key (the same as `VITE_SUPABASE_ANON_KEY`).
+     Never the secret / service-role key.
+   A missing secret fails the run with "secret SUPABASE_URL is not set" (or `…ANON_KEY…`).
+2. **Run it by hand:** GitHub → **Actions** → **supabase-keepalive** → **Run workflow** (branch
+   `main`), or `gh workflow run supabase-keepalive.yml`. A green run with `HTTP 200` in the log
+   means it works.
+3. **GitHub turns scheduled workflows off after 60 days without activity in the repository**
+   (no commits). The owner gets an email first. Then: **Actions → supabase-keepalive → Enable
+   workflow**, or push any commit. During a long summer break, check this once.
+4. **If the project paused anyway** (the workflow was off, or a run failed for a week): Supabase
+   Dashboard → the project → **Restore project**. The data is kept (see step 27, "The free project
+   pauses…"), and the workflow keeps it awake again from the next run.
+5. The free plan has **no backups**. The keep-alive doesn't replace them, so keep doing the
+   monthly backup in step 27.
