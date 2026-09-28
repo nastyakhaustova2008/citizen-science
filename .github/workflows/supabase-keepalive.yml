@@ -25,11 +25,14 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${SUPABASE_URL:-}" ]; then
+          # Pasted secrets often end with a newline or spaces: strip all whitespace.
+          SUPABASE_URL=$(printf '%s' "${SUPABASE_URL:-}" | tr -d '[:space:]')
+          SUPABASE_ANON_KEY=$(printf '%s' "${SUPABASE_ANON_KEY:-}" | tr -d '[:space:]')
+          if [ -z "${SUPABASE_URL}" ]; then
             echo "::error::secret SUPABASE_URL is not set"
             exit 1
           fi
-          if [ -z "${SUPABASE_ANON_KEY:-}" ]; then
+          if [ -z "${SUPABASE_ANON_KEY}" ]; then
             echo "::error::secret SUPABASE_ANON_KEY is not set"
             exit 1
           fi
